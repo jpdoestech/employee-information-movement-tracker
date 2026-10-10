@@ -11,7 +11,7 @@ async function enter(page: Page, route = "employees") {
       .getByRole("heading", {
         name:
           route === "employees"
-            ? "Employee register"
+            ? "Employees"
             : route === "fields"
               ? "Field Builder"
               : "Movements",

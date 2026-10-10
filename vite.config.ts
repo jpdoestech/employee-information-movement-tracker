@@ -13,5 +13,11 @@ export default defineConfig(({ mode }) => {
   }
   if (elevated || key?.startsWith("sb_secret_"))
     throw new Error("Refusing to bundle a privileged Supabase key");
-  return { plugins: [react()], base: env.BASE_PATH || "/" };
+  return {
+    plugins: [react()],
+    base: env.BASE_PATH || "/",
+    optimizeDeps: { entries: ["index.html"] },
+    // Disposable PostgreSQL data and generated reports are not app sources.
+    server: { watch: { ignored: ["**/.test-db/**"] } },
+  };
 });

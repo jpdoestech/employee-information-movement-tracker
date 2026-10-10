@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowLeft,
@@ -242,24 +242,32 @@ export default function App() {
           <div className="brandmark">
             <GitBranch size={26} />
           </div>
-          <span className="eyebrow">EMPLOYEE INFORMATION & MOVEMENT</span>
-          <h1>
-            One profile.
-            <br />
-            Every placement.
-            <br />A reliable history.
-          </h1>
-          <p>A focused workspace for your people, branches and clients.</p>
+          <span className="eyebrow">EMPLOYEE TRACKER</span>
+          <h1>Employee information & movement</h1>
+          <p>Employee records, branch assignments, and movement history.</p>
+          <div className="login-modules" aria-label="Workspace features">
+            <span>
+              <Users size={20} aria-hidden="true" />
+              Employee register
+            </span>
+            <span>
+              <Building2 size={20} aria-hidden="true" />
+              Branches & clients
+            </span>
+            <span>
+              <GitBranch size={20} aria-hidden="true" />
+              Movement records
+            </span>
+          </div>
           <div className="login-statement">
             <ShieldCheck size={22} />
-            <span>
-              Secure access, defined for every field and organization.
-            </span>
+            <span>Access is controlled by your account permissions.</span>
           </div>
         </section>
         <section className="login-form">
-          <h2>Welcome back</h2>
-          <p>Sign in with your authorized company account.</p>
+          <span className="eyebrow">ACCOUNT ACCESS</span>
+          <h2>Sign in</h2>
+          <p>Use your authorized company account.</p>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -341,8 +349,8 @@ export default function App() {
             Employee Tracker<small>INFORMATION & MOVEMENT</small>
           </span>
         </a>
-        <div className="workspace-label">COMPANY WORKSPACE</div>
-        <nav>
+        <div className="workspace-label">WORKSPACE</div>
+        <nav aria-label="Main navigation" id="workspace-navigation">
           {nav
             .filter(
               (n) =>
@@ -356,21 +364,26 @@ export default function App() {
                       : can("audit_read")),
             )
             .map((n) => (
-              <a
-                key={n.id}
-                href={`#${n.id}`}
-                className={page === n.id ? "active" : ""}
-                aria-current={page === n.id ? "page" : undefined}
-              >
-                <n.icon size={18} />
-                {n.label}
-              </a>
+              <Fragment key={n.id}>
+                {n.id === "organization" && (
+                  <span className="nav-group-label">ADMINISTRATION</span>
+                )}
+                <a
+                  key={n.id}
+                  href={`#${n.id}`}
+                  className={page === n.id ? "active" : ""}
+                  aria-current={page === n.id ? "page" : undefined}
+                >
+                  <n.icon size={18} aria-hidden="true" />
+                  {n.label}
+                </a>
+              </Fragment>
             ))}
         </nav>
         <div className="sidebar-bottom">
           <ShieldCheck size={19} />
           <p>
-            Permission protected<small>Supabase primary database</small>
+            Controlled access<small>Employee workspace</small>
           </p>
         </div>
       </aside>
@@ -386,19 +399,39 @@ export default function App() {
           <button
             className="menu-button"
             aria-label="Open navigation"
+            aria-expanded={menu}
+            aria-controls="workspace-navigation"
             onClick={() => setMenu(!menu)}
           >
             <Menu size={22} />
           </button>
           <div>
             <span className="breadcrumb">Workspace / </span>
-            <strong>{currentNav.label}</strong>
+            <h1>{currentNav.label}</h1>
           </div>
           <div className="account">
+            {isDemo() && (
+              <span
+                className="environment-badge"
+                title="Fictional records. Changes stay in memory."
+              >
+                Demo
+                <span className="sr-only">
+                  : fictional records; changes are not saved to the database.
+                </span>
+              </span>
+            )}
+            <button
+              aria-label="Refresh authorized data"
+              title="Refresh data"
+              onClick={() => setVersion((v) => v + 1)}
+            >
+              <RefreshCw size={17} aria-hidden="true" />
+            </button>
             <span className="avatar">
               {ctx?.profile.display_name.slice(0, 1) || "A"}
             </span>
-            <span>
+            <span className="account-name">
               {ctx?.profile.display_name || "Authorized account"}
               <small>{ctx?.profile.role || "Loading…"}</small>
             </span>
@@ -414,33 +447,7 @@ export default function App() {
             </button>
           </div>
         </header>
-        {isDemo() && (
-          <div className="demo-banner">
-            Synthetic demo · UI review only · changes stay in memory · security
-            and sync are enforced by the real backend.
-          </div>
-        )}
         <main id="main" tabIndex={-1}>
-          <div className="page-heading">
-            <div>
-              <span className="eyebrow">PEOPLE & PLACEMENTS</span>
-              <h1>{currentNav.label}</h1>
-              <p>
-                {page === "employees"
-                  ? "A single source of truth for every employee."
-                  : page === "dashboard"
-                    ? `Current as of ${ctx?.today || "today"} · Asia/Manila`
-                    : "Focused tools for employee information and movement."}
-              </p>
-            </div>
-            <button
-              aria-label="Refresh authorized data"
-              onClick={() => setVersion((v) => v + 1)}
-            >
-              <RefreshCw size={16} />
-              Refresh
-            </button>
-          </div>
           {notice && (
             <div className="notice" role="status">
               {notice}
@@ -463,22 +470,34 @@ export default function App() {
             <>
               <div className="stats">
                 <a href="#employees" className="stat">
-                  <span>Accessible employees</span>
+                  <span className="stat-label">
+                    Total employees
+                    <Users size={18} aria-hidden="true" />
+                  </span>
                   <strong>{report?.total ?? "—"}</strong>
-                  <small>Permanent profiles</small>
+                  <small>Within your access scope</small>
                 </a>
                 <div className="stat">
-                  <span>Active employees</span>
+                  <span className="stat-label">
+                    Active employees
+                    <ShieldCheck size={18} aria-hidden="true" />
+                  </span>
                   <strong>{report?.statuses?.Active ?? "—"}</strong>
                   <small>Effective status today</small>
                 </div>
                 <div className="stat">
-                  <span>Head Office</span>
+                  <span className="stat-label">
+                    Head Office
+                    <Building2 size={18} aria-hidden="true" />
+                  </span>
                   <strong>{report?.placements?.["Head Office"] ?? "—"}</strong>
                   <small>Primary placement</small>
                 </div>
                 <div className="stat">
-                  <span>Unassigned</span>
+                  <span className="stat-label">
+                    Unassigned
+                    <GitBranch size={18} aria-hidden="true" />
+                  </span>
                   <strong>{report?.placements?.Unassigned ?? "—"}</strong>
                   <small>Awaiting primary placement</small>
                 </div>
@@ -488,7 +507,7 @@ export default function App() {
                   <div className="section-heading">
                     <div>
                       <h2>People by placement</h2>
-                      <p>Counts respect your scope and column permissions.</p>
+                      <p>Current primary assignments</p>
                     </div>
                     <Building2 size={20} />
                   </div>
@@ -509,18 +528,29 @@ export default function App() {
                   )}
                 </section>
                 <section className="panel">
-                  <span className="eyebrow">QUICK ACCESS</span>
-                  <h2>Keep information current</h2>
-                  <p>
-                    Manage profiles and record effective-dated changes in one
-                    focused workspace.
-                  </p>
+                  <div className="section-heading">
+                    <div>
+                      <h2>Employee status</h2>
+                      <p>Effective status today</p>
+                    </div>
+                    <Users size={20} aria-hidden="true" />
+                  </div>
+                  <dl className="status-summary">
+                    {Object.entries(report?.statuses || {}).map(
+                      ([label, count]) => (
+                        <div key={label}>
+                          <dt>{label}</dt>
+                          <dd>{String(count)}</dd>
+                        </div>
+                      ),
+                    )}
+                  </dl>
                   <a className="action-link" href="#employees">
-                    Open employee register
+                    Employee register
                     <ArrowRight size={17} />
                   </a>
                   <a className="action-link" href="#movements">
-                    View movement history
+                    Movement history
                     <ArrowRight size={17} />
                   </a>
                 </section>
@@ -529,7 +559,7 @@ export default function App() {
                 <div className="section-heading">
                   <div>
                     <h2>Employee register</h2>
-                    <p>Authorized recent register preview</p>
+                    <p>Recent records within your access scope</p>
                   </div>
                   <a href="#employees">
                     View all
@@ -552,10 +582,9 @@ export default function App() {
             <section className="panel register">
               <div className="section-heading">
                 <div>
-                  <h2>
-                    Employee register <span className="badge">{total}</span>
-                  </h2>
-                  <p>Primary assignment scope · authorized columns</p>
+                  <span className="record-count">
+                    <strong>{total}</strong> employee records
+                  </span>
                 </div>
                 <div className="actions">
                   <button onClick={() => setDialog("columns")}>
@@ -921,7 +950,7 @@ export default function App() {
         </main>
         <footer className="workspace-footer">
           Employee Information & Movement Tracker
-          <span>Asia/Manila · Supabase canonical</span>
+          <span>Asia/Manila · Employee records</span>
         </footer>
       </div>
       {ctx && dialog === "columns" && (

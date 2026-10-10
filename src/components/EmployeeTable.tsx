@@ -87,10 +87,16 @@ export function EmployeeTable({
                     : "none"
                 }
               >
-                <button type="button" onClick={() => onSort?.(k)}>
-                  {fields.find((f) => f.key === k)?.label}
-                  <ArrowUpDown size={13} aria-hidden />
-                </button>
+                {onSort ? (
+                  <button type="button" onClick={() => onSort(k)}>
+                    {fields.find((f) => f.key === k)?.label}
+                    <ArrowUpDown size={13} aria-hidden />
+                  </button>
+                ) : (
+                  <span className="table-header-label">
+                    {fields.find((f) => f.key === k)?.label}
+                  </span>
+                )}
               </th>
             ))}
           </tr>
