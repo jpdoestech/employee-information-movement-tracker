@@ -19,3 +19,4 @@ supabase/.branches/
 .test-db/results/
 .test-db/reports/
 .test-db/cache/
+.test-db/*
