@@ -1,9 +1,10 @@
 import { FloatingNotification } from "../components/FloatingNotification";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Dialog } from "../components/Dialog";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import {
   movementTypes,
+  defaultFilter,
   statuses,
   type Employee,
   type Option,
@@ -36,11 +37,27 @@ export function MovementEditor({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const [assignments, setAssignments] = useState<any[]>([]),
+    [selectedEmployee, setSelectedEmployee] = useState<Option[]>([]),
     [assignmentId, setAssignmentId] = useState(""),
     [destinationFields, setDestinationFields] = useState<Field[]>([]),
     [destinationValues, setDestinationValues] = useState<
       Record<string, unknown>
     >({});
+  const loadEmployees = useCallback(async (search: string) => {
+    const result = await query<{ items: Employee[] }>("employees", {
+      ...defaultFilter,
+      search,
+      sort: "id",
+      limit: 100,
+    });
+    return result.items.map((r) => ({
+      id: r.id,
+      label: String(
+        r.values.name || r.values.employee_number || "Authorized employee",
+      ),
+      context: String(r.values.employee_number || ""),
+    }));
+  }, []);
   useEffect(() => {
     let active = true;
     if (eid)
@@ -48,13 +65,16 @@ export function MovementEditor({
         .then((d) => {
           if (active) setAssignments(d.assignments);
         })
-        .catch(() => setAssignments([]));
+        .catch(() => {
+          if (active) setAssignments([]);
+        });
     return () => {
       active = false;
     };
   }, [eid]);
   useEffect(() => {
     let active = true;
+    setDestinationFields([]);
     const o = options.find((o) => o.id === dest);
     if (o)
       query<Field[]>("target_fields", {
@@ -65,7 +85,9 @@ export function MovementEditor({
         .then((f) => {
           if (active) setDestinationFields(f);
         })
-        .catch(() => setDestinationFields([]));
+        .catch(() => {
+          if (active) setDestinationFields([]);
+        });
     return () => {
       active = false;
     };
@@ -100,17 +122,29 @@ export function MovementEditor({
             <SearchFilterPicker
               mode="single"
               label="Employee"
-              options={rows.map((r) => ({
-                id: r.id,
-                label: String(
-                  r.values.name ||
-                    r.values.employee_number ||
-                    "Authorized employee",
-                ),
-                context: String(r.values.employee_number || ""),
-              }))}
+              load={loadEmployees}
+              options={[
+                ...selectedEmployee,
+                ...rows
+                  .filter((r) => !selectedEmployee.some((o) => o.id === r.id))
+                  .map((r) => ({
+                    id: r.id,
+                    label: String(
+                      r.values.name ||
+                        r.values.employee_number ||
+                        "Authorized employee",
+                    ),
+                    context: String(r.values.employee_number || ""),
+                  })),
+              ]}
               value={eid ? [eid] : []}
-              onChange={(v) => setEid(v[0] || "")}
+              onChange={(v, selected) => {
+                setSelectedEmployee(selected || []);
+                setEid(v[0] || "");
+                setAssignments([]);
+                setAssignmentId("");
+                setDestinationValues({});
+              }}
             />
             <SearchFilterPicker
               mode="single"
@@ -120,6 +154,11 @@ export function MovementEditor({
               onChange={(v) => {
                 setTyp(v[0] || "transfer");
                 setValue("");
+                setDest("");
+                setCategory("primary");
+                setEnd("");
+                setAssignmentId("");
+                setDestinationValues({});
               }}
             />
             {typ === "status" ? (
@@ -157,7 +196,10 @@ export function MovementEditor({
                       : []),
                   ]}
                   value={dest ? [dest] : []}
-                  onChange={(v) => setDest(v[0] || "")}
+                  onChange={(v) => {
+                    setDest(v[0] || "");
+                    setDestinationValues({});
+                  }}
                 />
                 {typ === "deployment" && (
                   <SearchFilterPicker

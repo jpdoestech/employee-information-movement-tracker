@@ -55,7 +55,8 @@ const org: Option[] = [
   },
 ];
 const base = [
-  ["employee_number", "Employee ID", "system"],
+  ["employee_number", "System ID", "system"],
+  ["client_employee_number", "Client-based ID", "system"],
   ["name", "Employee Name", "system"],
   ["status", "Employment Status", "system"],
   ["position", "Position", "system"],
@@ -74,8 +75,8 @@ const fields: Field[] = base.map(([key, label, type], i) => ({
   key,
   label,
   type,
-  group_id: i < 6 ? "core" : "contact",
-  group_name: i < 6 ? "Core identity" : "Contact information",
+  group_id: i < 7 ? "core" : "contact",
+  group_name: i < 7 ? "Core identity" : "Contact information",
   active: true,
   required: false,
   sensitivity: "normal",
@@ -109,6 +110,28 @@ let employees: Employee[] = Array.from({ length: 34 }, (_, i) => ({
     ),
   },
 }));
+const clientCounters = new Map<string, number>();
+const clientIdentities = new Map<string, string>();
+function clientIdentity(employee: Employee, clientId: string) {
+  const key = `${employee.id}:${clientId}`;
+  if (!clientIdentities.has(key)) {
+    const next = (clientCounters.get(clientId) || 0) + 1;
+    if (next > 99999) throw new Error("Client ID sequence is exhausted");
+    clientCounters.set(clientId, next);
+    clientIdentities.set(
+      key,
+      `${org.find((o) => o.id === clientId)?.code}-${String(next).padStart(5, "0")}`,
+    );
+  }
+  return clientIdentities.get(key)!;
+}
+for (const e of employees)
+  e.values.client_employee_number = e.values.client
+    ? clientIdentity(
+        e,
+        e.values.branch === "Example North Branch" ? "client-n" : "client-s",
+      )
+    : null;
 const history: any[] = [];
 const audit: any[] = [];
 const context: Context = {
@@ -220,6 +243,50 @@ export async function demoQuery(op: string, q: any = {}) {
       assignments: [],
       movements: history.filter((m) => m.employee_id === q.id),
     };
+  if (op === "record_page") {
+    const source =
+      q.kind === "movements" ? history : q.kind === "audit" ? audit : org;
+    let items = source.filter(
+      (r: any) =>
+        (!q.search ||
+          [
+            r.employee_name,
+            r.employee_number,
+            r.type,
+            r.state,
+            r.operation,
+            r.entity,
+            r.label,
+            r.context,
+            r.code,
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(q.search.toLowerCase())) &&
+        (!q.types?.length || q.types.includes(r.type || r.kind)) &&
+        (!q.states?.length || q.states.includes(r.state)) &&
+        (!q.branches?.length ||
+          q.branches.includes(
+            q.kind === "organization" && r.kind === "branch"
+              ? r.id
+              : r.branch_id,
+          )) &&
+        (!q.clients?.length || q.clients.includes(r.client_id)) &&
+        (!q.from || (r.effective_on || r.created_at?.slice(0, 10)) >= q.from) &&
+        (!q.to || (r.effective_on || r.created_at?.slice(0, 10)) <= q.to),
+    );
+    items = [...items].sort(
+      (a: any, b: any) =>
+        String(a[q.sort] || "").localeCompare(String(b[q.sort] || "")) *
+          (q.direction === "asc" ? 1 : -1) ||
+        String(a.id).localeCompare(String(b.id)),
+    );
+    return structuredClone({
+      items: items.slice(q.offset || 0, (q.offset || 0) + (q.limit || 25)),
+      total: items.length,
+      revision: context.revision,
+    });
+  }
   if (op === "movements") return history;
   if (op === "dashboard")
     return {
@@ -256,10 +323,15 @@ export async function demoQuery(op: string, q: any = {}) {
   throw new Error("Unknown demo query");
 }
 export async function demoMutate(op: string, p: any) {
+  if (
+    p.values &&
+    ("client_employee_number" in p.values || "employee_number" in p.values)
+  )
+    throw new Error("Identity fields are system-managed");
   if (op.startsWith("employee_") || op === "bulk_update") {
     if (op === "employee_create") {
       const id = crypto.randomUUID();
-      employees.push({
+      const created: Employee = {
         id,
         row_version: 1,
         values: {
@@ -270,6 +342,19 @@ export async function demoMutate(op: string, p: any) {
               ?.label || "Unassigned",
           ...p.values,
         },
+      };
+      created.values.client =
+        org.find((o) => o.id === p.client_id)?.label || null;
+      created.values.client_employee_number = p.client_id
+        ? clientIdentity(created, p.client_id)
+        : null;
+      employees.push(created);
+      audit.unshift({
+        id: audit.length + 1,
+        operation: op,
+        entity: "employee",
+        entity_id: id,
+        created_at: new Date().toISOString(),
       });
       context.revision++;
       return { id };
@@ -331,6 +416,15 @@ export async function demoMutate(op: string, p: any) {
       });
   } else if (op === "organization") {
     const o = org.find((o) => o.id === p.id);
+    if (p.kind === "client") {
+      p.code = String(p.code || "")
+        .trim()
+        .toUpperCase();
+      if (!/^[A-Z][A-Z0-9_-]{0,19}$/.test(p.code))
+        throw new Error("Invalid client code");
+      if (o && o.code !== p.code && (clientCounters.get(o.id) || 0) > 0)
+        throw new Error("Client code is locked after IDs have been issued");
+    }
     if (o)
       Object.assign(o, p, {
         label: p.name,
@@ -357,11 +451,14 @@ export async function demoMutate(op: string, p: any) {
     const e = employees.find((e) => e.id === p.employee_id)!;
     if (!e || e.row_version !== p.expected_version)
       throw new Error("Movement preview is stale");
+    if (p.client_id) clientIdentity(e, p.client_id);
     history.unshift({
       ...p,
       id: crypto.randomUUID(),
       employee_name: e.values.name,
-      state: p.effective_on > context.today ? "Scheduled" : "Effective / past",
+      employee_number: e.values.employee_number,
+      created_at: new Date().toISOString(),
+      state: p.effective_on > context.today ? "Scheduled" : "Effective",
     });
     if (p.effective_on <= context.today) {
       if (p.type === "status") e.values.status = p.status;
@@ -372,6 +469,9 @@ export async function demoMutate(op: string, p: any) {
             ? "Head Office"
             : org.find((o) => o.id === p.branch_id)?.label || "Unassigned";
         e.values.client = org.find((o) => o.id === p.client_id)?.label || null;
+        e.values.client_employee_number = p.client_id
+          ? clientIdentity(e, p.client_id)
+          : null;
       }
     }
     e.row_version++;
@@ -394,6 +494,8 @@ export async function demoMutate(op: string, p: any) {
   audit.unshift({
     id: audit.length + 1,
     operation: op,
+    entity: op.startsWith("employee") || op === "movement" ? "employee" : op,
+    entity_id: p.employee_id || p.id,
     created_at: new Date().toISOString(),
   });
   return { saved: true };

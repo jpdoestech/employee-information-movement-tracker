@@ -401,6 +401,118 @@ main:has(> .data-panel) > :not(.data-panel) {
 .data-panel .section-heading {
   margin-bottom: 12px;
 }
+.panel.record-explorer {
+  padding: 0;
+  overflow: hidden;
+}
+.record-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.record-heading > div {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+.record-heading h2 {
+  font-size: 15px;
+  margin: 0;
+}
+.record-heading span {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.record-heading .primary span {
+  color: inherit;
+}
+.record-explorer .filterbar {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.record-explorer .chips {
+  padding-inline: 16px;
+}
+.record-explorer table {
+  min-width: 820px;
+  font-size: 13px;
+}
+.record-explorer th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--paper);
+}
+.record-explorer th button {
+  width: 100%;
+  justify-content: space-between;
+  padding: 0;
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+}
+.record-explorer td,
+.record-explorer th {
+  padding: 10px 14px;
+  overflow-wrap: anywhere;
+}
+.record-explorer td:first-child strong {
+  display: block;
+}
+.record-explorer td:first-child small {
+  display: block;
+  margin-top: 3px;
+}
+.record-explorer td:last-child button {
+  white-space: nowrap;
+}
+.record-explorer .pagination {
+  padding: 8px 16px;
+  border-top: 1px solid var(--line);
+}
+.record-explorer .pagination > span {
+  margin-right: auto;
+}
+.record-explorer .pagination .picker {
+  flex: none;
+  width: 72px;
+}
+.record-filter-editor {
+  display: grid;
+  gap: 12px;
+}
+@media (max-width: 760px) {
+  .record-heading {
+    padding: 10px 12px;
+  }
+  .record-heading > div {
+    display: block;
+  }
+  .record-heading h2 {
+    font-size: 14px;
+  }
+  .record-heading .primary span {
+    max-width: 104px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .record-explorer .filterbar {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  .record-explorer .filterbar > .picker {
+    max-width: 106px;
+  }
+  .record-explorer .filterbar > .picker .picker-trigger {
+    font-size: 12px;
+    padding-inline: 8px;
+  }
+}
 .page-heading,
 .section-heading {
   display: flex;

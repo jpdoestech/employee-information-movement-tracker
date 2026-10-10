@@ -19,3 +19,9 @@ Google synchronization is a secondary one-way projection. A separately hosted Ed
 Stages: A foundation/Auth/migrations; B organization/policy tests; C metadata/applicability/duplicates; D employee/movement transactions; E shared UI/table preview/pinning/bulk; F OAuth/worker; G deployment/docs/acceptance evidence. SQL remains forward-only under `supabase/migrations/`. No production SQL or deployment occurs automatically.
 
 External blockers: no configured standalone Supabase project, Google OAuth account/consent, approved workbook policies, staging or production target. These block live integration/deployment, not local implementation. No Docker/psql was found; use a repository-local disposable PostgreSQL test runtime and document the distinction from full Supabase REST tests.
+
+## Record lists and client identifiers
+
+Movements, Organization and Audit share `RecordExplorer`: authorized search, date/scope/type/state filters where applicable, safe sort keys, deterministic paging (10/25/50/100), and a fixed footer below the scrolling data region. Migration 16 adds `record_page`; authorization and field projection precede search and counts. Delegated audit access still requires an Admin capability and readable employee scope, and omits reason/changed-field metadata. Employee transaction selection uses secured remote search independently of the visible register page. Workbook policy editing uses the shared modal and transaction/discard confirmations.
+
+Migration 17 implements the requested System ID and Client-based ID extension. A locked per-client counter, unique employee/client pairs and generated five-digit strings keep IDs consistent within atomic transactions. The new Core identity field follows configured permission inheritance. See `client-identifiers.md` for prefix rules, namespace, scheduled/secondary placement semantics, backfill and staging checks. Existing System IDs and personal saved views remain stable.

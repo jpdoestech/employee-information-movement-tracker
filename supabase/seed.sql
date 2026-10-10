@@ -1,7 +1,7 @@
 -- Synthetic only; no Auth users or automatic privileged signup.
 insert into public.field_groups(id,name,description,display_order) values('10000000-0000-0000-0000-000000000001','Core identity','Stable employee identity and controlled movement fields',0),('10000000-0000-0000-0000-000000000002','Contact information','Configurable contact details',1) on conflict do nothing;
 insert into public.field_definitions(group_id,key,label,type,display_order) values
- ('10000000-0000-0000-0000-000000000001','employee_number','Employee ID','system',0),
+ ('10000000-0000-0000-0000-000000000001','employee_number','System ID','system',0),
  ('10000000-0000-0000-0000-000000000001','name','Employee Name','system',1),
  ('10000000-0000-0000-0000-000000000001','status','Employment Status','system',2),
  ('10000000-0000-0000-0000-000000000001','position','Position','system',3),

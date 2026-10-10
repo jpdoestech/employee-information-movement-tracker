@@ -1,3 +1,4 @@
+import { RecordExplorer } from "./components/RecordExplorer";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -84,8 +85,7 @@ export default function App() {
     [busy, setBusy] = useState(false),
     [columnFilter, setColumnFilter] = useState(""),
     [operator, setOperator] = useState("contains"),
-    [columnValue, setColumnValue] = useState(""),
-    [movementFilter, setMovementFilter] = useState<string[]>([]);
+    [columnValue, setColumnValue] = useState("");
   const loadedUser = useRef<string | null>(null);
   const [correction, setCorrection] = useState<any>(),
     [correctionReason, setCorrectionReason] = useState("");
@@ -172,16 +172,7 @@ export default function App() {
     const timer = setTimeout(() => {
       Promise.all([
         query("employees", filter),
-        query(
-          page === "dashboard"
-            ? "dashboard"
-            : page === "movements"
-              ? "movements"
-              : page === "audit"
-                ? "audit"
-                : "dashboard",
-          page === "movements" ? { types: movementFilter } : {},
-        ),
+        page === "dashboard" ? query("dashboard") : Promise.resolve(undefined),
       ])
         .then(([result, r]) => {
           if (active) {
@@ -206,13 +197,7 @@ export default function App() {
       active = false;
       clearTimeout(timer);
     };
-  }, [
-    ctx?.revision,
-    page,
-    JSON.stringify(filter),
-    JSON.stringify(movementFilter),
-    version,
-  ]);
+  }, [ctx?.revision, page, JSON.stringify(filter), version]);
   const fields = ctx?.fields || [];
   const can = (c: string) => ctx?.capabilities.includes(c);
   const readable = fields.filter((f) => f.actions.includes("R") && f.active);
@@ -868,6 +853,7 @@ export default function App() {
           )}
           {ctx && page === "organization" && (
             <Organization
+              revision={ctx.revision}
               options={options}
               canManage={!!can("organization_manage")}
               onSaved={refresh}
@@ -895,109 +881,38 @@ export default function App() {
               <p>Sync administration access is required.</p>
             ))}
           {ctx && page === "movements" && (
-            <section className="panel data-panel">
-              <div className="section-heading">
-                <div>
-                  <h2>Movement history</h2>
-                  <p>
-                    Seven transaction types, with effective dates and preserved
-                    history.
-                  </p>
-                </div>
-                {can("movement_create") && (
-                  <button
-                    className="primary"
-                    onClick={() => setDialog("movement")}
-                  >
-                    <Plus size={16} />
-                    New transaction
-                  </button>
-                )}
-              </div>
-              <SearchFilterPicker
-                mode="multiple"
-                label="Movement types"
-                options={movementTypes}
-                value={movementFilter}
-                onChange={setMovementFilter}
-              />
-              <div
-                className="data-scroll-region"
-                tabIndex={0}
-                role="region"
-                aria-label="Movement records"
-              >
-                {Array.isArray(report) && report.length ? (
-                  report.map((m: any) => (
-                    <div className="timeline-item" key={m.id}>
-                      <div>
-                        <strong>
-                          {movementTypes.find((x) => x.id === m.type)?.label}
-                        </strong>
-                        <p>
-                          {m.employee_name || "Authorized employee"} ·{" "}
-                          {m.effective_on}
-                        </p>
-                      </div>
-                      <span className="badge">{m.state}</span>
-                      {can("movement_correct") && m.state !== "Voided" && (
-                        <button
-                          onClick={async () => {
-                            try {
-                              const d = await query("employee", {
-                                id: m.employee_id,
-                              });
-                              setCorrection({
-                                ...m,
-                                expected_version: d.employee.row_version,
-                              });
-                              setCorrectionReason("");
-                            } catch (e) {
-                              setError((e as Error).message);
-                            }
-                          }}
-                        >
-                          Void / correct
-                        </button>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty">
-                    No accessible movement history. Create a transaction to
-                    record a change.
-                  </div>
-                )}
-              </div>
-            </section>
+            <RecordExplorer
+              kind="movements"
+              options={options}
+              revision={`${ctx.revision}:${version}`}
+              onCreate={
+                can("movement_create") ? () => setDialog("movement") : undefined
+              }
+              onCorrect={
+                can("movement_correct")
+                  ? async (m) => {
+                      try {
+                        const d = await query("employee", {
+                          id: m.employee_id,
+                        });
+                        setCorrection({
+                          ...m,
+                          expected_version: d.employee.row_version,
+                        });
+                        setCorrectionReason("");
+                      } catch (e) {
+                        setError((e as Error).message);
+                      }
+                    }
+                  : undefined
+              }
+            />
           )}
           {ctx && page === "audit" && (
-            <section className="panel data-panel">
-              <h2>Recorded activity</h2>
-              <p>
-                Operational references are retained without unnecessary employee
-                values.
-              </p>
-              <div
-                className="data-scroll-region"
-                tabIndex={0}
-                role="region"
-                aria-label="Audit records"
-              >
-                {Array.isArray(report) && report.length ? (
-                  report.map((a: any) => (
-                    <div className="field-row" key={a.id}>
-                      <strong>{a.operation}</strong>
-                      <span>
-                        {a.entity} · {a.created_at}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty">No accessible audit events.</div>
-                )}
-              </div>
-            </section>
+            <RecordExplorer
+              kind="audit"
+              revision={`${ctx.revision}:${version}`}
+            />
           )}
           {!ctx && !loading && (
             <section className="panel">

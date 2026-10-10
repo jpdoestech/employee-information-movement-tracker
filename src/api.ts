@@ -28,15 +28,17 @@ export async function query<T = any>(
   if (!supabase)
     throw new Error("Configure this application’s Supabase connection.");
   const special =
-    operation === "effective_permissions"
-      ? "permission_preview"
-      : operation === "export"
-        ? "export_employees"
-        : operation === "field_scope_preview"
-          ? "field_scope_preview"
-          : operation === "target_fields"
-            ? "target_fields"
-            : null;
+    operation === "record_page"
+      ? "record_page"
+      : operation === "effective_permissions"
+        ? "permission_preview"
+        : operation === "export"
+          ? "export_employees"
+          : operation === "field_scope_preview"
+            ? "field_scope_preview"
+            : operation === "target_fields"
+              ? "target_fields"
+              : null;
   const { data, error } = await supabase.rpc(
     special || "tracker_query",
     special ? { q } : { operation, q },

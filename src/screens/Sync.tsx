@@ -1,3 +1,4 @@
+import { Dialog } from "../components/Dialog";
 import { requireConfirmation } from "../components/TransactionConfirmation";
 import { FloatingNotification } from "../components/FloatingNotification";
 import { useEffect, useState } from "react";
@@ -127,85 +128,101 @@ export function Sync({
         </div>
       )}
       {book && (
-        <section className="panel">
-          <h3>Workbook export policy</h3>
-          <SearchFilterPicker
-            mode="multiple"
-            label="Approved non-sensitive columns"
-            options={context.fields
-              .filter((f) => f.active && f.sensitivity === "normal")
-              .map((f) => ({
-                id: f.key,
-                label: f.label,
-                context: f.group_name,
-              }))}
-            value={book.allowed_fields}
-            onChange={(v) => setBook({ ...book, allowed_fields: v })}
-          />
-          <SearchFilterPicker
-            mode="multiple"
-            label="Approved client rows"
-            options={options.filter(
-              (o) => o.kind === "client" && o.branch_id === book.branch_id,
-            )}
-            value={book.allowed_clients}
-            onChange={(v) => setBook({ ...book, allowed_clients: v })}
-          />
-          <label>
-            <input
-              type="checkbox"
-              checked={book.include_branch}
-              onChange={(e) =>
-                setBook({ ...book, include_branch: e.target.checked })
-              }
+        <Dialog
+          title="Workbook export policy"
+          onClose={() => setBook(undefined)}
+        >
+          <div className="dialog-body">
+            <SearchFilterPicker
+              mode="multiple"
+              label="Approved non-sensitive columns"
+              options={context.fields
+                .filter((f) => f.active && f.sensitivity === "normal")
+                .map((f) => ({
+                  id: f.key,
+                  label: f.label,
+                  context: f.group_name,
+                }))}
+              value={book.allowed_fields}
+              onChange={(v) => setBook({ ...book, allowed_fields: v })}
             />
-            Include primary employees directly assigned to this branch / Head
-            Office
-          </label>
-          <label>
-            Approved sharing emails (one per line)
-            <textarea
-              value={book.sharing_emails.join("\n")}
-              onChange={(e) =>
-                setBook({
-                  ...book,
-                  sharing_emails: e.target.value
-                    .split("\n")
-                    .map((x) => x.trim())
-                    .filter(Boolean),
+            <SearchFilterPicker
+              mode="multiple"
+              label="Approved client rows"
+              options={options.filter(
+                (o) => o.kind === "client" && o.branch_id === book.branch_id,
+              )}
+              value={book.allowed_clients}
+              onChange={(v) => setBook({ ...book, allowed_clients: v })}
+            />
+            <label>
+              <input
+                type="checkbox"
+                checked={book.include_branch}
+                onChange={(e) =>
+                  setBook({ ...book, include_branch: e.target.checked })
+                }
+              />
+              Include primary employees directly assigned to this branch / Head
+              Office
+            </label>
+            <label>
+              Approved sharing emails (one per line)
+              <textarea
+                value={book.sharing_emails.join("\n")}
+                onChange={(e) =>
+                  setBook({
+                    ...book,
+                    sharing_emails: e.target.value
+                      .split("\n")
+                      .map((x) => x.trim())
+                      .filter(Boolean),
+                  })
+                }
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={book.approved}
+                onChange={(e) =>
+                  setBook({ ...book, approved: e.target.checked })
+                }
+              />
+              I approve these rows, fields, stable IDs, revision/date metadata
+              and Drive sharing for all four managed tabs
+            </label>
+            <label>
+              Policy reason
+              <input
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </label>
+          </div>
+          <footer>
+            <button onClick={() => setBook(undefined)}>Cancel</button>
+            <button
+              disabled={busy || !reason}
+              className="primary"
+              onClick={() =>
+                run(async () => {
+                  await mutate("workbook", { ...book, reason });
+                  setBook(undefined);
                 })
               }
-            />
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={book.approved}
-              onChange={(e) => setBook({ ...book, approved: e.target.checked })}
-            />
-            I approve these rows, fields, stable IDs, revision/date metadata and
-            Drive sharing for all four managed tabs
-          </label>
-          <label>
-            Policy reason
-            <input value={reason} onChange={(e) => setReason(e.target.value)} />
-          </label>
-          <button
-            disabled={busy || !reason}
-            className="primary"
-            onClick={() =>
-              run(async () => {
-                await mutate("workbook", { ...book, reason });
-                setBook(undefined);
-              })
-            }
-          >
-            Save export policy
-          </button>
-          <button onClick={() => setBook(undefined)}>Cancel</button>
-        </section>
+            >
+              Save export policy
+            </button>
+          </footer>
+          {error && (
+            <FloatingNotification onDismiss={() => setError("")}>
+              {error}
+            </FloatingNotification>
+          )}
+        </Dialog>
       )}
-      {error && (
+      {error && !book && (
         <FloatingNotification onDismiss={() => setError("")}>
           {error}
         </FloatingNotification>

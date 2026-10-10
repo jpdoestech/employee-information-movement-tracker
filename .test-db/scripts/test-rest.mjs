@@ -192,6 +192,42 @@ try {
       ).error,
     );
   });
+  await test("client identity and scoped record lists use real authenticated REST", async () => {
+    const clientId = randomUUID();
+    await owner.query(
+      "insert into public.clients(id,branch_id,code,name) values($1,$2,'COM','Synthetic Identity Client')",
+      [clientId, b2],
+    );
+    const created = await request(publicClients[0], "employee_create", {
+      target_level: "client",
+      branch_id: b2,
+      client_id: clientId,
+      values: { name: "Synthetic client identity" },
+    });
+    assert.ifError(created.error);
+    const detail = await publicClients[0].rpc("tracker_query", {
+      operation: "employee",
+      q: { id: created.data.id },
+    });
+    assert.ifError(detail.error);
+    assert.match(detail.data.employee.values.employee_number, /^EMP-/);
+    assert.equal(
+      detail.data.employee.values.client_employee_number,
+      "COM-00001",
+    );
+    assert(
+      (await publicClients[0].from("employee_client_ids").select("*")).error,
+    );
+    const lists = await publicClients[1].rpc("record_page", {
+      q: { kind: "organization", search: "Synthetic Identity Client" },
+    });
+    assert.ifError(lists.error);
+    assert.equal(lists.data.total, 0);
+    assert(
+      (await publicClients[2].rpc("record_page", { q: { kind: "audit" } }))
+        .error,
+    );
+  });
   await test("revocation takes effect with the same JWT without re-login", async () => {
     await owner.query(
       "update public.user_profiles set active=false where id=$1",

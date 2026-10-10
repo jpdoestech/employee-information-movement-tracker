@@ -1200,6 +1200,300 @@ try {
       );
     }
   });
+  const records = (user, payload) =>
+    as(user, (c) =>
+      c
+        .query("select public.record_page($1) r", [payload])
+        .then((r) => r.rows[0].r),
+    );
+  let identityClient,
+    otherIdentityClient,
+    identityEmployee,
+    identityNumber,
+    reader;
+  await test("client IDs allocate twenty concurrent five-digit numbers independently from System IDs", async () => {
+    identityClient = randomUUID();
+    otherIdentityClient = randomUUID();
+    await owner.query(
+      "insert into public.clients(id,branch_id,code,name) values($1,$2,'COM','Identity Company ABC'),($3,$2,'XYZ','Identity Company XYZ')",
+      [identityClient, id.b1, otherIdentityClient],
+    );
+    const created = await concurrent(
+      "employee_create",
+      Array.from({ length: 20 }, (_, i) => ({
+        target_level: "client",
+        branch_id: id.b1,
+        client_id: identityClient,
+        values: { name: `Identity Test ${i}` },
+      })),
+    );
+    assert.equal(created.filter((r) => r.ok).length, 20);
+    const ids = (
+      await owner.query(
+        "select sequence_number,client_employee_number from public.employee_client_ids where client_id=$1 order by sequence_number",
+        [identityClient],
+      )
+    ).rows;
+    assert.deepEqual(
+      ids.map((r) => r.sequence_number),
+      Array.from({ length: 20 }, (_, i) => i + 1),
+    );
+    assert.equal(ids[0].client_employee_number, "COM-00001");
+    assert.equal(ids[19].client_employee_number, "COM-00020");
+    identityEmployee = created[0].result.id;
+    identityNumber = (await q(id.sa, "employee", { id: identityEmployee }))
+      .employee.values.client_employee_number;
+    assert.match(identityNumber, /^COM-\d{5}$/);
+    const systemId = (await q(id.sa, "employee", { id: identityEmployee }))
+      .employee.values.employee_number;
+    assert.match(systemId, /^EMP-/);
+    const scheduled = await m(id.sa, "movement", {
+      employee_id: identityEmployee,
+      expected_version: await revision(identityEmployee),
+      type: "reassignment",
+      target_level: "client",
+      branch_id: id.b1,
+      client_id: otherIdentityClient,
+      effective_on: date(1),
+      reason: "Identity scheduled transfer",
+    });
+    assert.equal(
+      (await q(id.sa, "employee", { id: identityEmployee })).employee.values
+        .client_employee_number,
+      identityNumber,
+    );
+    assert.equal(
+      (
+        await owner.query(
+          "select app_private.effective_value(e,'client_employee_number',$2::date) value from public.employees e where id=$1",
+          [identityEmployee, date(1)],
+        )
+      ).rows[0].value,
+      "XYZ-00001",
+    );
+    await m(id.sa, "void_movement", {
+      id: scheduled.id,
+      expected_version: await revision(identityEmployee),
+      reason: "Identity scheduled correction",
+    });
+    assert.equal(
+      (
+        await owner.query(
+          "select app_private.effective_value(e,'client_employee_number',$2::date) value from public.employees e where id=$1",
+          [identityEmployee, date(1)],
+        )
+      ).rows[0].value,
+      identityNumber,
+    );
+    await m(id.sa, "movement", {
+      employee_id: identityEmployee,
+      expected_version: await revision(identityEmployee),
+      type: "temporary",
+      target_level: "client",
+      branch_id: id.b1,
+      client_id: otherIdentityClient,
+      effective_on: today,
+      ends_on: date(3),
+      reason: "Identity secondary placement",
+    });
+    assert.equal(
+      (
+        await owner.query(
+          "select client_employee_number from public.employee_client_ids where employee_id=$1 and client_id=$2",
+          [identityEmployee, otherIdentityClient],
+        )
+      ).rows[0].client_employee_number,
+      "XYZ-00001",
+    );
+    assert.equal(
+      (await q(id.sa, "employee", { id: identityEmployee })).employee.values
+        .client_employee_number,
+      identityNumber,
+    );
+    await owner.query("select app_private.ensure_client_employee_id($1,$2)", [
+      identityEmployee,
+      identityClient,
+    ]);
+    assert.equal(
+      (
+        await owner.query(
+          "select employee_id_counter from public.clients where id=$1",
+          [identityClient],
+        )
+      ).rows[0].employee_id_counter,
+      20,
+    );
+    assert.equal(
+      (await q(id.sa, "employee", { id: identityEmployee })).employee.values
+        .employee_number,
+      systemId,
+    );
+  });
+  await test("client code, identity mutation, exhaustion and rollback are enforced in PostgreSQL", async () => {
+    await assert.rejects(
+      m(id.sa, "employee_update", {
+        id: identityEmployee,
+        expected_version: await revision(identityEmployee),
+        values: { client_employee_number: "COM-99999" },
+      }),
+      { code: "22023" },
+    );
+    await assert.rejects(
+      owner.query("update public.clients set code='NEW' where id=$1", [
+        identityClient,
+      ]),
+      { code: "22023" },
+    );
+    const exhausted = randomUUID();
+    await owner.query(
+      "insert into public.clients(id,branch_id,code,name,employee_id_counter) values($1,$2,'FULL','Identity Exhaustion',99999)",
+      [exhausted, id.b1],
+    );
+    const before = (
+      await owner.query("select count(*)::int n from public.employees")
+    ).rows[0].n;
+    await assert.rejects(
+      m(id.sa, "employee_create", {
+        target_level: "client",
+        branch_id: id.b1,
+        client_id: exhausted,
+        values: { name: "Must rollback" },
+      }),
+      { code: "22023" },
+    );
+    assert.equal(
+      (await owner.query("select count(*)::int n from public.employees"))
+        .rows[0].n,
+      before,
+    );
+    await assert.rejects(
+      as(id.admin, (c) => c.query("select * from public.employee_client_ids")),
+      { code: "42501" },
+    );
+  });
+  await test("record history paging is deterministic beyond 100 rows and dates/states combine", async () => {
+    await owner.query(
+      "insert into public.employee_movements(employee_id,type,effective_on,reason,payload,actor_id) select $1,'position',$2::date,'Record page test',jsonb_build_object('position','Position '||n),$3 from generate_series(1,125) n",
+      [identityEmployee, today, id.sa],
+    );
+    const first = await records(id.sa, {
+      kind: "movements",
+      search: "Identity Test 0",
+      types: ["position"],
+      limit: 100,
+      sort: "effective_on",
+      direction: "desc",
+    });
+    const second = await records(id.sa, {
+      kind: "movements",
+      search: "Identity Test 0",
+      types: ["position"],
+      limit: 100,
+      offset: 100,
+      sort: "effective_on",
+      direction: "desc",
+    });
+    assert.equal(first.total, 125);
+    assert.equal(first.items.length, 100);
+    assert.equal(second.items.length, 25);
+    assert.equal(
+      new Set([...first.items, ...second.items].map((r) => r.id)).size,
+      125,
+    );
+    assert.deepEqual(
+      (
+        await records(id.sa, {
+          kind: "movements",
+          search: "Identity Test 0",
+          types: ["position"],
+          limit: 100,
+          sort: "effective_on",
+          direction: "desc",
+        })
+      ).items.map((r) => r.id),
+      first.items.map((r) => r.id),
+    );
+    assert.equal(
+      (
+        await records(id.sa, {
+          kind: "movements",
+          search: "Identity Test 0",
+          types: ["position"],
+          from: date(1),
+          limit: 25,
+        })
+      ).total,
+      0,
+    );
+    await assert.rejects(
+      records(id.sa, { kind: "movements", limit: 1000 }),
+      /Invalid pagination/,
+    );
+  });
+  await test("record searches/counts and client IDs honor field denial and live scope revocation", async () => {
+    reader = randomUUID();
+    await owner.query("insert into auth.users values($1)", [reader]);
+    await owner.query(
+      "insert into public.user_profiles(id,display_name,role) values($1,'Record Reader','viewer')",
+      [reader],
+    );
+    await owner.query(
+      "insert into public.user_scope_grants(user_id,scope_type,scope_id,include_descendants,actions) values($1,'branch',$2,true,array['R'])",
+      [reader, id.b1],
+    );
+    await owner.query(
+      "insert into public.field_access_policies(user_id,group_id,action,effect,inherit_new) values($1,$2,'R','allow',true)",
+      [reader, id.core],
+    );
+    await owner.query(
+      "insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'R','deny' from public.field_definitions where key in ('name','client_employee_number')",
+      [reader],
+    );
+    assert.equal(
+      (await records(reader, { kind: "movements", search: "Identity Test 0" }))
+        .total,
+      0,
+    );
+    assert.equal(
+      (await q(reader, "employees", { search: identityNumber, sort: "id" }))
+        .total,
+      0,
+    );
+    assert.equal(
+      (await q(reader, "employee", { id: identityEmployee })).employee.values
+        .client_employee_number,
+      undefined,
+    );
+    await assert.rejects(records(reader, { kind: "audit" }), { code: "42501" });
+    await owner.query(
+      "update public.user_profiles set role='admin' where id=$1",
+      [reader],
+    );
+    await owner.query(
+      "insert into public.capability_grants values($1,'audit_read')",
+      [reader],
+    );
+    const events = await records(reader, { kind: "audit" });
+    assert(
+      events.items.every((r) => !("reason" in r) && !("changed_keys" in r)),
+    );
+    assert.equal(
+      (
+        await records(reader, {
+          kind: "audit",
+          search: "Identity secondary placement",
+        })
+      ).total,
+      0,
+    );
+    await owner.query(
+      "update public.user_scope_grants set active=false where user_id=$1",
+      [reader],
+    );
+    assert.equal((await records(reader, { kind: "movements" })).total, 0);
+    assert.equal((await records(reader, { kind: "audit" })).total, 0);
+    assert.equal((await records(reader, { kind: "organization" })).total, 0);
+  });
   await test("1000-row realistic query profile records observed latency and plan", async () => {
     await owner.query(
       "insert into public.employees(name) select 'Synthetic Load '||lpad(n::text,5,'0') from generate_series(1,1000) n",

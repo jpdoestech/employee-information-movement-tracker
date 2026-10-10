@@ -1,6 +1,7 @@
+import { RecordExplorer } from "../components/RecordExplorer";
 import { FloatingNotification } from "../components/FloatingNotification";
 import { useEffect, useState } from "react";
-import { Plus, Edit3 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { query, mutate } from "../api";
 import { Dialog } from "../components/Dialog";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
@@ -10,85 +11,39 @@ export function Organization({
   options,
   canManage,
   onSaved,
+  revision,
 }: {
+  revision: number;
   options: Option[];
   canManage: boolean;
   onSaved: () => void;
 }) {
   const [draft, setDraft] = useState<any>(),
-    [search, setSearch] = useState(""),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false),
-    [branches, setBranches] = useState<string[]>([]);
+    [busy, setBusy] = useState(false);
   return (
     <>
-      <div className="section-heading">
-        <div>
-          <h2>Branches and clients</h2>
-          <p>Head Office, branches and branch-owned clients.</p>
-        </div>
-        {canManage && (
-          <button
-            className="primary"
-            onClick={() =>
-              setDraft({ kind: "branch", name: "", code: "", active: true })
-            }
-          >
-            <Plus size={16} />
-            Add organization
-          </button>
-        )}
-      </div>
-      <div className="filterbar">
-        <label>
-          Search organization
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </label>
-        <SearchFilterPicker
-          mode="multiple"
-          label="Branches"
-          options={options.filter((o) => o.kind === "branch")}
-          value={branches}
-          onChange={setBranches}
-        />
-      </div>
-      <div className="organization-grid">
-        {options
-          .filter(
-            (o) =>
-              o.label.toLowerCase().includes(search.toLowerCase()) &&
-              (!branches.length ||
-                branches.includes(o.id) ||
-                branches.includes(o.branch_id || "")),
-          )
-          .map((o) => (
-            <article className="panel org-card" key={o.id}>
-              <span className="eyebrow">{o.kind?.replace("_", " ")}</span>
-              <h3>{o.label}</h3>
-              <p>{o.context}</p>
-              <span className="badge">{o.active ? "Active" : "Inactive"}</span>
-              {canManage && o.kind !== "head_office" && (
-                <button
-                  aria-label={`Edit ${o.label}`}
-                  onClick={() =>
-                    setDraft({
-                      ...o,
-                      name: o.label,
-                      expected_version: o.row_version,
-                    })
-                  }
-                >
-                  <Edit3 size={16} />
-                  Edit
-                </button>
-              )}
-            </article>
-          ))}
-      </div>
+      <RecordExplorer
+        kind="organization"
+        revision={revision}
+        options={options}
+        onCreate={
+          canManage
+            ? () =>
+                setDraft({ kind: "branch", name: "", code: "", active: true })
+            : undefined
+        }
+        onEdit={
+          canManage
+            ? (row) =>
+                setDraft({
+                  ...row,
+                  name: row.label,
+                  expected_version: row.row_version,
+                })
+            : undefined
+        }
+      />
       {draft && (
         <Dialog
           title={draft.id ? "Edit organization" : "Add organization"}
@@ -117,11 +72,23 @@ export function Organization({
               />
             )}
             <label>
-              Code
+              {draft.kind === "client" ? "Client code / ID prefix" : "Code"}
               <input
                 value={draft.code}
+                pattern={
+                  draft.kind === "client"
+                    ? "[A-Za-z][A-Za-z0-9_-]{0,19}"
+                    : undefined
+                }
+                maxLength={draft.kind === "client" ? 20 : undefined}
                 onChange={(e) => setDraft({ ...draft, code: e.target.value })}
               />
+              {draft.kind === "client" && (
+                <small>
+                  Used for client-based IDs, for example COM-00001. Locked after
+                  IDs are issued.
+                </small>
+              )}
             </label>
             <label>
               Name

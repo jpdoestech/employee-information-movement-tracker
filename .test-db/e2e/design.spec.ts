@@ -408,7 +408,7 @@ for (const width of [375, 1440]) {
       name: "Filter column options",
       exact: true,
     });
-    await columns.getByRole("option", { name: /Employee ID/ }).click();
+    await columns.getByRole("option", { name: /System ID/ }).click();
     await expect(editor).toBeVisible();
     await editor.getByRole("button", { name: "Operator", exact: true }).click();
     await page
@@ -559,7 +559,7 @@ for (const width of [375, 1440]) {
     );
     await expect(
       dialog.getByRole("table").getByRole("columnheader").first(),
-    ).toContainText("Employee ID");
+    ).toContainText("System ID");
     await dialog
       .getByRole("button", { name: "Pin employee_number", exact: true })
       .click();
@@ -587,6 +587,6 @@ for (const width of [375, 1440]) {
         .getByLabel("Scrollable employee table")
         .getByRole("columnheader")
         .nth(1),
-    ).toContainText("Employee ID");
+    ).toContainText("System ID");
   });
 }

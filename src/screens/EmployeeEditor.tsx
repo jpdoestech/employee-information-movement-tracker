@@ -105,7 +105,7 @@ export function EmployeeEditor({
         <p className="muted">
           {row
             ? `${row.values.employee_number || "Authorized record"} · Revision ${detail?.employee.row_version ?? row.row_version}`
-            : "One permanent profile. Employee ID is allocated by the database."}
+            : "One permanent profile. System ID is allocated by the database."}
         </p>
         {!row && (
           <SearchFilterPicker
