@@ -49,12 +49,17 @@ const uid = [];
 const publicClients = [];
 try {
   if (process.argv.includes("--local-cli")) {
-    await owner.query("LOAD 'safeupdate'");
-    await test("Supabase safeupdate rejects an unscoped singleton update", async () => {
-      await assert.rejects(
-        owner.query("update public.system_state set revision=revision"),
-        { code: "21000" },
-      );
+    await test("Supabase REST role retains its safeupdate guard", async () => {
+      const configured = await owner.query(`
+        select exists (
+          select 1 from pg_catalog.pg_db_role_setting s
+          join pg_catalog.pg_roles r on r.oid = s.setrole
+          cross join lateral unnest(s.setconfig) config
+          where r.rolname = 'authenticator'
+          and config like 'session_preload_libraries=%safeupdate%'
+        ) as enabled
+      `);
+      assert.equal(configured.rows[0].enabled, true);
     });
   }
   for (let i = 0; i < 3; i++) {
