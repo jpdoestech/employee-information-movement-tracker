@@ -1,3 +1,4 @@
+import { FloatingNotification } from "../components/FloatingNotification";
 import { useEffect, useState } from "react";
 import { query, mutate } from "../api";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
@@ -66,7 +67,7 @@ export function Security({
     <>
       <div className="section-heading">
         <div>
-          <h2>Permissions</h2>
+          <h2>Access rules</h2>
           <p>
             Organization scope ∩ field applicability ∩ C/R/U/D. Default deny.
           </p>
@@ -290,9 +291,9 @@ export function Security({
           </div>
         )}
         {error && (
-          <p className="error" role="alert">
+          <FloatingNotification onDismiss={() => setError("")}>
             {error}
-          </p>
+          </FloatingNotification>
         )}
       </div>
       <div className="panel">

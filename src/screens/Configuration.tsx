@@ -1,3 +1,4 @@
+import { FloatingNotification } from "../components/FloatingNotification";
 import { useEffect, useState } from "react";
 import { Plus, Edit3 } from "lucide-react";
 import { query, mutate } from "../api";
@@ -23,7 +24,7 @@ export function Organization({
     <>
       <div className="section-heading">
         <div>
-          <h2>Organization</h2>
+          <h2>Branches and clients</h2>
           <p>Head Office, branches and branch-owned clients.</p>
         </div>
         {canManage && (
@@ -140,9 +141,9 @@ export function Organization({
               Active for new placements
             </label>
             {error && (
-              <p className="error" role="alert">
+              <FloatingNotification onDismiss={() => setError("")}>
                 {error}
-              </p>
+              </FloatingNotification>
             )}
           </div>
           <footer>
@@ -276,7 +277,7 @@ export function FieldBuilder({
     <>
       <div className="section-heading">
         <div>
-          <h2>Field Builder</h2>
+          <h2>Field definitions</h2>
           <p>
             Configure fields once. Authorized forms and column choosers update
             automatically.
@@ -558,7 +559,7 @@ export function FieldBuilder({
                     ? "Resolution preview unavailable; reload before changing scope."
                     : resolution
                       ? `${resolution.resolved_targets} resolved authorized targets. ${resolution.affected_visible_values} existing visible values will be retained outside the proposed scope.`
-                      : "Checking existing values and resolved targets�"}
+                      : "Checking existing values and resolved targets..."}
                 </p>
               )}
               <p>
@@ -599,9 +600,9 @@ export function FieldBuilder({
               }}
             />
             {error && (
-              <p className="error" role="alert">
+              <FloatingNotification onDismiss={() => setError("")}>
                 {error}
-              </p>
+              </FloatingNotification>
             )}
           </div>
           <footer>
@@ -672,9 +673,9 @@ export function FieldBuilder({
               Active
             </label>
             {error && (
-              <p className="error" role="alert">
+              <FloatingNotification onDismiss={() => setError("")}>
                 {error}
-              </p>
+              </FloatingNotification>
             )}
           </div>
           <footer>

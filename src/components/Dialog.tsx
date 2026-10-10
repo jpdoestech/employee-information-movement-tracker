@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
+import { confirmTransaction } from "./TransactionConfirmation";
 export function Dialog({
   title,
   onClose,
@@ -12,6 +13,23 @@ export function Dialog({
   wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const dirty = useRef(false),
+    closing = useRef(false);
+  async function close() {
+    if (closing.current) return;
+    closing.current = true;
+    if (
+      !dirty.current ||
+      (await confirmTransaction(
+        "Discard unsaved changes?",
+        "Your changes have not been saved. Discard them to leave, or continue editing.",
+        "Discard changes",
+        "Continue editing",
+      ))
+    )
+      onClose();
+    closing.current = false;
+  }
   useEffect(() => {
     const before = document.activeElement as HTMLElement;
     ref.current!.showModal();
@@ -22,17 +40,42 @@ export function Dialog({
       ref={ref}
       className={wide ? "wide" : ""}
       aria-label={title}
+      onChangeCapture={() => {
+        dirty.current = true;
+      }}
+      onClickCapture={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('[role="option"]')) dirty.current = true;
+        const button = target.closest("button");
+        if (
+          button &&
+          (/^(Move |Pin |Clear )/.test(
+            button.getAttribute("aria-label") || "",
+          ) ||
+            button.textContent?.trim() === "Reset")
+        )
+          dirty.current = true;
+        if (
+          button?.textContent?.trim() === "Cancel" &&
+          !target.closest(".picker-panel")
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+          void close();
+        }
+      }}
       onCancel={(e) => {
         e.preventDefault();
-        onClose();
+        void close();
       }}
     >
       <header>
-        <div>
-          <small>EMPLOYEE TRACKER</small>
-          <h2>{title}</h2>
-        </div>
-        <button type="button" aria-label="Close dialog" onClick={onClose}>
+        <h2>{title}</h2>
+        <button
+          type="button"
+          aria-label="Close dialog"
+          onClick={() => void close()}
+        >
           <X size={20} />
         </button>
       </header>

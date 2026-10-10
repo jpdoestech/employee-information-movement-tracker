@@ -1,3 +1,4 @@
+import { FloatingNotification } from "../components/FloatingNotification";
 import { useEffect, useState } from "react";
 import { Dialog } from "../components/Dialog";
 import { ValueEditor } from "../components/ValueEditor";
@@ -192,7 +193,7 @@ export function EmployeeEditor({
           </>
         )}
         {error && (
-          <div className="error" role="alert">
+          <FloatingNotification onDismiss={() => setError("")}>
             <p>{error}</p>
             {error.toLowerCase().includes("conflict") && (
               <button
@@ -206,7 +207,7 @@ export function EmployeeEditor({
                 Reload authorized server values; retain draft
               </button>
             )}
-          </div>
+          </FloatingNotification>
         )}
         {confirmArchive && (
           <div className="notice">

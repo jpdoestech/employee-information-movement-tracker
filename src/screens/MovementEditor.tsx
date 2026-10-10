@@ -1,3 +1,4 @@
+import { FloatingNotification } from "../components/FloatingNotification";
 import { useEffect, useState } from "react";
 import { Dialog } from "../components/Dialog";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
@@ -278,9 +279,9 @@ export function MovementEditor({
           </>
         )}
         {error && (
-          <p className="error" role="alert">
+          <FloatingNotification onDismiss={() => setError("")}>
             {error}
-          </p>
+          </FloatingNotification>
         )}
       </div>
       <footer>

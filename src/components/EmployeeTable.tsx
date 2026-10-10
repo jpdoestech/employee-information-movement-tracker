@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import type { Employee, Field, Layout } from "../domain";
 const width = (k: string) =>
   k === "employee_number" ? 152 : k === "name" ? 232 : 188;
@@ -67,6 +67,12 @@ export function EmployeeTable({
                     rows.length > 0 &&
                     rows.every((r) => selected.includes(r.id))
                   }
+                  ref={(node) => {
+                    if (node)
+                      node.indeterminate =
+                        rows.some((r) => selected.includes(r.id)) &&
+                        !rows.every((r) => selected.includes(r.id));
+                  }}
                   onChange={(e) =>
                     onSelect(e.target.checked ? rows.map((r) => r.id) : [])
                   }
@@ -90,7 +96,15 @@ export function EmployeeTable({
                 {onSort ? (
                   <button type="button" onClick={() => onSort(k)}>
                     {fields.find((f) => f.key === k)?.label}
-                    <ArrowUpDown size={13} aria-hidden />
+                    {layout.filter.sort === k ? (
+                      layout.filter.direction === "asc" ? (
+                        <ArrowUp size={13} aria-hidden />
+                      ) : (
+                        <ArrowDown size={13} aria-hidden />
+                      )
+                    ) : (
+                      <ArrowUpDown size={13} aria-hidden />
+                    )}
                   </button>
                 ) : (
                   <span className="table-header-label">
@@ -103,7 +117,11 @@ export function EmployeeTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id}>
+            <tr
+              key={row.id}
+              className={selected.includes(row.id) ? "selected-row" : ""}
+              aria-selected={onSelect ? selected.includes(row.id) : undefined}
+            >
               {onSelect && (
                 <td className="selection">
                   <input
@@ -121,7 +139,11 @@ export function EmployeeTable({
                 </td>
               )}
               {order.map((k, i) => (
-                <td key={k} className={cls(k)} style={style(k)}>
+                <td
+                  key={k}
+                  className={`${cls(k)} ${k === "name" ? "employee-name" : k === "employee_number" ? "employee-id" : ""}`}
+                  style={style(k)}
+                >
                   {i === 0 && onOpen ? (
                     <button
                       className="text-link"

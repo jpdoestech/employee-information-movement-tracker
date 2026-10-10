@@ -23,6 +23,11 @@ async function enter(page: Page, route = "employees") {
     .toHaveCount(0)
     .catch(() => {});
   await page.waitForTimeout(400);
+  const mobileFilters = page.getByRole("button", {
+    name: "More filters",
+    exact: true,
+  });
+  if (await mobileFilters.isVisible()) await mobileFilters.click();
 }
 for (const [width, height] of [
   [320, 740],
@@ -54,7 +59,9 @@ for (const [width, height] of [
     await panel.getByRole("combobox").fill("North");
     await panel.getByRole("option", { name: /Example North Branch/ }).click();
     await panel.getByRole("combobox").fill("South");
-    await expect(panel.getByText("1 selected", { exact: false })).toBeVisible();
+    await expect(panel.getByText("1 selected", { exact: false })).toHaveText(
+      /1 selected/,
+    );
     await panel.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Branches", exact: true }),
@@ -95,7 +102,17 @@ test("multi-select Apply commits, reset clears, dependent clients remain scoped"
   await expect(p.getByRole("option")).toHaveCount(1);
   await expect(p.getByRole("option")).toContainText("North");
   await p.getByRole("combobox").press("Escape");
-  await page.getByRole("button", { name: "Reset", exact: true }).click();
+  if (
+    await page
+      .getByRole("button", { name: "Close More filters", exact: true })
+      .isVisible()
+  )
+    await page
+      .getByRole("button", { name: "Close More filters", exact: true })
+      .click();
+  await page
+    .getByRole("button", { name: "Reset filters", exact: true })
+    .click();
 });
 test("column preview is draft-only; Apply saves personal view", async ({
   page,
@@ -107,6 +124,14 @@ test("column preview is draft-only; Apply saves personal view", async ({
   await expect(table.getByRole("columnheader", { name: /Email/ })).toHaveCount(
     0,
   );
+  if (
+    await page
+      .getByRole("button", { name: "Close More filters", exact: true })
+      .isVisible()
+  )
+    await page
+      .getByRole("button", { name: "Close More filters", exact: true })
+      .click();
   await page
     .getByRole("button", { name: "Customize Columns", exact: true })
     .click();
@@ -125,9 +150,21 @@ test("column preview is draft-only; Apply saves personal view", async ({
     dialog.getByRole("table").getByRole("columnheader", { name: /Email/ }),
   ).toBeVisible();
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "Discard unsaved changes?", exact: true })
+    .getByRole("button", { name: "Discard changes", exact: true })
+    .click();
   await expect(table.getByRole("columnheader", { name: /Email/ })).toHaveCount(
     0,
   );
+  if (
+    await page
+      .getByRole("button", { name: "Close More filters", exact: true })
+      .isVisible()
+  )
+    await page
+      .getByRole("button", { name: "Close More filters", exact: true })
+      .click();
   await page
     .getByRole("button", { name: "Customize Columns", exact: true })
     .click();
@@ -135,6 +172,13 @@ test("column preview is draft-only; Apply saves personal view", async ({
     .getByRole("dialog", { name: "Customize Columns", exact: true })
     .getByRole("button", { name: "Apply & Save", exact: true })
     .click();
+  await page
+    .getByRole("dialog", { name: "Save personal view", exact: true })
+    .getByRole("button", { name: "Continue", exact: true })
+    .click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Saved" }),
+  ).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "Explore synthetic demo" }).click();
   await page.goto("/#employees");
@@ -150,6 +194,14 @@ test("15-column grid pins ID and name while horizontal scrolling", async ({
 }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await enter(page);
+  if (
+    await page
+      .getByRole("button", { name: "Close More filters", exact: true })
+      .isVisible()
+  )
+    await page
+      .getByRole("button", { name: "Close More filters", exact: true })
+      .click();
   await page
     .getByRole("button", { name: "Customize Columns", exact: true })
     .click();
@@ -159,6 +211,14 @@ test("15-column grid pins ID and name while horizontal scrolling", async ({
   await p.getByRole("button", { name: "Select visible", exact: true }).click();
   await p.getByRole("button", { name: "Apply", exact: true }).click();
   await d.getByRole("button", { name: "Apply & Save", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "Save personal view", exact: true })
+    .getByRole("button", { name: "Continue", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "Customize Columns", exact: true }),
+  ).toHaveCount(0);
+
   const region = page.getByLabel("Scrollable employee table");
   const before = await region.locator("thead .pin-0").boundingBox();
   await region.evaluate((e) => (e.scrollLeft = 1400));
@@ -198,6 +258,14 @@ test("forms and full-screen dialog fit narrow viewport and reduced motion", asyn
   await page.setViewportSize({ width: 320, height: 740 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await enter(page);
+  if (
+    await page
+      .getByRole("button", { name: "Close More filters", exact: true })
+      .isVisible()
+  )
+    await page
+      .getByRole("button", { name: "Close More filters", exact: true })
+      .click();
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
   const d = page.getByRole("dialog", { name: "New employee" });
   const box = await d.boundingBox();

@@ -1,3 +1,4 @@
+import { FloatingNotification } from "../components/FloatingNotification";
 import { useState } from "react";
 import { Dialog } from "../components/Dialog";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
@@ -112,9 +113,9 @@ export function BulkEditor({
           </>
         )}
         {error && (
-          <p className="error" role="alert">
+          <FloatingNotification onDismiss={() => setError("")}>
             {error}
-          </p>
+          </FloatingNotification>
         )}
       </div>
       <footer>

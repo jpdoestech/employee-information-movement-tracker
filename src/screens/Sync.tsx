@@ -1,3 +1,5 @@
+import { requireConfirmation } from "../components/TransactionConfirmation";
+import { FloatingNotification } from "../components/FloatingNotification";
 import { useEffect, useState } from "react";
 import { isDemo, mutate, query, supabase } from "../api";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
@@ -37,7 +39,7 @@ export function Sync({
     <>
       <div className="section-heading">
         <div>
-          <h2>Google Sheets sync</h2>
+          <h2>Workbook connections</h2>
           <p>
             Branch-specific secondary projections. Supabase is the authoritative
             database.
@@ -68,6 +70,10 @@ export function Sync({
           disabled={busy || isDemo()}
           onClick={() =>
             run(async () => {
+              await requireConfirmation(
+                "Connect Google account",
+                "Continue to Google to authorize this account connection?",
+              );
               if (!supabase) throw new Error("Configure Supabase first");
               const { data, error } = await supabase.functions.invoke(
                 "google-oauth",
@@ -200,9 +206,9 @@ export function Sync({
         </section>
       )}
       {error && (
-        <p className="error" role="alert">
+        <FloatingNotification onDismiss={() => setError("")}>
           {error}
-        </p>
+        </FloatingNotification>
       )}
     </>
   );

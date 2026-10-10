@@ -16,7 +16,10 @@ import {
   SlidersHorizontal,
   RefreshCw,
   Sheet,
+  PencilLine,
+  X,
 } from "lucide-react";
+import { FloatingNotification } from "./components/FloatingNotification";
 import { Dialog } from "./components/Dialog";
 import { enableDemo, isDemo, mutate, query, supabase } from "./api";
 import {
@@ -316,9 +319,9 @@ export default function App() {
             </button>
           </form>
           {error && (
-            <p className="error" role="alert">
+            <FloatingNotification onDismiss={() => setError("")}>
               {error}
-            </p>
+            </FloatingNotification>
           )}
           <button
             className="demo-button"
@@ -447,25 +450,24 @@ export default function App() {
             </button>
           </div>
         </header>
-        <main id="main" tabIndex={-1}>
+        <div className="notification-stack" aria-label="Notifications">
           {notice && (
-            <div className="notice" role="status">
+            <FloatingNotification kind="notice" onDismiss={() => setNotice("")}>
               {notice}
-              <button aria-label="Dismiss notice" onClick={() => setNotice("")}>
-                ×
-              </button>
-            </div>
+            </FloatingNotification>
           )}
           {error && (
-            <div className="error" role="alert">
+            <FloatingNotification onDismiss={() => setError("")}>
               {error}
-            </div>
+            </FloatingNotification>
           )}
           {loading && (
-            <div className="loading-line" role="status">
-              Loading authorized data…
-            </div>
+            <FloatingNotification kind="loading">
+              Loading authorized data...
+            </FloatingNotification>
           )}
+        </div>
+        <main id="main" tabIndex={-1}>
           {ctx && page === "dashboard" && (
             <>
               <div className="stats">
@@ -583,28 +585,41 @@ export default function App() {
               <div className="section-heading">
                 <div>
                   <span className="record-count">
-                    <strong>{total}</strong> employee records
+                    <strong>{total}</strong> records
                   </span>
                 </div>
                 <div className="actions">
-                  <button onClick={() => setDialog("columns")}>
+                  <button
+                    aria-label="Customize Columns"
+                    title="Customize columns"
+                    onClick={() => setDialog("columns")}
+                  >
                     <Columns3 size={16} />
-                    Customize Columns
+                    <span className="action-label">Customize Columns</span>
                   </button>
-                  <button disabled={busy || !total} onClick={exportCSV}>
+                  <button
+                    aria-label="Export CSV"
+                    title="Export CSV"
+                    disabled={busy || !total}
+                    onClick={exportCSV}
+                  >
                     <Download size={16} />
-                    Export CSV
+                    <span className="action-label">Export CSV</span>
                   </button>
                   {can("employee_create") && (
                     <button
                       className="primary"
+                      aria-label="Add employee"
                       onClick={() => {
                         setEditing(null);
                         setDialog("employee");
                       }}
                     >
                       <Plus size={16} />
-                      Add employee
+                      <span className="action-label">Add employee</span>
+                      <span className="mobile-action-label" aria-hidden="true">
+                        Add
+                      </span>
                     </button>
                   )}
                 </div>
@@ -613,89 +628,103 @@ export default function App() {
                 filter={filter}
                 setFilter={setFilter}
                 options={options}
-              />
-              <div className="advanced-filter">
-                <SearchFilterPicker
-                  mode="single"
-                  label="Filter column"
-                  options={readable.map((f) => ({
-                    id: f.key,
-                    label: f.label,
-                    context: f.group_name,
-                  }))}
-                  value={columnFilter ? [columnFilter] : []}
-                  onChange={(v) => setColumnFilter(v[0] || "")}
-                />
-                <SearchFilterPicker
-                  mode="single"
-                  label="Operator"
-                  options={[
-                    "contains",
-                    "eq",
-                    "empty",
-                    "before",
-                    "after",
-                    "between",
-                  ].map((id) => ({ id, label: id }))}
-                  value={[operator]}
-                  onChange={(v) => setOperator(v[0] || "eq")}
-                />
-                <input
-                  aria-label="Column filter value"
-                  placeholder={
-                    operator === "between"
-                      ? "JSON range: [1, 10]"
-                      : "Filter value"
-                  }
-                  value={columnValue}
-                  onChange={(e) => setColumnValue(e.target.value)}
-                />
-                <button
-                  disabled={!columnFilter}
-                  onClick={() => {
-                    const f = fields.find((f) => f.key === columnFilter);
-                    let value: unknown = columnValue;
-                    try {
-                      if (operator === "between")
-                        value = JSON.parse(columnValue);
-                      else if (f?.type === "integer" || f?.type === "decimal")
-                        value = Number(columnValue);
-                      else if (f?.type === "checkbox")
-                        value = columnValue === "true";
-                      setFilter({
-                        ...filter,
-                        predicates: [
-                          ...filter.predicates,
-                          { key: columnFilter, op: operator, value },
-                        ],
-                        offset: 0,
-                      });
-                    } catch {
-                      setError("Enter a valid JSON range.");
-                    }
-                  }}
-                >
-                  Add filter
-                </button>
-                {filter.predicates.map((p, i) => (
-                  <button
-                    key={i}
-                    onClick={() =>
-                      setFilter({
-                        ...filter,
-                        predicates: filter.predicates.filter((_, j) => j !== i),
-                        offset: 0,
-                      })
-                    }
-                  >
-                    {fields.find((f) => f.key === p.key)?.label} {p.op} ×
-                  </button>
-                ))}
-              </div>
-              <div className="register-tools">
+                filters={
+                  <div className="advanced-filter">
+                    <SearchFilterPicker
+                      mode="single"
+                      label="Filter column"
+                      options={readable.map((f) => ({
+                        id: f.key,
+                        label: f.label,
+                        context: f.group_name,
+                      }))}
+                      value={columnFilter ? [columnFilter] : []}
+                      onChange={(v) => setColumnFilter(v[0] || "")}
+                    />
+                    <SearchFilterPicker
+                      mode="single"
+                      label="Operator"
+                      clearable={false}
+                      options={[
+                        "contains",
+                        "eq",
+                        "empty",
+                        "before",
+                        "after",
+                        "between",
+                      ].map((id) => ({
+                        id,
+                        label:
+                          id === "eq"
+                            ? "Equals"
+                            : id.charAt(0).toUpperCase() + id.slice(1),
+                      }))}
+                      value={[operator]}
+                      onChange={(v) => setOperator(v[0] || "eq")}
+                    />
+                    <input
+                      aria-label="Column filter value"
+                      placeholder={
+                        operator === "between"
+                          ? "JSON range: [1, 10]"
+                          : "Filter value"
+                      }
+                      value={columnValue}
+                      onChange={(e) => setColumnValue(e.target.value)}
+                    />
+                    <button
+                      disabled={!columnFilter}
+                      onClick={() => {
+                        const f = fields.find((f) => f.key === columnFilter);
+                        let value: unknown = columnValue;
+                        try {
+                          if (operator === "between")
+                            value = JSON.parse(columnValue);
+                          else if (
+                            f?.type === "integer" ||
+                            f?.type === "decimal"
+                          )
+                            value = Number(columnValue);
+                          else if (f?.type === "checkbox")
+                            value = columnValue === "true";
+                          setFilter({
+                            ...filter,
+                            predicates: [
+                              ...filter.predicates,
+                              { key: columnFilter, op: operator, value },
+                            ],
+                            offset: 0,
+                          });
+                        } catch {
+                          setError("Enter a valid JSON range.");
+                        }
+                      }}
+                    >
+                      Add filter
+                    </button>
+                    {filter.predicates.map((p, i) => (
+                      <button
+                        key={i}
+                        onClick={() =>
+                          setFilter({
+                            ...filter,
+                            predicates: filter.predicates.filter(
+                              (_, j) => j !== i,
+                            ),
+                            offset: 0,
+                          })
+                        }
+                      >
+                        {fields.find((f) => f.key === p.key)?.label} {p.op} ×
+                      </button>
+                    ))}
+                  </div>
+                }
+              >
                 <SearchFilterPicker
                   mode="single"
                   label="Saved view"
+                  compactLabel="Views"
                   options={[
                     { id: "default", label: "Default system view" },
                     ...ctx.views
@@ -725,30 +754,47 @@ export default function App() {
                     }
                   }}
                 />
-                <span>{selected.length} selected</span>
-                <button
-                  disabled={!total || total > 100}
-                  onClick={async () => {
-                    const r = await query("employees", {
-                      ...filter,
-                      limit: 100,
-                      offset: 0,
-                    });
-                    setRows(r.items);
-                    setSelected(r.items.map((e: Employee) => e.id));
-                  }}
-                >
-                  Select all {total} matching (max 100)
-                </button>
-                {can("bulk_update") && (
-                  <button
-                    disabled={!selected.length}
-                    onClick={() => setDialog("bulk")}
-                  >
-                    Bulk update
-                  </button>
-                )}
-              </div>
+              </FilterBar>
+              {selected.length > 0 && (
+                <div className="register-tools">
+                  {selected.length > 0 && (
+                    <span className="selection-count" role="status">
+                      {selected.length} selected
+                    </span>
+                  )}
+                  {selected.length > 0 && (
+                    <button
+                      disabled={!total || total > 100}
+                      onClick={async () => {
+                        const r = await query("employees", {
+                          ...filter,
+                          limit: 100,
+                          offset: 0,
+                        });
+                        setRows(r.items);
+                        setSelected(r.items.map((e: Employee) => e.id));
+                      }}
+                    >
+                      Select all {total} matching
+                    </button>
+                  )}
+                  {can("bulk_update") && selected.length > 0 && (
+                    <button
+                      disabled={!selected.length}
+                      onClick={() => setDialog("bulk")}
+                    >
+                      <PencilLine size={14} aria-hidden />
+                      Bulk update
+                    </button>
+                  )}
+                  {selected.length > 0 && (
+                    <button onClick={() => setSelected([])}>
+                      <X size={14} aria-hidden />
+                      Clear selection
+                    </button>
+                  )}
+                </div>
+              )}
               <EmployeeTable
                 rows={rows}
                 fields={fields}
@@ -779,6 +825,7 @@ export default function App() {
                 <SearchFilterPicker
                   mode="single"
                   label="Rows per page"
+                  clearable={false}
                   options={[10, 25, 50, 100].map((n) => ({
                     id: String(n),
                     label: String(n),
@@ -848,7 +895,7 @@ export default function App() {
               <p>Sync administration access is required.</p>
             ))}
           {ctx && page === "movements" && (
-            <section className="panel">
+            <section className="panel data-panel">
               <div className="section-heading">
                 <div>
                   <h2>Movement history</h2>
@@ -874,68 +921,82 @@ export default function App() {
                 value={movementFilter}
                 onChange={setMovementFilter}
               />
-              {Array.isArray(report) && report.length ? (
-                report.map((m: any) => (
-                  <div className="timeline-item" key={m.id}>
-                    <div>
-                      <strong>
-                        {movementTypes.find((x) => x.id === m.type)?.label}
-                      </strong>
-                      <p>
-                        {m.employee_name || "Authorized employee"} ·{" "}
-                        {m.effective_on}
-                      </p>
+              <div
+                className="data-scroll-region"
+                tabIndex={0}
+                role="region"
+                aria-label="Movement records"
+              >
+                {Array.isArray(report) && report.length ? (
+                  report.map((m: any) => (
+                    <div className="timeline-item" key={m.id}>
+                      <div>
+                        <strong>
+                          {movementTypes.find((x) => x.id === m.type)?.label}
+                        </strong>
+                        <p>
+                          {m.employee_name || "Authorized employee"} ·{" "}
+                          {m.effective_on}
+                        </p>
+                      </div>
+                      <span className="badge">{m.state}</span>
+                      {can("movement_correct") && m.state !== "Voided" && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const d = await query("employee", {
+                                id: m.employee_id,
+                              });
+                              setCorrection({
+                                ...m,
+                                expected_version: d.employee.row_version,
+                              });
+                              setCorrectionReason("");
+                            } catch (e) {
+                              setError((e as Error).message);
+                            }
+                          }}
+                        >
+                          Void / correct
+                        </button>
+                      )}
                     </div>
-                    <span className="badge">{m.state}</span>
-                    {can("movement_correct") && m.state !== "Voided" && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const d = await query("employee", {
-                              id: m.employee_id,
-                            });
-                            setCorrection({
-                              ...m,
-                              expected_version: d.employee.row_version,
-                            });
-                            setCorrectionReason("");
-                          } catch (e) {
-                            setError((e as Error).message);
-                          }
-                        }}
-                      >
-                        Void / correct
-                      </button>
-                    )}
+                  ))
+                ) : (
+                  <div className="empty">
+                    No accessible movement history. Create a transaction to
+                    record a change.
                   </div>
-                ))
-              ) : (
-                <div className="empty">
-                  No accessible movement history. Create a transaction to record
-                  a change.
-                </div>
-              )}
+                )}
+              </div>
             </section>
           )}
           {ctx && page === "audit" && (
-            <section className="panel">
-              <h2>Audit history</h2>
+            <section className="panel data-panel">
+              <h2>Recorded activity</h2>
               <p>
                 Operational references are retained without unnecessary employee
                 values.
               </p>
-              {Array.isArray(report) && report.length ? (
-                report.map((a: any) => (
-                  <div className="field-row" key={a.id}>
-                    <strong>{a.operation}</strong>
-                    <span>
-                      {a.entity} · {a.created_at}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="empty">No accessible audit events.</div>
-              )}
+              <div
+                className="data-scroll-region"
+                tabIndex={0}
+                role="region"
+                aria-label="Audit records"
+              >
+                {Array.isArray(report) && report.length ? (
+                  report.map((a: any) => (
+                    <div className="field-row" key={a.id}>
+                      <strong>{a.operation}</strong>
+                      <span>
+                        {a.entity} · {a.created_at}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty">No accessible audit events.</div>
+                )}
+              </div>
             </section>
           )}
           {!ctx && !loading && (
@@ -949,7 +1010,9 @@ export default function App() {
           )}
         </main>
         <footer className="workspace-footer">
-          Employee Information & Movement Tracker
+          <span className="footer-title">
+            Employee Information & Movement Tracker
+          </span>
           <span>Asia/Manila · Employee records</span>
         </footer>
       </div>
@@ -961,7 +1024,12 @@ export default function App() {
           onClose={() => setDialog(null)}
           onApply={async (draft, name) => {
             await mutate("save_view", { name, config: draft });
-            await mutate("save_view", { name: "__active__", config: draft });
+            await mutate(
+              "save_view",
+              { name: "__active__", config: draft },
+              undefined,
+              true,
+            );
             setLayout(draft);
             refresh();
           }}
@@ -1013,9 +1081,9 @@ export default function App() {
               />
             </label>
             {error && (
-              <p className="error" role="alert">
+              <FloatingNotification onDismiss={() => setError("")}>
                 {error}
-              </p>
+              </FloatingNotification>
             )}
           </div>
           <footer>

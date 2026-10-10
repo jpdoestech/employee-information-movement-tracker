@@ -1,6 +1,21 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import {
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { PickerSurface } from "./PickerSurface";
 import { createPortal } from "react-dom";
-import { Building2, Search, X, Check, ChevronDown } from "lucide-react";
+import {
+  Building2,
+  Search,
+  X,
+  Check,
+  ChevronDown,
+  type LucideIcon,
+} from "lucide-react";
 import type { Option } from "../domain";
 type Props = {
   mode: "single" | "multiple";
@@ -10,6 +25,10 @@ type Props = {
   value: string[];
   onChange: (value: string[], selected?: Option[]) => void;
   disabled?: boolean;
+  icon?: LucideIcon;
+  clearable?: boolean;
+  displayLabel?: string;
+  compactLabel?: string;
 };
 export function SearchFilterPicker({
   mode,
@@ -19,7 +38,12 @@ export function SearchFilterPicker({
   value,
   onChange,
   disabled,
+  icon: Icon,
+  clearable = true,
+  displayLabel,
+  compactLabel,
 }: Props) {
+  const surface = useContext(PickerSurface);
   const id = useId(),
     anchor = useRef<HTMLButtonElement>(null),
     panel = useRef<HTMLDivElement>(null),
@@ -40,7 +64,8 @@ export function SearchFilterPicker({
   );
   function close() {
     setOpen(false);
-    anchor.current?.focus();
+    surface?.deactivate();
+    requestAnimationFrame(() => anchor.current?.focus());
   }
   function start() {
     setDraft(value);
@@ -86,6 +111,10 @@ export function SearchFilterPicker({
   }, [open, search, load]);
   useEffect(() => {
     if (!open) return;
+    if (surface) {
+      surface.activate(displayLabel || label, close);
+      return;
+    }
     function locate() {
       const r = anchor.current!.getBoundingClientRect(),
         vp = window.visualViewport,
@@ -93,7 +122,10 @@ export function SearchFilterPicker({
         h = vp?.height || innerHeight,
         top = vp?.offsetTop || 0,
         left = vp?.offsetLeft || 0;
-      const width = Math.min(Math.max(r.width, 300), w - 16),
+      const width = Math.min(
+          Math.max(r.width, options.length <= 6 && !load ? 260 : 300),
+          w - 16,
+        ),
         below = top + h - r.bottom - 12,
         above = r.top - top - 12,
         up = below < 220 && above > below;
@@ -135,7 +167,7 @@ export function SearchFilterPicker({
       window.removeEventListener("scroll", locate, true);
       window.visualViewport?.removeEventListener("resize", locate);
     };
-  }, [open]);
+  }, [open, surface]);
   useEffect(() => {
     setHighlight(0);
   }, [search]);
@@ -146,24 +178,27 @@ export function SearchFilterPicker({
         ref={anchor}
         type="button"
         disabled={disabled}
-        className="picker-trigger"
+        className={`picker-trigger${value.length ? " has-value" : ""}${value.length && clearable ? " has-clear" : ""}`}
         aria-label={label}
         aria-expanded={open}
         aria-controls={id}
         aria-haspopup="dialog"
         onClick={() => (open ? close() : start())}
       >
-        <Search size={16} aria-hidden />
-        <span>
+        {Icon && <Icon size={15} aria-hidden />}
+        <span className="picker-label">
           {selected.length === 1
             ? selected[0].label
             : value.length
-              ? `${label} · ${value.length}`
-              : label}
+              ? `${displayLabel || label} · ${value.length}`
+              : displayLabel || label}
         </span>
+        {compactLabel && !value.length && (
+          <span className="picker-compact-label">{compactLabel}</span>
+        )}
         <ChevronDown size={14} aria-hidden />
       </button>
-      {value.length > 0 && (
+      {value.length > 0 && clearable && (
         <button
           type="button"
           className="picker-clear"
@@ -180,14 +215,15 @@ export function SearchFilterPicker({
             id={id}
             role="dialog"
             aria-label={`${label} options`}
-            className="picker-panel"
-            style={position}
+            className={`picker-panel${surface ? " picker-contained" : ""}`}
+            style={surface ? undefined : position}
             onKeyDown={(e) => {
+              if (e.key !== "Tab" || !surface) e.stopPropagation();
               if (e.key === "Escape") {
                 e.preventDefault();
                 close();
               }
-              if (e.key === "Tab") {
+              if (e.key === "Tab" && !surface) {
                 const focusable =
                   panel.current!.querySelectorAll<HTMLElement>("input,button");
                 const first = focusable[0],
@@ -240,6 +276,24 @@ export function SearchFilterPicker({
                 }}
               />
             </div>
+            {mode === "multiple" && available.length > 6 && (
+              <div className="picker-list-tools">
+                <button
+                  type="button"
+                  aria-label="Select visible"
+                  onClick={() =>
+                    setDraft((d) => [
+                      ...new Set([...d, ...visible.map((o) => o.id)]),
+                    ])
+                  }
+                >
+                  Select all
+                </button>
+                <button type="button" onClick={() => setDraft([])}>
+                  Clear
+                </button>
+              </div>
+            )}
             <div
               className="picker-options"
               id={`${id}-list`}
@@ -272,9 +326,9 @@ export function SearchFilterPicker({
                       <span className="checkbox" aria-hidden>
                         {draft.includes(o.id) && <Check size={14} />}
                       </span>
-                    ) : (
+                    ) : o.kind === "branch" || o.kind === "client" ? (
                       <Building2 size={18} aria-hidden />
-                    )}
+                    ) : null}
                     <span>
                       <strong>{o.label}</strong>
                       {o.context && <small>{o.context}</small>}
@@ -288,26 +342,24 @@ export function SearchFilterPicker({
             </div>
             {mode === "multiple" ? (
               <div className="picker-actions">
-                <small aria-live="polite">
+                <small className="sr-only" aria-live="polite">
                   {draft.length} selected · {visible.length} visible
                 </small>
-                <div>
+                {available.length <= 6 && (
                   <button
+                    className="picker-text-action"
                     type="button"
-                    onClick={() =>
-                      setDraft((d) => [
-                        ...new Set([...d, ...visible.map((o) => o.id)]),
-                      ])
-                    }
+                    onClick={() => setDraft([])}
                   >
-                    Select visible
-                  </button>
-                  <button type="button" onClick={() => setDraft([])}>
                     Clear
                   </button>
-                </div>
-                <div>
-                  <button type="button" onClick={close}>
+                )}
+                <div className="picker-commit-actions">
+                  <button
+                    className="picker-text-action"
+                    type="button"
+                    onClick={close}
+                  >
                     Cancel
                   </button>
                   <button
@@ -328,7 +380,7 @@ export function SearchFilterPicker({
               </button>
             )}
           </div>,
-          anchor.current?.closest("dialog") || document.body,
+          surface?.target || anchor.current?.closest("dialog") || document.body,
         )}
     </div>
   );

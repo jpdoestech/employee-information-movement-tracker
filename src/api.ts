@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { demoQuery, demoMutate } from "./demo";
+import { requireConfirmation } from "./components/TransactionConfirmation";
 const url = import.meta.env.VITE_SUPABASE_URL,
   key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const elevatedKey = key?.startsWith("eyJ")
@@ -58,7 +59,32 @@ export async function mutate<T = any>(
   operation: string,
   p: unknown,
   requestId?: string,
+  confirmed = false,
 ): Promise<T> {
+  if (!confirmed) {
+    const labels: Record<string, string> = {
+      employee_create: "Create employee",
+      employee_update: "Save employee changes",
+      employee_delete: "Archive employee",
+      bulk_update: "Update selected employees",
+      movement: "Record movement",
+      void_movement: "Void or correct movement",
+      organization: "Save organization",
+      field: "Save field definition",
+      group: "Save field group",
+      save_view: "Save personal view",
+      scope: "Change access scope",
+      policy: "Change access policy",
+      profile: "Change user account",
+      capability: "Change user capability",
+      workbook: "Change workbook settings",
+      sync_now: "Reconcile workbooks",
+    };
+    await requireConfirmation(
+      labels[operation] || "Confirm changes",
+      "Continue with this transaction? Review your entries before saving.",
+    );
+  }
   if (demo) return demoMutate(operation, p) as T;
   if (!supabase) throw new Error("Supabase is not configured.");
   const fingerprint = operation + JSON.stringify(p);
