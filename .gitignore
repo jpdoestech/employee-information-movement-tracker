@@ -13,3 +13,9 @@ __pycache__/
 artifacts/
 supabase/.temp/
 supabase/.branches/
+
+# Test source is tracked; generated test data and reports are local only.
+.test-db/runs/
+.test-db/results/
+.test-db/reports/
+.test-db/cache/

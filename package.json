@@ -7,10 +7,11 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "vitest run",
-    "test:db": "node scripts/test-db.mjs",
-    "test:e2e": "playwright test",
-    "check": "npm run build && npm test && npm run test:db"
+    "test": "vitest run --config .test-db/vitest.config.ts",
+    "test:db": "node .test-db/scripts/test-db.mjs",
+    "test:e2e": "playwright test --config .test-db/playwright.config.ts",
+    "check": "npm run build && npm test && npm run test:db",
+    "test:rest": "node .test-db/scripts/test-rest.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.0",

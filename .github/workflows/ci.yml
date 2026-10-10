@@ -23,9 +23,10 @@ jobs:
         if: always()
         with:
           name: verification
+          include-hidden-files: true
           path: |
-            artifacts/verification/
-            playwright-report/
+            .test-db/reports/
+            .test-db/results/
   supabase:
     runs-on: ubuntu-latest
     steps:
@@ -41,13 +42,15 @@ jobs:
       - run: supabase start
       - run: supabase db reset
       - run: supabase db lint --level error
-      - run: node scripts/test-rest.mjs --local-cli
+      - run: mkdir -p .test-db/reports/verification
+      - run: node .test-db/scripts/test-rest.mjs --local-cli
       - run: supabase migration list --local
-      - run: supabase db diff --local --schema public,app_private > artifacts/verification/local-drift.sql
+      - run: supabase db diff --local --schema public,app_private > .test-db/reports/verification/local-drift.sql
       - run: supabase stop --no-backup
         if: always()
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: supabase-verification
-          path: artifacts/verification/
+          include-hidden-files: true
+          path: .test-db/reports/verification/

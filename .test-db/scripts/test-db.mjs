@@ -8,7 +8,7 @@ import { resolve } from "node:path";
 import assert from "node:assert/strict";
 const run = promisify(execFile),
   port = 55000 + Math.floor(Math.random() * 9000),
-  databaseDir = resolve(`.test-db-${Date.now()}`);
+  databaseDir = resolve(".test-db", "runs", `postgres-${Date.now()}`);
 const db = new EmbeddedPostgres({
   databaseDir,
   user: "postgres",
@@ -128,6 +128,26 @@ try {
     console.log(`APPLIED ${file}`);
   }
   await owner.query(await readFile("supabase/seed.sql", "utf8"));
+  await test("active application writes are scoped for Supabase safeupdate", async () => {
+    const functions = await owner.query(
+      "select n.nspname||'.'||p.proname name,p.prosrc source from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prosecdef",
+    );
+    let checked = 0;
+    for (const f of functions.rows) {
+      const sql = f.source
+        .replace(/'(?:''|[^'])*'/g, "''")
+        .replace(/--[^\n]*/g, "")
+        .replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const statement of sql.matchAll(
+        /\b(?:update\s+(?:public|app_private)\.\w+\s+set|delete\s+from\s+(?:public|app_private)\.\w+)\b[^;]*/gi,
+      )) {
+        assert.match(statement[0], /\bwhere\b/i, `Unscoped write in ${f.name}`);
+        checked++;
+      }
+    }
+    assert(checked >= 15, "Application mutation bodies were inspected");
+  });
+
   for (const [key, role] of [
     ["sa", "superadmin"],
     ["admin", "admin"],
@@ -1215,9 +1235,9 @@ try {
       googleIntegration: "Not configured; no live API calls",
     });
   });
-  await mkdir("artifacts/verification", { recursive: true });
+  await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
-    "artifacts/verification/database.json",
+    ".test-db/reports/verification/database.json",
     JSON.stringify(
       {
         runtime:

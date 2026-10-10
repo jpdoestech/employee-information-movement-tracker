@@ -23,14 +23,14 @@ npm run test:e2e
 npx deno@2 check supabase/functions/google-oauth/index.ts supabase/functions/sheets-worker/index.ts
 ```
 
-The disposable native database harness applies every SQL migration, exercises real PostgreSQL ACL/RLS/transactions/constraints and writes `artifacts/verification/database.json`. It simulates `auth.uid()` and does **not** replace full Supabase Auth/REST testing. For Docker-backed local Supabase:
+The disposable native database harness applies every SQL migration, exercises real PostgreSQL ACL/RLS/transactions/constraints and writes `.test-db/reports/verification/database.json`. It simulates `auth.uid()` and does **not** replace full Supabase Auth/REST testing. For Docker-backed local Supabase:
 
 ```powershell
 npm install --no-save --package-lock=false supabase@2.120.0
 npx supabase@2.120.0 start
 npx supabase@2.120.0 db reset
 npx supabase@2.120.0 db lint --level error
-node scripts/test-rest.mjs --local-cli
+node .test-db/scripts/test-rest.mjs --local-cli
 npx supabase@2.120.0 migration list --local
 npx supabase@2.120.0 db diff --local --schema public,app_private
 ```
@@ -43,7 +43,7 @@ npx supabase@2.120.0 db diff --local --schema public,app_private
 - `src/screens/`: employees, seven movement types, atomic bulk updates, organization, dynamic fields, permissions and workbook policies. Saved layouts belong to the signed-in user.
 - `supabase/migrations/`: ordered schema and secured RPCs; the source of truth for database changes.
 - `supabase/functions/`: backend OAuth and leased, retryable workbook reconciliation. Supabase remains canonical.
-- `tests/`, `scripts/`: permission/data/concurrency tests, responsive browser tests and disposable Auth/REST checks.
+- `.test-db/`: permission/data/concurrency tests, responsive browser tests and disposable Auth/REST checks.
 
 Permission evaluation intersects organization C/R/U/D, effective primary assignment, field applicability and field/group policy. Explicit denies, restricted fields and dynamic inheritance are enforced in SQL. Raw tables are unavailable to ordinary API users; authorized projections govern search, counts, exports and history. Writes require revisions and produce transactional audit/outbox records.
 
@@ -54,3 +54,5 @@ Bounded operations: 100 employees per atomic bulk update; 100 rows per page; 100
 Read [architecture](docs/architecture.md), [reference review](docs/design-reference.md), [deployment](docs/deployment.md), [Google synchronization](docs/google-sync.md), [security](docs/security.md), and [acceptance evidence](docs/acceptance.md).
 
 Local implementation is verified separately from deployment. A new Supabase project, Google OAuth consent/account, approved workbook policies and staging/production targets remain necessary for live verification. Reference databases are never connected. Obtain explicit approval before production SQL or deployment.
+
+All test source, runners, configurations and generated evidence are under `.test-db/`: `unit/`, `e2e/`, `scripts/`, `runs/`, `results/`, `reports/` and `cache/`. Source/configuration are tracked; generated database files, reports, traces and caches are ignored. Existing archived test databases in `.test-db/` are preserved.

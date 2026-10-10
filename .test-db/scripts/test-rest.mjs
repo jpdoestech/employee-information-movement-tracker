@@ -48,6 +48,15 @@ async function test(name, fn) {
 const uid = [];
 const publicClients = [];
 try {
+  if (process.argv.includes("--local-cli")) {
+    await owner.query("LOAD 'safeupdate'");
+    await test("Supabase safeupdate rejects an unscoped singleton update", async () => {
+      await assert.rejects(
+        owner.query("update public.system_state set revision=revision"),
+        { code: "21000" },
+      );
+    });
+  }
   for (let i = 0; i < 3; i++) {
     const email = `eimt-${randomUUID()}@example.invalid`,
       password = randomUUID() + randomUUID();
@@ -201,9 +210,23 @@ try {
       ).error,
     );
   });
-  await mkdir("artifacts/verification", { recursive: true });
+  await test("worker date reconciliation runs with safeupdate enabled", async () => {
+    const result = await admin.rpc("worker_command", {
+      operation: "claim",
+      p: {},
+    });
+    assert.ifError(result.error);
+    if (result.data) {
+      const completed = await admin.rpc("worker_command", {
+        operation: "retry",
+        p: { token: result.data.token },
+      });
+      assert.ifError(completed.error);
+    }
+  });
+  await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
-    "artifacts/verification/supabase-rest.json",
+    ".test-db/reports/verification/supabase-rest.json",
     JSON.stringify(
       {
         results,
