@@ -1,0 +1,15 @@
+docs/00001_employee_information_movement_tracker_codex_requirements_v1_8_full.md
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.test-db-*/
+test-results/
+playwright-report/
+*.tsbuildinfo
+__pycache__/
+.supabase/
+artifacts/
+supabase/.temp/
+supabase/.branches/

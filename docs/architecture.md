@@ -1,0 +1,21 @@
+# Architecture and implementation plan
+
+Authority: the complete v1.8 requirements, with sections 21–25 overriding earlier amendments. The filename supplied in chat missed the initial `e`; the existing employee-prefixed document was read. Existing user changes are preserved.
+
+React + TypeScript + Vite provides a static SPA with hash routes compatible with Vercel and GitHub Pages. Supabase JS handles Auth and calls narrowly granted RPCs. Plain semantic CSS uses the reference's moss/paper/ink tokens. Lucide icons match coop-sys. No reference application dependency, data, secrets, or business modules are imported.
+
+All application tables have RLS, but ordinary users have no raw table privileges. Public RPCs delegate to private, fixed-search-path functions which authorize `auth.uid()` from live profiles/grants. This closes the JSONB/column projection gap that RLS alone cannot address. Reads, metadata, search, counts, exports, history and writes share the same evaluator. No raw employee Realtime publication or persistent client data cache.
+
+Normalized relational scope grants, capability grants and field policies represent per-user C/R/U/D. Organization scope and applicability are independent intersections. Head Office and unassigned are explicit scopes. Branch descendants are opt-in. Viewer templates prohibit mutation. Ordinary Admin has no blanket access. Superadmin is the documented trusted configuration/data override. Field deny wins; group deny wins over group inheritance; direct allow overrides group deny per §22's explicit default precedence. Restricted fields require direct grants. New groups/fields create no user grants. All core columns are field definitions, including identity and assignment/status columns. Immutable system columns cannot be patched.
+
+Primary assignments use start-inclusive/end-exclusive date ranges with GiST exclusion. Per-employee locks, expected revisions and transaction-local checks protect changes. All writes include audit and outbox events in the same transaction. Bulk updates are bounded to 100 rows and all-or-nothing. Global normalized label/key uniqueness includes inactive fields; Unicode NFKC and full Unicode case-fold (generated from Python Unicode data), trim/collapse whitespace, punctuation preserved. Idempotency requests are actor-bound and payload-bound.
+
+Shared `SearchFilterPicker` contract: `mode`, `label`, `options` (authorized `{id,label,context,kind}`), `value`, `onChange`; single instantly commits, multiple drafts and supports Select Visible/Clear/Apply/Cancel. Query contract: text, branch IDs, client IDs, quick target, statuses, column predicates, deterministic sorting and bounded pagination; OR within a group, AND across groups. Server option adapters cap results. Shared FilterBar and ColumnPicker compose it. Clients outside selected branches are cleared. No native select list filters.
+
+Field applicability is All or a normalized union of explicit Head Office/branch/client targets, branch descendants opt-in. Effective primary assignment determines applicability. Scope changes retain old values. Schema revisions refresh authorized catalogs without resetting dirty drafts.
+
+Google synchronization is a secondary one-way projection. A separately hosted Edge Function claims outbox leases, verifies approved per-workbook row/column/sharing policy, reads canonical snapshots, and writes literal strings using stable IDs. Tokens are backend-only. Every workbook has its own approval; additional assignments never confer access. Reconciliation removes stale primary membership. Browser saves never wait for Google.
+
+Stages: A foundation/Auth/migrations; B organization/policy tests; C metadata/applicability/duplicates; D employee/movement transactions; E shared UI/table preview/pinning/bulk; F OAuth/worker; G deployment/docs/acceptance evidence. SQL remains forward-only under `supabase/migrations/`. No production SQL or deployment occurs automatically.
+
+External blockers: no configured standalone Supabase project, Google OAuth account/consent, approved workbook policies, staging or production target. These block live integration/deployment, not local implementation. No Docker/psql was found; use a repository-local disposable PostgreSQL test runtime and document the distinction from full Supabase REST tests.

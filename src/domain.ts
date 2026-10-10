@@ -1,0 +1,140 @@
+export type Option = {
+  id: string;
+  label: string;
+  context?: string;
+  kind?: string;
+  branch_id?: string;
+  active?: boolean;
+  row_version?: number;
+  code?: string;
+};
+export type Field = {
+  id: string;
+  key: string;
+  label: string;
+  group_id: string;
+  group_name: string;
+  type: string;
+  active: boolean;
+  required: boolean;
+  sensitivity: string;
+  list_eligible: boolean;
+  scope_mode: string;
+  row_version: number;
+  help_text?: string;
+  options?: string[];
+  validation?: Record<string, number>;
+  actions: string[];
+};
+export type Employee = {
+  id: string;
+  row_version: number;
+  values: Record<string, unknown>;
+};
+export type Filter = {
+  search: string;
+  branches: string[];
+  clients: string[];
+  statuses: string[];
+  quick: { kind: string; id: string } | null;
+  predicates: { key: string; op: string; value: unknown }[];
+  sort: string;
+  direction: "asc" | "desc";
+  limit: number;
+  offset: number;
+};
+export type Layout = { columns: string[]; pinned: string[]; filter: Filter };
+export type Context = {
+  profile: { id: string; display_name: string; role: string };
+  today: string;
+  revision: number;
+  fields: Field[];
+  groups: {
+    id: string;
+    name: string;
+    active: boolean;
+    row_version: number;
+    description?: string;
+  }[];
+  capabilities: string[];
+  views: { id: string; name: string; config: Layout }[];
+};
+export const defaultFilter: Filter = {
+  search: "",
+  branches: [],
+  clients: [],
+  statuses: [],
+  quick: null,
+  predicates: [],
+  sort: "employee_number",
+  direction: "asc",
+  limit: 25,
+  offset: 0,
+};
+export const defaultColumns = [
+  "employee_number",
+  "name",
+  "status",
+  "position",
+  "branch",
+  "client",
+];
+export const movementTypes = [
+  ["transfer", "Transfer"],
+  ["deployment", "Deployment"],
+  ["reassignment", "Reassignment"],
+  ["return", "Return / Pull-out"],
+  ["temporary", "Temporary Assignment"],
+  ["position", "Promotion / Position Change"],
+  ["status", "Employment Status Change"],
+].map(([id, label]) => ({ id, label }));
+export const statuses = ["Active", "Inactive", "Resigned", "Terminated"].map(
+  (id) => ({ id, label: id }),
+);
+export function reconcileLayout(layout: Layout, fields: Field[]): Layout {
+  const known = new Set(
+    fields
+      .filter((f) => f.active && f.list_eligible && f.actions.includes("R"))
+      .map((f) => f.key),
+  );
+  const columns = layout.columns.filter((k) => known.has(k));
+  return {
+    ...layout,
+    columns,
+    pinned: layout.pinned.filter((k) => columns.includes(k)).slice(0, 2),
+  };
+}
+export function moveColumn(columns: string[], key: string, delta: number) {
+  const copy = [...columns],
+    i = copy.indexOf(key),
+    j = i + delta;
+  if (i >= 0 && j >= 0 && j < copy.length)
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  return copy;
+}
+export function literal(value: unknown): string {
+  const s = value == null ? "" : String(value);
+  return /^\s*[=+\-@]/.test(s) ? `'${s}` : s;
+}
+export function csv(rows: Employee[], fields: Field[], columns: string[]) {
+  const allowed = columns.flatMap((k) => {
+    const f = fields.find((f) => f.key === k && f.actions.includes("R"));
+    return f ? [f] : [];
+  });
+  const quote = (v: unknown) => `"${literal(v).replaceAll('"', '""')}"`;
+  return (
+    "\ufeff" +
+    [
+      allowed.map((f) => quote(f.label)).join(","),
+      ...rows.map((r) => allowed.map((f) => quote(r.values[f.key])).join(",")),
+    ].join("\r\n")
+  );
+}
+export function localToday() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
