@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Plus, Search, FolderPlus } from "lucide-react";
 import { query, mutate } from "../api";
 import { Dialog } from "../components/Dialog";
+import { confirmTransaction } from "../components/TransactionConfirmation";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import { ValueEditor } from "../components/ValueEditor";
 import type { Context, Field, Option } from "../domain";
@@ -159,7 +160,8 @@ export function FieldBuilder({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [sample, setSample] = useState<unknown>(""),
-    [resolution, setResolution] = useState<any>();
+    [resolution, setResolution] = useState<any>(),
+    [previewAttempt, setPreviewAttempt] = useState(0);
   useEffect(() => {
     query("schema")
       .then(setSchema)
@@ -167,9 +169,20 @@ export function FieldBuilder({
   }, [context.revision]);
   const fields: Field[] = schema?.fields || context.fields;
   const groups = schema?.groups || context.groups;
+  // Advisory matching only; the database's Unicode case-folded unique indexes remain authoritative.
+  const normalize = (s: string) =>
+    s.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
+  const duplicate =
+    draft &&
+    fields.find(
+      (f) =>
+        f.id !== draft.id &&
+        ((draft.key && f.key === draft.key) ||
+          (draft.label && normalize(f.label) === normalize(draft.label))),
+    );
   useEffect(() => {
     setResolution(undefined);
-    if (!draft?.id) return;
+    if (!draft) return;
     let active = true;
     const timer = setTimeout(
       () =>
@@ -203,6 +216,7 @@ export function FieldBuilder({
     draft?.include_descendants,
     JSON.stringify(targets),
     context.revision,
+    previewAttempt,
   ]);
   function edit(f?: Field) {
     setError("");
@@ -465,6 +479,48 @@ export function FieldBuilder({
                 />
               </div>
             </div>
+            {duplicate && (
+              <div
+                className="notice"
+                role="status"
+                aria-label="Matching field definition"
+              >
+                <strong>{duplicate.label}</strong>
+                <p>
+                  {duplicate.group_name} ·{" "}
+                  {duplicate.active ? "Active" : "Inactive"}. A matching
+                  definition already exists.
+                </p>
+                {duplicate.type !== "system" ? (
+                  <button
+                    onClick={async () => {
+                      if (
+                        await confirmTransaction(
+                          "Discard unsaved changes?",
+                          "Discard this draft to open the existing definition, or continue editing.",
+                          "Discard changes",
+                          "Continue editing",
+                        )
+                      )
+                        edit(
+                          duplicate.active
+                            ? duplicate
+                            : { ...duplicate, active: true },
+                        );
+                    }}
+                  >
+                    {duplicate.active
+                      ? "Reuse / expand applicability"
+                      : "Reactivate existing field"}
+                  </button>
+                ) : (
+                  <p>
+                    This is a system-managed field. Use its existing column and
+                    permissions.
+                  </p>
+                )}
+              </div>
+            )}
             <label>
               Help text
               <input
@@ -608,14 +664,30 @@ export function FieldBuilder({
             )}
             <div className="notice">
               <strong>Applicability preview</strong>
-              {draft.id && (
-                <p>
-                  {resolution?.unavailable
-                    ? "Resolution preview unavailable; reload before changing scope."
-                    : resolution
-                      ? `${resolution.resolved_targets} resolved authorized targets. ${resolution.affected_visible_values} existing visible values will be retained outside the proposed scope.`
-                      : "Checking existing values and resolved targets..."}
-                </p>
+              <p role="status" aria-live="polite">
+                {resolution?.unavailable
+                  ? "Resolution preview unavailable; reload before changing scope."
+                  : resolution
+                    ? `${resolution.resolved_targets} resolved authorized targets. ${resolution.scoped_employee_count} readable employees in scope.${draft.id ? ` ${resolution.affected_visible_values} existing visible values will be retained outside the proposed scope.` : ""}`
+                    : "Checking authorized applicability..."}
+              </p>
+              {!!resolution?.samples?.length && (
+                <ul
+                  className="scope-samples"
+                  aria-label="Authorized employee sample"
+                >
+                  {resolution.samples.map((s: any, i: number) => (
+                    <li key={i}>
+                      {s.employee_number && <span>{s.employee_number}</span>}
+                      {s.name && <span>{s.name}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {resolution?.unavailable && (
+                <button onClick={() => setPreviewAttempt((n) => n + 1)}>
+                  Retry preview
+                </button>
               )}
               <p>
                 {draft.scope_mode === "all"
@@ -668,7 +740,10 @@ export function FieldBuilder({
                 busy ||
                 !draft.key ||
                 !draft.label ||
-                (!!draft.id && (!resolution || resolution.unavailable))
+                !!duplicate ||
+                !resolution ||
+                resolution.unavailable ||
+                (draft.scope_mode === "selected" && targets.length === 0)
               }
               onClick={async () => {
                 setBusy(true);

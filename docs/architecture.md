@@ -2,7 +2,7 @@
 
 Authority: the complete v1.8 requirements, with sections 21–25 overriding earlier amendments. The filename supplied in chat missed the initial `e`; the existing employee-prefixed document was read. Existing user changes are preserved.
 
-React + TypeScript + Vite provides a static SPA with hash routes compatible with Vercel and GitHub Pages. Supabase JS handles Auth and calls narrowly granted RPCs. Plain semantic CSS uses the reference's moss/paper/ink tokens. Lucide icons match coop-sys. No reference application dependency, data, secrets, or business modules are imported.
+React + TypeScript + Vite provides a static SPA with hash routes compatible with Vercel and GitHub Pages. Supabase JS handles Auth and calls narrowly granted RPCs. Plain semantic CSS uses the user's approved navy/gray/white tokens. Lucide icons match coop-sys. No reference application dependency, data, secrets, or business modules are imported.
 
 All application tables have RLS, but ordinary users have no raw table privileges. Public RPCs delegate to private, fixed-search-path functions which authorize `auth.uid()` from live profiles/grants. This closes the JSONB/column projection gap that RLS alone cannot address. Reads, metadata, search, counts, exports, history and writes share the same evaluator. No raw employee Realtime publication or persistent client data cache.
 

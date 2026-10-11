@@ -1124,6 +1124,21 @@ td {
   margin-bottom: 20px;
   font-size: 14px;
 }
+.scope-samples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 0;
+  margin: 8px 0;
+  list-style: none;
+}
+.scope-samples li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
 .notice > button {
   margin: 4px 8px 0 0;
 }
@@ -2013,10 +2028,22 @@ dialog > footer {
 .toolbar-popover .advanced-filter > input {
   grid-column: 1 / -1;
 }
+.column-filter-values {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  gap: 8px;
+  min-width: 0;
+}
 .toolbar-popover .advanced-filter > button {
   justify-self: end;
   grid-column: 1 / -1;
   max-width: 100%;
+}
+@media (max-width: 480px) {
+  .toolbar-popover .advanced-filter {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .notification-stack {
   position: fixed;

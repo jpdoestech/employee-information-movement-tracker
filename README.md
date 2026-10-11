@@ -59,6 +59,10 @@ The default Address group provides Home Address, Current Address and emergency c
 
 Read [architecture](docs/architecture.md), [reference review](docs/design-reference.md), [deployment](docs/deployment.md), [Google synchronization](docs/google-sync.md), [security](docs/security.md), and [acceptance evidence](docs/acceptance.md).
 
+The current [v1.8 review and remaining work](docs/requirements-status.md) distinguishes implemented features, local evidence and external release gates. Field creation/edit previews resolve authorized applicability without creating data. Column rules use type-specific values and operators; matching active/inactive definitions can be reused or reactivated through the existing confirmed save flow.
+
+The native workload defaults to 20 simultaneous users. For 50 on PowerShell, run `$env:TEST_CONCURRENCY_USERS='50'; npm run test:db`; remove that variable afterward with `Remove-Item Env:TEST_CONCURRENCY_USERS`. Bash equivalent: `TEST_CONCURRENCY_USERS=50 npm run test:db`. Values outside 20–50 are rejected. The generated database report includes transaction latencies, expected revision conflicts, unexpected errors, outbox backlog and worker claims. It makes no live Google requests and is not a production capacity guarantee.
+
 Local implementation is verified separately from deployment. A new Supabase project, Google OAuth consent/account, approved workbook policies and staging/production targets remain necessary for live verification. Reference databases are never connected. Obtain explicit approval before production SQL or deployment.
 
 All test source, runners, configurations and generated evidence are under `.test-db/`: `unit/`, `e2e/`, `scripts/`, `runs/`, `results/`, `reports/` and `cache/`. Source/configuration are tracked; generated database files, reports, traces and caches are ignored. Existing archived test databases in `.test-db/` are preserved.

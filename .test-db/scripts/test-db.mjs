@@ -6,8 +6,22 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
+import { createServer } from "node:net";
+const users = Number(process.env.TEST_CONCURRENCY_USERS || 20);
+assert(
+  Number.isInteger(users) && users >= 20 && users <= 50,
+  "TEST_CONCURRENCY_USERS must be 20-50",
+);
+// Let the OS choose an available port, avoiding Windows reserved ranges.
+const port = await new Promise((resolvePort, reject) => {
+  const server = createServer();
+  server.once("error", reject);
+  server.listen(0, "127.0.0.1", () => {
+    const selected = server.address().port;
+    server.close((error) => (error ? reject(error) : resolvePort(selected)));
+  });
+});
 const run = promisify(execFile),
-  port = 55000 + Math.floor(Math.random() * 9000),
   databaseDir = resolve(".test-db", "runs", `postgres-${Date.now()}`);
 const db = new EmbeddedPostgres({
   databaseDir,
@@ -24,7 +38,8 @@ const db = new EmbeddedPostgres({
 let owner;
 const opened = [],
   results = [],
-  migrationVersions = [];
+  migrationVersions = [],
+  loadPrincipals = [];
 const id = {
   sa: "40000000-0000-0000-0000-000000000001",
   admin: "40000000-0000-0000-0000-000000000002",
@@ -82,12 +97,18 @@ async function test(name, fn) {
   results.push({ name, ms: Math.round(performance.now() - t) });
   console.log(`PASS ${name}`);
 }
-async function concurrent(operation, payloads, principals = []) {
+async function concurrent(
+  operation,
+  payloads,
+  principals = [],
+  requestIds = [],
+) {
   return Promise.all(
     payloads.map(async (p, i) => {
       const c = db.getPgClient();
       await c.connect();
       opened.push(c);
+      const started = performance.now();
       try {
         return {
           ok: true,
@@ -98,7 +119,7 @@ async function concurrent(operation, payloads, principals = []) {
                 .query("select public.tracker_mutate($1,$2,$3) r", [
                   operation,
                   p,
-                  randomUUID(),
+                  requestIds[i] || randomUUID(),
                 ])
                 .then((r) => r.rows[0].r),
             "authenticated",
@@ -107,6 +128,14 @@ async function concurrent(operation, payloads, principals = []) {
         };
       } catch (e) {
         return { ok: false, code: e.code };
+      } finally {
+        results.push({
+          name: "load request",
+          operation,
+          latencyMs: Math.round(performance.now() - started),
+        });
+        await c.end();
+        opened.splice(opened.indexOf(c), 1);
       }
     }),
   );
@@ -962,29 +991,34 @@ try {
     assert.equal(answers.filter((a) => a.ok).length, 1);
     assert.equal(answers.filter((a) => a.code === "23505").length, 7);
   });
-  await test("20 concurrent same-revision edits: one commit, 19 conflicts", async () => {
+  await test(`${users} concurrent same-revision edits: one commit, ${users - 1} conflicts`, async () => {
     const principals = [];
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < users; i++) {
       const user = randomUUID();
       principals.push(user);
+      loadPrincipals.push(user);
       await owner.query("insert into auth.users values($1)", [user]);
       await owner.query(
         "insert into public.user_profiles(id,display_name,role) values($1,'Synthetic load principal','admin')",
         [user],
       );
       await owner.query(
-        "insert into public.user_scope_grants(user_id,scope_type,actions) values($1,'all',array['R','U'])",
+        "insert into public.user_scope_grants(user_id,scope_type,actions) values($1,'all',array['C','R','U'])",
         [user],
       );
       await owner.query(
-        "insert into public.field_access_policies(user_id,group_id,action,effect,inherit_new) select $1,$2,a,'allow',true from unnest(array['R','U']) a",
+        "insert into public.field_access_policies(user_id,group_id,action,effect,inherit_new) select $1,$2,a,'allow',true from unnest(array['C','R','U']) a",
         [user, id.core],
+      );
+      await owner.query(
+        "insert into public.capability_grants(user_id,capability) select $1,c from unnest(array['employee_create','movement_create','organization_manage']) c",
+        [user],
       );
     }
     const started = performance.now();
     const answers = await concurrent(
       "employee_update",
-      Array.from({ length: 20 }, (_, i) => ({
+      Array.from({ length: users }, (_, i) => ({
         id: e2,
         expected_version: 1,
         values: { name: `Synthetic Concurrent ${i}` },
@@ -992,12 +1026,12 @@ try {
       principals,
     );
     assert.equal(answers.filter((a) => a.ok).length, 1);
-    assert.equal(answers.filter((a) => a.code === "40001").length, 19);
+    assert.equal(answers.filter((a) => a.code === "40001").length, users - 1);
     results.push({
       name: "concurrency observation",
-      users: 20,
+      users,
       commits: 1,
-      expectedConflicts: 19,
+      expectedConflicts: users - 1,
       elapsedMs: Math.round(performance.now() - started),
     });
   });
@@ -1202,6 +1236,8 @@ try {
       "affected_visible_values",
       "resolved_targets",
       "revision",
+      "samples",
+      "scoped_employee_count",
     ]);
     await assert.rejects(
       as(id.viewer, (c) =>
@@ -1210,6 +1246,89 @@ try {
         ]),
       ),
       { code: "42501" },
+    );
+  });
+  await test("creation applicability preview is read-only, scope-bound and projects identity columns", async () => {
+    const user = randomUUID();
+    await owner.query("insert into auth.users values($1)", [user]);
+    await owner.query(
+      "insert into public.user_profiles(id,display_name,role) values($1,'Preview administrator','admin')",
+      [user],
+    );
+    await owner.query(
+      "insert into public.capability_grants(user_id,capability) values($1,'schema_manage')",
+      [user],
+    );
+    await owner.query(
+      "insert into public.user_scope_grants(user_id,scope_type,scope_id,actions,include_descendants) values($1,'branch',$2,array['R'],true)",
+      [user, id.b1],
+    );
+    const nameField = (await q(id.sa, "schema")).fields.find(
+      (f) => f.key === "name",
+    );
+    await owner.query(
+      "insert into public.field_access_policies(user_id,field_id,action,effect) values($1,$2,'R','allow')",
+      [user, nameField.id],
+    );
+    const before = (
+      await owner.query("select revision from public.system_state")
+    ).rows[0].revision;
+    const draftPreview = (u, p) =>
+      as(u, (c) =>
+        c
+          .query("select public.field_scope_preview($1) r", [p])
+          .then((r) => r.rows[0].r),
+      );
+    const result = await draftPreview(user, { scope_mode: "all" });
+    assert.equal(result.resolved_targets, 2); // Assigned branch and its one client only.
+    assert(result.scoped_employee_count > 0);
+    assert(result.samples.length > 0 && result.samples.length <= 5);
+    result.samples.forEach((s) => assert.deepEqual(Object.keys(s), ["name"]));
+    const excluded = await draftPreview(user, {
+      scope_mode: "selected",
+      targets: [
+        { scope_type: "branch", scope_id: id.b2, include_descendants: true },
+      ],
+    });
+    assert.equal(excluded.resolved_targets, 0);
+    assert.equal(excluded.scoped_employee_count, 0);
+    assert.deepEqual(excluded.samples, []);
+    await owner.query(
+      "delete from public.field_access_policies where user_id=$1",
+      [user],
+    );
+    const hidden = await draftPreview(user, { scope_mode: "all" });
+    assert.equal(hidden.scoped_employee_count, 0);
+    assert.deepEqual(hidden.samples, []);
+    await assert.rejects(draftPreview(user, { scope_mode: "invalid" }), {
+      code: "22023",
+    });
+    await assert.rejects(
+      draftPreview(user, { scope_mode: "all", id: randomUUID() }),
+      /unavailable/,
+    );
+    await owner.query(
+      "update public.user_profiles set active=false where id=$1",
+      [user],
+    );
+    await assert.rejects(draftPreview(user, { scope_mode: "all" }), {
+      code: "42501",
+    });
+    await assert.rejects(
+      as(
+        null,
+        (c) =>
+          c.query("select public.field_scope_preview($1)", [
+            { scope_mode: "all" },
+          ]),
+        "anon",
+      ),
+      { code: "42501" },
+    );
+    assert.equal(
+      (await owner.query("select revision from public.system_state")).rows[0]
+        .revision,
+      before,
     );
   });
   await test("definition defaults, display settings and invalid bounds are enforced", async () => {
@@ -1802,6 +1921,171 @@ try {
     assert.equal(responses.filter((r) => r.ok).length, 1);
     const current = (await q(id.sa, "employee", { id: e })).employee.values;
     await owner.query("select app_private.validate_address($1,'')", [current]);
+  });
+  await test(`${users}-user mixed load protects retries, branch revisions, transfers and worker claims`, async () => {
+    const branch = await m(id.sa, "organization", {
+      kind: "branch",
+      code: "LOAD",
+      name: "Synthetic workload branch",
+    });
+    const firstMetric = results.length;
+    const summary = [];
+    const observe = (operation, answers, commits, conflicts = 0) => {
+      const succeeded = answers.filter((a) => a.ok).length;
+      const expected = answers.filter((a) => a.code === "40001").length;
+      assert.equal(succeeded, commits);
+      assert.equal(expected, conflicts);
+      assert.equal(answers.length, succeeded + expected);
+      summary.push({
+        operation,
+        requests: answers.length,
+        successfulResponses: succeeded,
+        expectedConflicts: expected,
+        unexpectedErrors: 0,
+      });
+    };
+    const retryId = randomUUID(),
+      createPayload = {
+        target_level: "head_office",
+        values: { name: "Synthetic retry workload" },
+      };
+    const retries = await concurrent(
+      "employee_create",
+      Array(users).fill(createPayload),
+      Array(users).fill(loadPrincipals[0]),
+      Array(users).fill(retryId),
+    );
+    observe("duplicate create retries", retries, users);
+    assert.equal(new Set(retries.map((r) => r.result.id)).size, 1);
+    assert.equal(
+      Number(
+        (
+          await owner.query(
+            "select count(*) n from public.employees where name=$1",
+            [createPayload.values.name],
+          )
+        ).rows[0].n,
+      ),
+      1,
+    );
+    const created = await concurrent(
+      "employee_create",
+      Array.from({ length: users }, (_, i) => ({
+        target_level: "head_office",
+        values: { name: `Synthetic workload ${i}` },
+      })),
+      loadPrincipals,
+    );
+    observe("independent employee creates", created, users);
+    assert.equal(new Set(created.map((r) => r.result.id)).size, users);
+    const branchWrites = await concurrent(
+      "organization",
+      Array.from({ length: users }, (_, i) => ({
+        kind: "branch",
+        id: branch.id,
+        expected_version: 1,
+        code: "LOAD",
+        name: `Synthetic workload branch ${i}`,
+        active: true,
+      })),
+      loadPrincipals,
+    );
+    observe("same-revision branch updates", branchWrites, 1, users - 1);
+    const employeeId = created[0].result.id;
+    const transfers = await concurrent(
+      "movement",
+      Array.from({ length: users }, () => ({
+        employee_id: employeeId,
+        expected_version: 1,
+        type: "transfer",
+        effective_on: date(1),
+        target_level: "branch",
+        branch_id: branch.id,
+        reason: "Synthetic concurrent transfer",
+      })),
+      loadPrincipals,
+    );
+    observe("competing primary transfers", transfers, 1, users - 1);
+    assert.equal(await revision(employeeId), 2);
+    assert.equal(
+      Number(
+        (
+          await owner.query(
+            "select count(*) n from public.employee_movements where employee_id=$1 and voided_at is null",
+            [employeeId],
+          )
+        ).rows[0].n,
+      ),
+      1,
+    );
+    assert.equal(
+      (
+        await owner.query(
+          "select count(*) n from public.employee_assignments a join public.employee_assignments b on a.employee_id=b.employee_id and a.id<b.id where a.employee_id=$1 and a.category='primary' and b.category='primary' and not a.voided and not b.voided and daterange(a.starts_on,a.ends_on,'[)') && daterange(b.starts_on,b.ends_on,'[)')",
+          [employeeId],
+        )
+      ).rows[0].n,
+      "0",
+    );
+    const claims = await Promise.all(
+      Array.from({ length: users }, async () => {
+        const connection = db.getPgClient();
+        await connection.connect();
+        opened.push(connection);
+        return as(
+          null,
+          (c) =>
+            c
+              .query("select public.worker_command('claim','{}') r")
+              .then((r) => r.rows[0].r),
+          "service_role",
+          connection,
+        );
+      }),
+    );
+    const winner = claims.filter(Boolean);
+    assert.equal(winner.length, 1);
+    assert(winner[0].token);
+    assert.equal(
+      Number(
+        (
+          await owner.query(
+            "select count(distinct lease_token) n from public.sync_outbox where status='processing' and lease_until>now()",
+          )
+        ).rows[0].n,
+      ),
+      1,
+    );
+    await worker("retry", { token: winner[0].token });
+    const requests = results
+      .slice(firstMetric)
+      .filter((r) => r.name === "load request");
+    const latency = requests.map((r) => r.latencyMs).sort((a, b) => a - b);
+    const percentile = (p) => latency[Math.ceil(latency.length * p) - 1];
+    results.push({
+      name: "mixed workload observation",
+      users,
+      operations: summary,
+      latencyMs: {
+        p50: percentile(0.5),
+        p95: percentile(0.95),
+        max: latency.at(-1),
+      },
+      expectedConflicts: 2 * (users - 1),
+      unexpectedErrorRate: 0,
+      workerInvocations: users,
+      exclusiveWorkerClaims: 1,
+      outboxBacklog: Number(
+        (
+          await owner.query(
+            "select count(*) n from public.sync_outbox where status<>'synced'",
+          )
+        ).rows[0].n,
+      ),
+      sheetsApiRequests: 0,
+      googleIntegration:
+        "No live Google requests; lease and retry correctness only",
+    });
   });
   await test("1000-row realistic query profile records observed latency and plan", async () => {
     await owner.query(

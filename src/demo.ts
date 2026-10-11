@@ -4,6 +4,7 @@ import {
   addressValue,
 } from "./address/addressFields";
 import { addressValidationError } from "./address/addressService";
+import { matchesFilterValue } from "./filterValues";
 import {
   defaultFilter,
   localToday,
@@ -191,8 +192,41 @@ const context: Context = {
 export async function demoQuery(op: string, q: any = {}) {
   await new Promise((r) => setTimeout(r, 40));
   if (op === "context") return structuredClone(context);
-  if (op === "field_scope_preview")
-    return { resolved_targets: org.length, affected_visible_values: 0 };
+  if (op === "field_scope_preview") {
+    const matches = (o: Option) =>
+      q.scope_mode === "all" ||
+      (q.targets || []).some(
+        (t: any) =>
+          (t.scope_type === o.kind &&
+            (o.kind === "head_office" || t.scope_id === o.id)) ||
+          (t.scope_type === "branch" &&
+            t.include_descendants &&
+            o.kind === "client" &&
+            t.scope_id === o.branch_id),
+      );
+    const resolved = org.filter(matches);
+    const selected = employees.filter((e) => {
+      const placement = e.values.client
+        ? org.find((o) => o.kind === "client" && o.context === e.values.branch)
+        : org.find((o) => o.label === e.values.branch);
+      return placement ? matches(placement) : q.scope_mode === "all";
+    });
+    const f = fields.find((f) => f.id === q.id);
+    return {
+      resolved_targets: resolved.length + (q.scope_mode === "all" ? 1 : 0),
+      scoped_employee_count: selected.length,
+      samples: selected.slice(0, 5).map((e) => ({
+        employee_number: e.values.employee_number,
+        name: e.values.name,
+      })),
+      affected_visible_values: f
+        ? employees.filter(
+            (e) => !selected.includes(e) && e.values[f.key] !== undefined,
+          ).length
+        : 0,
+      revision: context.revision,
+    };
+  }
   if (op === "target_fields") return structuredClone(fields);
   if (op === "options")
     return org.filter(
@@ -236,15 +270,7 @@ export async function demoQuery(op: string, q: any = {}) {
               : f.quick.kind === "branch"
                 ? bo?.id === f.quick.id
                 : co?.id === f.quick.id)) &&
-          f.predicates.every((p) =>
-            p.op === "empty"
-              ? v[p.key] == null
-              : p.op === "eq"
-                ? v[p.key] === p.value
-                : String(v[p.key] ?? "")
-                    .toLowerCase()
-                    .includes(String(p.value).toLowerCase()),
-          )
+          f.predicates.every((p) => matchesFilterValue(v[p.key], p))
         );
       })
       .sort(

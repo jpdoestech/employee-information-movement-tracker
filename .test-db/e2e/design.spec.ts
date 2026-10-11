@@ -413,14 +413,14 @@ for (const width of [375, 1440]) {
     await editor.getByRole("button", { name: "Operator", exact: true }).click();
     await page
       .getByRole("dialog", { name: "Operator options", exact: true })
-      .getByRole("option", { name: "Between", exact: true })
+      .getByRole("option", { name: "Equals", exact: true })
       .click();
-    await editor.getByLabel("Column filter value").fill("invalid range");
+    await editor.getByLabel("Column filter value").fill("");
     await editor
       .getByRole("button", { name: "Add filter", exact: true })
       .click();
     const error = page.getByRole("alert");
-    await expect(error).toContainText("Enter a valid JSON range.");
+    await expect(error).toContainText("Enter a filter value.");
     expect(await error.evaluate((el) => getComputedStyle(el).position)).toBe(
       "relative",
     );

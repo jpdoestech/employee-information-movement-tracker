@@ -1,3 +1,4 @@
+import { ColumnFilters } from "./components/ColumnFilters";
 import { RecordExplorer } from "./components/RecordExplorer";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -83,10 +84,7 @@ export default function App() {
     [report, setReport] = useState<any>(),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
-    [busy, setBusy] = useState(false),
-    [columnFilter, setColumnFilter] = useState(""),
-    [operator, setOperator] = useState("contains"),
-    [columnValue, setColumnValue] = useState("");
+    [busy, setBusy] = useState(false);
   const loadedUser = useRef<string | null>(null);
   const [correction, setCorrection] = useState<any>(),
     [correctionReason, setCorrectionReason] = useState("");
@@ -634,96 +632,12 @@ export default function App() {
                 setFilter={setFilter}
                 options={options}
                 filters={
-                  <div className="advanced-filter">
-                    <SearchFilterPicker
-                      mode="single"
-                      label="Filter column"
-                      options={readable.map((f) => ({
-                        id: f.key,
-                        label: f.label,
-                        context: f.group_name,
-                      }))}
-                      value={columnFilter ? [columnFilter] : []}
-                      onChange={(v) => setColumnFilter(v[0] || "")}
-                    />
-                    <SearchFilterPicker
-                      mode="single"
-                      label="Operator"
-                      clearable={false}
-                      options={[
-                        "contains",
-                        "eq",
-                        "empty",
-                        "before",
-                        "after",
-                        "between",
-                      ].map((id) => ({
-                        id,
-                        label:
-                          id === "eq"
-                            ? "Equals"
-                            : id.charAt(0).toUpperCase() + id.slice(1),
-                      }))}
-                      value={[operator]}
-                      onChange={(v) => setOperator(v[0] || "eq")}
-                    />
-                    <input
-                      aria-label="Column filter value"
-                      placeholder={
-                        operator === "between"
-                          ? "JSON range: [1, 10]"
-                          : "Filter value"
-                      }
-                      value={columnValue}
-                      onChange={(e) => setColumnValue(e.target.value)}
-                    />
-                    <button
-                      disabled={!columnFilter}
-                      onClick={() => {
-                        const f = fields.find((f) => f.key === columnFilter);
-                        let value: unknown = columnValue;
-                        try {
-                          if (operator === "between")
-                            value = JSON.parse(columnValue);
-                          else if (
-                            f?.type === "integer" ||
-                            f?.type === "decimal"
-                          )
-                            value = Number(columnValue);
-                          else if (f?.type === "checkbox")
-                            value = columnValue === "true";
-                          setFilter({
-                            ...filter,
-                            predicates: [
-                              ...filter.predicates,
-                              { key: columnFilter, op: operator, value },
-                            ],
-                            offset: 0,
-                          });
-                        } catch {
-                          setError("Enter a valid JSON range.");
-                        }
-                      }}
-                    >
-                      Add filter
-                    </button>
-                    {filter.predicates.map((p, i) => (
-                      <button
-                        key={i}
-                        onClick={() =>
-                          setFilter({
-                            ...filter,
-                            predicates: filter.predicates.filter(
-                              (_, j) => j !== i,
-                            ),
-                            offset: 0,
-                          })
-                        }
-                      >
-                        {fields.find((f) => f.key === p.key)?.label} {p.op} ×
-                      </button>
-                    ))}
-                  </div>
+                  <ColumnFilters
+                    fields={readable}
+                    filter={filter}
+                    onChange={setFilter}
+                    onError={setError}
+                  />
                 }
               >
                 <SearchFilterPicker

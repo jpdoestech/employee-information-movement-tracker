@@ -228,10 +228,46 @@ try {
         .error,
     );
   });
+  await test("draft applicability preview stays within authenticated scope", async () => {
+    await owner.query(
+      "insert into public.capability_grants(user_id,capability) values($1,'schema_manage')",
+      [uid[1]],
+    );
+    const preview = await publicClients[1].rpc("field_scope_preview", {
+      q: { scope_mode: "all" },
+    });
+    assert.ifError(preview.error);
+    assert.equal(preview.data.resolved_targets, 1);
+    assert.equal(preview.data.scoped_employee_count, 1);
+    assert.equal(preview.data.samples[0].name, "Synthetic REST employee One");
+    const excluded = await publicClients[1].rpc("field_scope_preview", {
+      q: {
+        scope_mode: "selected",
+        targets: [{ scope_type: "branch", scope_id: b2 }],
+      },
+    });
+    assert.ifError(excluded.error);
+    assert.equal(excluded.data.scoped_employee_count, 0);
+    assert.deepEqual(excluded.data.samples, []);
+    assert(
+      (
+        await publicClients[2].rpc("field_scope_preview", {
+          q: { scope_mode: "all" },
+        })
+      ).error,
+    );
+  });
   await test("revocation takes effect with the same JWT without re-login", async () => {
     await owner.query(
       "update public.user_profiles set active=false where id=$1",
       [uid[1]],
+    );
+    assert(
+      (
+        await publicClients[1].rpc("field_scope_preview", {
+          q: { scope_mode: "all" },
+        })
+      ).error,
     );
     assert(
       (
