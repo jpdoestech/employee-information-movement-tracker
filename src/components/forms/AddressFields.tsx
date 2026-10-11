@@ -1,97 +1,601 @@
-import { LoadingProgress } from "../ui/LoadingProgress";
-import { useEffect, useId, useRef, useState } from "react";
 import { Search, MapPin } from "lucide-react";
-import { cities, provinces, regions, searchBarangays } from "../../address/addressService";
-import { DropdownSurface } from "../ui/DropdownSurface";
-
-export type AddressValue = { address: string | null; barangay: string | null; city_municipality: string | null; province: string | null; postal_code: string | null };
-type Props = { value: AddressValue; disabled?: boolean; onChange: (value: AddressValue) => void; onValidityChange?: (valid: boolean) => void };
-type Option = { code: string; name: string; detail?: string; cityCode?: string };
-const inputClass = "focus-ring mt-1.5 min-w-0 w-full max-w-full rounded border border-line bg-white px-3 py-2 text-sm text-ink disabled:bg-line/20 disabled:text-ink/55";
-
-function LocationSearch({ label, value, options, disabled, loading, error, onSearch, onSelect, onValidityChange, onInput }: {
-  label: string; value: string; options: Option[]; disabled: boolean; loading?: boolean; error?: string;
-  onSearch?: (query: string) => void; onSelect: (option: Option) => void; onValidityChange: (valid: boolean) => void;
-  onInput?: (query: string) => void;
+import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  cities,
+  provinces,
+  regions,
+  searchBarangays,
+  normalizeLocation,
+} from "../../address/addressService";
+import {
+  addressKeys,
+  type AddressKey,
+  type AddressValue,
+} from "../../address/addressFields";
+export type { AddressValue } from "../../address/addressFields";
+type Access = Record<
+  AddressKey,
+  { visible: boolean; write: boolean; clear: boolean; required: boolean }
+>;
+type Option = {
+  code: string;
+  name: string;
+  detail?: string;
+  cityCode?: string;
+  disabled?: boolean;
+};
+const provinceByCode = new Map(provinces.map((p) => [p.code, p]));
+const cityByCode = new Map(cities.map((c) => [c.code, c]));
+const cityOptions = cities.map((c) => ({
+  ...c,
+  detail:
+    provinceByCode.get(c.provinceCode ?? "")?.name ??
+    regions.find((r) => r.code === c.regionCode)?.name,
+}));
+function LocationSearch({
+  label,
+  value,
+  options,
+  disabled,
+  required,
+  clearable = true,
+  remote,
+  loading,
+  error,
+  retry,
+  reset,
+  onSearch,
+  onSelect,
+  onClear,
+  validity,
+}: {
+  label: string;
+  value: string;
+  options: Option[];
+  disabled: boolean;
+  required?: boolean;
+  clearable?: boolean;
+  remote?: boolean;
+  loading?: boolean;
+  error?: string;
+  retry?: () => void;
+  reset: number;
+  onSearch?: (query: string) => void;
+  onSelect: (option: Option) => void;
+  onClear: () => void;
+  validity: (valid: boolean) => void;
 }) {
-  const [query, setQuery] = useState(value);
-  const [open, setOpen] = useState(false);
-  const [invalid, setInvalid] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
-  const unresolved = useRef(false);
-  const queryRef = useRef(value);
-  const id = useId();
+  const id = useId(),
+    input = useRef<HTMLInputElement>(null),
+    list = useRef<HTMLDivElement>(null),
+    unresolved = useRef(false);
+  const [query, setQuery] = useState(value),
+    [open, setOpen] = useState(false),
+    [invalid, setInvalid] = useState(false);
+  const [position, setPosition] = useState({
+    left: 0,
+    top: 0,
+    width: 0,
+    maxHeight: 250,
+  });
   useEffect(() => {
-    if (value !== queryRef.current) unresolved.current = false;
-    queryRef.current = value;
     setQuery(value);
-    if (!unresolved.current) { setInvalid(false); input.current?.setCustomValidity(""); }
-  }, [value]);
-  const matches = onSearch ? options : options.filter((item) => `${item.name} ${item.detail ?? ""}`.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 20);
+    unresolved.current = false;
+    setInvalid(false);
+    input.current?.setCustomValidity("");
+  }, [value, reset]);
+  const matches = remote
+    ? options
+    : options
+        .filter((o) =>
+          `${o.name} ${o.detail ?? ""}`
+            .toLowerCase()
+            .includes(query.trim().toLowerCase()),
+        )
+        .slice(0, 20);
+  useEffect(() => {
+    if (!open || disabled) return;
+    const place = () => {
+      const box = input.current!.getBoundingClientRect(),
+        width = Math.min(Math.max(box.width, 280), innerWidth - 24);
+      const below = innerHeight - box.bottom - 12,
+        above = box.top - 12;
+      const down = below >= 180 || below >= above,
+        maxHeight = Math.min(300, Math.max(80, down ? below : above));
+      setPosition({
+        left: Math.min(Math.max(12, box.left), innerWidth - width - 12),
+        top: down ? box.bottom + 4 : Math.max(12, box.top - maxHeight - 4),
+        width,
+        maxHeight,
+      });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    const outside = (event: PointerEvent) => {
+      if (
+        !input.current?.contains(event.target as Node) &&
+        !list.current?.contains(event.target as Node)
+      )
+        setOpen(false);
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+      document.removeEventListener("pointerdown", outside);
+    };
+  }, [open, disabled]);
   function select(option: Option) {
-    unresolved.current = false; queryRef.current = option.name; onSelect(option); setQuery(option.name); setOpen(false); setInvalid(false);
-    input.current?.setCustomValidity(""); onValidityChange(true);
+    setQuery(option.name);
+    unresolved.current = false;
+    setOpen(false);
+    setInvalid(false);
+    input.current?.setCustomValidity("");
+    onSelect(option);
+    validity(true);
+    input.current?.focus();
+    setOpen(false);
   }
-  return <div className="relative min-w-0" onBlur={(event) => {
-    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-    setOpen(false); setInvalid(unresolved.current);
-  }}>
-    <label htmlFor={id} className="block text-xs font-semibold text-ink/75">{label}</label>
-    <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 text-ink/35" />
-      <input ref={input} id={id} className={`${inputClass} pl-8`} role="combobox" autoComplete="off" aria-expanded={open} aria-controls={`${id}-options`} aria-invalid={invalid} disabled={disabled} value={query} placeholder={`Search ${label.toLowerCase()}`} onClick={() => setOpen(true)} onFocus={() => { setOpen(true); onSearch?.(query); }}
-        onChange={(event) => { const next = event.target.value; queryRef.current = next; setQuery(next); setOpen(true); setInvalid(false); onSearch?.(next); onInput?.(next);
-          const valid = !next || next === value; unresolved.current = !valid; event.currentTarget.setCustomValidity(valid ? "" : `Choose a ${label.toLowerCase()} from the official list.`); onValidityChange(valid);
-        }} onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); if (event.key === "Enter" && open) { event.preventDefault(); if (matches.length === 1) select(matches[0]); } }} />
+  const help = `Choose a ${label.toLowerCase()} from the official list.`;
+  return (
+    <div className="address-control">
+      <label htmlFor={id}>
+        {label}
+        {required ? " *" : ""}
+      </label>
+      <div className="address-search-input">
+        <Search size={16} aria-hidden />
+        <input
+          ref={input}
+          id={id}
+          role="combobox"
+          autoComplete="off"
+          aria-autocomplete="list"
+          aria-expanded={open && !disabled}
+          aria-controls={`${id}-list`}
+          aria-describedby={invalid ? `${id}-error` : undefined}
+          aria-invalid={invalid}
+          required={required}
+          disabled={disabled}
+          value={query}
+          placeholder={`Search ${label.toLowerCase()}`}
+          onFocus={() => {
+            setOpen(true);
+            onSearch?.(query);
+          }}
+          onClick={() => {
+            setOpen(true);
+            onSearch?.(query);
+          }}
+          onChange={(e) => {
+            const next = e.target.value;
+            if (!next && !clearable) {
+              unresolved.current = false;
+              e.currentTarget.setCustomValidity("");
+              setQuery(value);
+              setInvalid(false);
+              validity(true);
+              return;
+            }
+            setQuery(next);
+            setOpen(true);
+            onSearch?.(next);
+            const valid = !next || next === value;
+            unresolved.current = !valid;
+            setInvalid(false);
+            e.currentTarget.setCustomValidity(valid ? "" : help);
+            validity(valid);
+            if (!next) onClear();
+          }}
+          onBlur={(e) => {
+            if (!list.current?.contains(e.relatedTarget as Node | null)) {
+              setInvalid(unresolved.current);
+              setOpen(false);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && open) {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+            }
+            if (e.key === "Enter" && open) {
+              e.preventDefault();
+              if (
+                !loading &&
+                !error &&
+                matches.length === 1 &&
+                !matches[0].disabled
+              )
+                select(matches[0]);
+            }
+            if (e.key === "ArrowDown" && open) {
+              e.preventDefault();
+              list.current
+                ?.querySelector<HTMLButtonElement>("[role=option]")
+                ?.focus();
+            }
+          }}
+        />
+      </div>
+      {invalid && (
+        <p id={`${id}-error`} className="address-error">
+          {help}
+        </p>
+      )}
+      {open &&
+        !disabled &&
+        createPortal(
+          <div
+            ref={list}
+            id={`${id}-list`}
+            role="listbox"
+            aria-label={`${label} suggestions`}
+            className="address-suggestions"
+            style={position}
+            onMouseDown={(e) => e.preventDefault()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.stopPropagation();
+                input.current?.focus();
+                setOpen(false);
+              }
+              if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                e.preventDefault();
+                const buttons = [
+                    ...list.current!.querySelectorAll<HTMLButtonElement>(
+                      "[role=option]",
+                    ),
+                  ],
+                  index = buttons.indexOf(
+                    document.activeElement as HTMLButtonElement,
+                  );
+                buttons[
+                  (index + (e.key === "ArrowDown" ? 1 : -1) + buttons.length) %
+                    buttons.length
+                ]?.focus();
+              }
+            }}
+          >
+            {loading ? (
+              <p role="status">Loading locations...</p>
+            ) : error ? (
+              <div role="alert">
+                <p>{error}</p>
+                <button type="button" onClick={retry}>
+                  Retry loading locations
+                </button>
+              </div>
+            ) : !matches.length ? (
+              <p role="status">
+                {query ? "No matching locations." : "Search locations"}
+              </p>
+            ) : (
+              matches.map((option) => (
+                <button
+                  key={option.code}
+                  type="button"
+                  role="option"
+                  disabled={option.disabled}
+                  aria-selected={
+                    normalizeLocation(option.name) === normalizeLocation(value)
+                  }
+                  onClick={() => select(option)}
+                >
+                  <MapPin
+                    size={16}
+                    aria-hidden
+                    className="address-option-icon"
+                  />
+                  <span className="address-option-label">
+                    <span>{option.name}</span>
+                    {option.detail && <small>{option.detail}</small>}
+                  </span>
+                  {option.disabled && (
+                    <small>
+                      Requires permission to change dependent fields.
+                    </small>
+                  )}
+                </button>
+              ))
+            )}
+          </div>,
+          input.current?.closest("dialog") ?? document.body,
+        )}
     </div>
-    {invalid ? <p className="mt-1 text-xs text-red-700">Choose a {label.toLowerCase()} from the official list.</p> : null}
-    {open && !disabled ? <DropdownSurface id={`${id}-options`} role="listbox">
-      {error || loading || !matches.length ? <div className="p-3 text-xs text-ink/60">{error || (loading ? <LoadingProgress label="Loading locations..." /> : query ? "No matching locations." : "Search locations")}</div> : matches.map((option) => <button key={option.code} type="button" role="option" aria-selected={option.name === value} className="flex w-full min-w-0 items-start gap-2 rounded px-2 py-2 text-left hover:bg-emerald-50 focus:bg-emerald-50" onMouseDown={(event) => event.preventDefault()} onClick={() => select(option)}>
-        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-moss" /><span className="min-w-0 break-words text-xs"><span className="block font-semibold">{option.name}</span>{option.detail ? <span className="block text-ink/55">{option.detail}</span> : null}</span>
-      </button>)}
-    </DropdownSurface> : null}
-  </div>;
+  );
 }
-
-export function AddressFields({ value, disabled = false, onChange, onValidityChange }: Props) {
-  const province = provinces.find((item) => item.name === value.province);
-  const city = cities.find((item) => item.name === value.city_municipality && (!province || item.provinceCode === province.code));
-  const [regionCode, setRegionCode] = useState(province?.regionCode ?? city?.regionCode ?? "");
-  const region = regions.find((item) => item.code === (province?.regionCode ?? city?.regionCode ?? regionCode));
-  const [query, setQuery] = useState("");
-  const [options, setOptions] = useState<Option[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const invalidFields = useRef(new Set<string>());
-  function validity(field: string, valid: boolean) {
-    if (valid) invalidFields.current.delete(field); else invalidFields.current.add(field);
-    onValidityChange?.(invalidFields.current.size === 0);
+export function AddressFields({
+  value,
+  disabled = false,
+  access,
+  onChange,
+  onValidityChange,
+}: {
+  value: AddressValue;
+  disabled?: boolean;
+  access?: Access;
+  onChange: (value: AddressValue, patch: Partial<AddressValue>) => void;
+  onValidityChange?: (valid: boolean) => void;
+}) {
+  const rights =
+    access ??
+    (Object.fromEntries(
+      addressKeys.map((k) => [
+        k,
+        { visible: true, write: true, clear: true, required: false },
+      ]),
+    ) as Access);
+  const province = provinces.find(
+    (p) => normalizeLocation(p.name) === normalizeLocation(value.province),
+  );
+  const city = cities.find(
+    (c) =>
+      normalizeLocation(c.name) ===
+        normalizeLocation(value.city_municipality) &&
+      c.provinceCode === (province?.code ?? null),
+  );
+  const [regionCode, setRegionCode] = useState(""),
+    [query, setQuery] = useState(""),
+    [options, setOptions] = useState<Option[]>([]),
+    [loading, setLoading] = useState(false),
+    [error, setError] = useState(""),
+    [retry, setRetry] = useState(0);
+  const [resets, setResets] = useState<Record<string, number>>({});
+  const invalid = useRef(new Set<string>());
+  const region = regions.find(
+    (r) => r.code === (province?.regionCode ?? city?.regionCode ?? regionCode),
+  );
+  function validity(key: string, valid: boolean) {
+    if (valid) invalid.current.delete(key);
+    else invalid.current.add(key);
+    onValidityChange?.(!invalid.current.size);
   }
-  function patch(next: Partial<AddressValue>) { onChange({ ...value, ...next }); }
-  function clearValidity(...fields: string[]) { fields.forEach((field) => invalidFields.current.delete(field)); }
+  function patch(next: Partial<AddressValue>, reset: string[] = []) {
+    // Never write a hidden or unauthorized column as a side effect of hierarchy resolution.
+    if (!canPatch(next)) return;
+    const writes = Object.fromEntries(
+      Object.entries(next).filter(
+        ([key, nextValue]) => nextValue !== value[key as AddressKey],
+      ),
+    );
+    onChange({ ...value, ...next }, writes);
+    reset.forEach((k) => invalid.current.delete(k));
+    setResets((old) =>
+      Object.fromEntries(
+        [...new Set([...Object.keys(old), ...reset])].map((k) => [
+          k,
+          (old[k] ?? 0) + (reset.includes(k) ? 1 : 0),
+        ]),
+      ),
+    );
+    onValidityChange?.(!invalid.current.size);
+  }
+  function canPatch(next: Partial<AddressValue>) {
+    return Object.entries(next).every(
+      ([key, nextValue]) =>
+        nextValue === value[key as AddressKey] ||
+        (nextValue === null
+          ? rights[key as AddressKey].clear
+          : rights[key as AddressKey].write),
+    );
+  }
+  function cityPatch(
+    code: string,
+    barangay: string | null = null,
+  ): Partial<AddressValue> {
+    const c = cityByCode.get(code)!;
+    return {
+      province: provinceByCode.get(c.provinceCode ?? "")?.name ?? null,
+      city_municipality: c.name,
+      barangay,
+    };
+  }
+  const canClear = (...keys: AddressKey[]) =>
+    keys.every((k) => rights[k].clear || value[k] === null);
+  const canWrite = (...keys: AddressKey[]) =>
+    keys.every((k) => rights[k].write);
   useEffect(() => {
     let active = true;
-    setOptions([]); setError("");
-    if (!query.trim()) { setLoading(false); return; }
-    setLoading(true);
-    const timer = setTimeout(() => {
-      searchBarangays(query).then((items) => {
-        if (!active) return;
-        setOptions(items.map((item) => { const parentCity = cities.find((entry) => entry.code === item.cityCode); const parentProvince = provinces.find((entry) => entry.code === parentCity?.provinceCode);
-          return { ...item, detail: [parentCity?.name, parentProvince?.name].filter(Boolean).join(", ") }; }));
-      }).catch(() => { if (active) setError("Unable to load locations. Please try again."); }).finally(() => { if (active) setLoading(false); });
-    }, 150);
-    return () => { active = false; clearTimeout(timer); };
-  }, [query]);
-  return <>
-    <label className="block min-w-0 text-xs font-semibold text-ink/75 sm:col-span-2">Street / building<input className={inputClass} disabled={disabled} value={value.address ?? ""} onChange={(event) => patch({ address: event.target.value || null })} /></label>
-    <LocationSearch label="Region" disabled={disabled} value={region?.name ?? ""} options={regions} onValidityChange={(valid) => validity("region", valid)} onSelect={(option) => { setRegionCode(option.code); patch({ province: null, city_municipality: null, barangay: null }); invalidFields.current.clear(); onValidityChange?.(true); }} />
-    <LocationSearch label="Province" disabled={disabled} value={value.province ?? ""} options={provinces} onInput={(text) => { clearValidity("city", "barangay"); patch({ province: text || null, city_municipality: null, barangay: null }); }} onValidityChange={(valid) => validity("province", valid)} onSelect={(option) => { const parent = provinces.find((item) => item.code === option.code)!; setRegionCode(parent.regionCode); patch({ province: parent.name, city_municipality: null, barangay: null }); invalidFields.current.clear(); onValidityChange?.(true); }} />
-    <LocationSearch label="City / municipality" disabled={disabled} value={value.city_municipality ?? ""} options={cities.map((item) => ({ ...item, detail: provinces.find((entry) => entry.code === item.provinceCode)?.name ?? regions.find((entry) => entry.code === item.regionCode)?.name }))} onInput={(text) => { clearValidity("barangay"); patch({ city_municipality: text || null, barangay: null }); }} onValidityChange={(valid) => validity("city", valid)} onSelect={(option) => { const parent = cities.find((item) => item.code === option.code)!; setRegionCode(parent.regionCode); patch({ province: provinces.find((item) => item.code === parent.provinceCode)?.name ?? null, city_municipality: parent.name, barangay: null }); invalidFields.current.clear(); onValidityChange?.(true); }} />
-    <LocationSearch label="Barangay" disabled={disabled} value={value.barangay ?? ""} options={options} loading={loading} error={error} onInput={(text) => patch({ barangay: text || null })} onSearch={setQuery} onValidityChange={(valid) => validity("barangay", valid)} onSelect={(option) => {
-      const parent = cities.find((item) => item.code === option.cityCode)!; setRegionCode(parent.regionCode);
-      patch({ province: provinces.find((item) => item.code === parent.provinceCode)?.name ?? null, city_municipality: parent.name, barangay: option.name });
-      invalidFields.current.clear(); onValidityChange?.(true);
-    }} />
-    <label className="block min-w-0 text-xs font-semibold text-ink/75">Postal code<input className={inputClass} disabled={disabled} value={value.postal_code ?? ""} onChange={(event) => patch({ postal_code: event.target.value || null })} /></label>
-  </>;
+    setOptions([]);
+    setError("");
+    setLoading(!!query.trim());
+    if (!query.trim()) return;
+    const timer = setTimeout(
+      () =>
+        searchBarangays(query)
+          .then((items) => {
+            if (active)
+              setOptions(
+                items.map((item) => {
+                  const c = cityByCode.get(item.cityCode);
+                  return {
+                    ...item,
+                    detail: [
+                      c?.name,
+                      provinceByCode.get(c?.provinceCode ?? "")?.name ??
+                        regions.find((r) => r.code === c?.regionCode)?.name,
+                    ]
+                      .filter(Boolean)
+                      .join(", "),
+                  };
+                }),
+              );
+          })
+          .catch(() => {
+            if (active) setError("Unable to load locations. Try again.");
+          })
+          .finally(() => {
+            if (active) setLoading(false);
+          }),
+      150,
+    );
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [query, retry]);
+  const common = (key: AddressKey) => ({
+    value: value[key] ?? "",
+    required: rights[key].required,
+    clearable: rights[key].clear || !value[key],
+    reset: resets[key] ?? 0,
+    validity: (valid: boolean) => validity(key, valid),
+  });
+  return (
+    <div className="address-grid">
+      {rights.address.visible && (
+        <label className="address-street">
+          Street / building{rights.address.required ? " *" : ""}
+          <input
+            disabled={disabled || !rights.address.write}
+            required={rights.address.required}
+            value={value.address ?? ""}
+            onChange={(e) => patch({ address: e.target.value || null })}
+          />
+        </label>
+      )}
+      {(rights.province.visible || rights.city_municipality.visible) && (
+        <LocationSearch
+          label="Region"
+          value={region?.name ?? ""}
+          reset={resets.region ?? 0}
+          options={regions}
+          disabled={
+            disabled ||
+            !canWrite("province", "city_municipality", "barangay") ||
+            !canClear("province", "city_municipality", "barangay")
+          }
+          validity={(valid) => validity("region", valid)}
+          onClear={() => {
+            setRegionCode("");
+            patch({ province: null, city_municipality: null, barangay: null }, [
+              "region",
+              "province",
+              "city_municipality",
+              "barangay",
+            ]);
+          }}
+          onSelect={(o) => {
+            setRegionCode(o.code);
+            patch({ province: null, city_municipality: null, barangay: null }, [
+              "region",
+              "province",
+              "city_municipality",
+              "barangay",
+            ]);
+          }}
+        />
+      )}
+      {rights.province.visible && (
+        <LocationSearch
+          label="Province"
+          {...common("province")}
+          clearable={canPatch({
+            province: null,
+            city_municipality: null,
+            barangay: null,
+          })}
+          options={provinces.map((p) => ({
+            ...p,
+            disabled: !canPatch({
+              province: p.name,
+              city_municipality: null,
+              barangay: null,
+            }),
+          }))}
+          disabled={disabled || !rights.province.write}
+          onClear={() =>
+            patch({ province: null, city_municipality: null, barangay: null }, [
+              "province",
+              "city_municipality",
+              "barangay",
+            ])
+          }
+          onSelect={(o) => {
+            setRegionCode(provinceByCode.get(o.code)!.regionCode);
+            patch(
+              { province: o.name, city_municipality: null, barangay: null },
+              ["region", "province", "city_municipality", "barangay"],
+            );
+          }}
+        />
+      )}
+      {rights.city_municipality.visible && (
+        <LocationSearch
+          label="City / municipality"
+          {...common("city_municipality")}
+          clearable={canPatch({ city_municipality: null, barangay: null })}
+          options={cityOptions.map((c) => ({
+            ...c,
+            disabled: !canPatch(cityPatch(c.code)),
+          }))}
+          disabled={disabled || !rights.city_municipality.write}
+          onClear={() =>
+            patch({ city_municipality: null, barangay: null }, [
+              "city_municipality",
+              "barangay",
+            ])
+          }
+          onSelect={(o) => {
+            const c = cityByCode.get(o.code)!;
+            setRegionCode(c.regionCode);
+            patch(
+              {
+                province:
+                  provinceByCode.get(c.provinceCode ?? "")?.name ?? null,
+                city_municipality: c.name,
+                barangay: null,
+              },
+              ["region", "province", "city_municipality", "barangay"],
+            );
+          }}
+        />
+      )}
+      {rights.barangay.visible && (
+        <LocationSearch
+          label="Barangay"
+          {...common("barangay")}
+          options={options.map((b) => ({
+            ...b,
+            disabled: !canPatch(cityPatch(b.cityCode!, b.name)),
+          }))}
+          remote
+          loading={loading}
+          error={error}
+          retry={() => setRetry((v) => v + 1)}
+          onSearch={setQuery}
+          disabled={disabled || !rights.barangay.write}
+          onClear={() => patch({ barangay: null }, ["barangay"])}
+          onSelect={(o) => {
+            const c = cityByCode.get(o.cityCode!)!;
+            setRegionCode(c.regionCode);
+            patch(
+              {
+                province:
+                  provinceByCode.get(c.provinceCode ?? "")?.name ?? null,
+                city_municipality: c.name,
+                barangay: o.name,
+              },
+              ["region", "province", "city_municipality", "barangay"],
+            );
+          }}
+        />
+      )}
+      {rights.postal_code.visible && (
+        <label>
+          Postal code{rights.postal_code.required ? " *" : ""}
+          <input
+            disabled={disabled || !rights.postal_code.write}
+            required={rights.postal_code.required}
+            inputMode="numeric"
+            value={value.postal_code ?? ""}
+            onChange={(e) => patch({ postal_code: e.target.value || null })}
+          />
+        </label>
+      )}
+    </div>
+  );
 }

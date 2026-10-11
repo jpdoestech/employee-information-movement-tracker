@@ -3111,3 +3111,120 @@ textarea:focus {
   justify-content: start;
   border-color: transparent;
 }
+
+/* Official address controls use the same restrained form surfaces as other editors. */
+.address-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.address-grid label,
+.address-control {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.address-grid input {
+  width: 100%;
+  min-width: 0;
+}
+.address-street {
+  grid-column: 1/-1;
+}
+.address-error {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 3px 0;
+  overflow-wrap: anywhere;
+}
+.address-suggestions {
+  position: fixed;
+  z-index: 200;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 5px;
+  overscroll-behavior: contain;
+}
+.address-suggestions > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  height: auto;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  white-space: normal;
+  text-align: left;
+  gap: 3px;
+}
+.address-suggestions > button:hover,
+.address-suggestions > button:focus-visible {
+  background: var(--tint);
+}
+.address-suggestions small {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.address-suggestions p {
+  padding: 6px;
+  margin: 0;
+  font-size: 13px;
+}
+@media (max-width: 600px) {
+  .address-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .address-suggestions > button {
+    min-height: 44px;
+  }
+  .address-grid input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+
+.address-grid label {
+  margin: 0;
+  font-size: 13px;
+}
+
+.address-search-input {
+  position: relative;
+  min-width: 0;
+}
+.address-search-input > svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.address-search-input input {
+  padding-left: 34px;
+}
+.address-suggestions > button {
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+}
+.address-option-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--primary);
+}
+.address-option-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}

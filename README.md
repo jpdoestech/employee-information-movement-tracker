@@ -51,6 +51,10 @@ Permission evaluation intersects organization C/R/U/D, effective primary assignm
 
 Bounded operations: 100 employees per atomic bulk update; 100 rows per page; 100 visible option results; 10,000 rows per CSV export; 1,000 current employees per workbook reconciliation. Expand these deliberately after staging measurements. Primary intervals are start-inclusive/end-exclusive; business dates use Asia/Manila. Additional assignments do not grant primary branch access.
 
+## Philippine addresses
+
+The default Address group provides Home Address, Current Address and emergency contact details. Search the supplied local official lists nationwide, with hierarchy validation in both the form and PostgreSQL. Postal codes remain manual. Read [address integration and migration notes](docs/philippine-addresses.md) before applying the new migration in connected mode.
+
 ## Delivery and evidence
 
 Read [architecture](docs/architecture.md), [reference review](docs/design-reference.md), [deployment](docs/deployment.md), [Google synchronization](docs/google-sync.md), [security](docs/security.md), and [acceptance evidence](docs/acceptance.md).

@@ -1,4 +1,10 @@
 import {
+  addressDefinitions,
+  addressKeys,
+  addressValue,
+} from "./address/addressFields";
+import { addressValidationError } from "./address/addressService";
+import {
   defaultFilter,
   localToday,
   type Context,
@@ -85,6 +91,21 @@ const fields: Field[] = base.map(([key, label, type], i) => ({
   row_version: 1,
   actions: ["C", "R", "U", "D"],
 }));
+fields.push(
+  ...addressDefinitions.map((f, i) => ({
+    ...f,
+    id: `field-${f.key}`,
+    group_id: "address",
+    group_name: "Address",
+    active: true,
+    required: false,
+    sensitivity: "normal",
+    list_eligible: true,
+    scope_mode: "all",
+    row_version: 1,
+    actions: ["C", "R", "U", "D"],
+  })),
+);
 let employees: Employee[] = Array.from({ length: 34 }, (_, i) => ({
   id: `demo-${i + 1}`,
   row_version: 1,
@@ -145,6 +166,7 @@ const context: Context = {
   register_settings: { row_numbers_allowed: true, row_version: 1 },
   fields,
   groups: [
+    { id: "address", name: "Address", active: true, row_version: 1 },
     { id: "core", name: "Core identity", active: true, row_version: 1 },
     {
       id: "contact",
@@ -331,6 +353,12 @@ export async function demoMutate(op: string, p: any) {
     throw new Error("Identity fields are system-managed");
   if (op.startsWith("employee_") || op === "bulk_update") {
     if (op === "employee_create") {
+      for (const prefix of ["", "current_"]) {
+        const problem = await addressValidationError(
+          addressValue(p.values ?? {}, prefix),
+        );
+        if (problem) throw new Error(problem);
+      }
       const id = crypto.randomUUID();
       const created: Employee = {
         id,
@@ -371,6 +399,21 @@ export async function demoMutate(op: string, p: any) {
           "Revision conflict: reload before reapplying your draft",
         );
     }
+    if (op !== "employee_delete")
+      for (const t of targets) {
+        const e = employees.find((e) => e.id === t.id)!;
+        for (const prefix of ["", "current_"])
+          if (
+            addressKeys.some((key) =>
+              Object.hasOwn(p.values ?? {}, prefix + key),
+            )
+          ) {
+            const problem = await addressValidationError(
+              addressValue({ ...e.values, ...p.values }, prefix),
+            );
+            if (problem) throw new Error(problem);
+          }
+      }
     for (const t of targets) {
       const e = employees.find((e) => e.id === t.id)!;
       if (op === "employee_delete")

@@ -123,6 +123,13 @@ try {
   for (const file of (await readdir("supabase/migrations"))
     .filter((x) => x.endsWith(".sql"))
     .sort()) {
+    if (file === "20261011000200_default_addresses.sql")
+      await owner.query(`
+      insert into public.field_groups(id,name) values('11111111-1111-1111-1111-111111111111','Legacy emergency information');
+      insert into public.field_definitions(id,group_id,key,label,type) values('11111111-1111-1111-1111-111111111112','11111111-1111-1111-1111-111111111111','emergency_name','Legacy emergency name','short_text');
+      insert into public.field_definitions(id,group_id,key,label,type,sensitivity) values('11111111-1111-1111-1111-111111111113','11111111-1111-1111-1111-111111111111','emergency_contact_private','Legacy restricted emergency contact','short_text','restricted');
+      insert into public.field_access_policies(role,group_id,action,effect,inherit_new) values('admin','11111111-1111-1111-1111-111111111111','R','allow',true);
+    `);
     await owner.query(await readFile(`supabase/migrations/${file}`, "utf8"));
     migrationVersions.push(file);
     console.log(`APPLIED ${file}`);
@@ -1598,6 +1605,203 @@ try {
     assert.equal((await records(reader, { kind: "movements" })).total, 0);
     assert.equal((await records(reader, { kind: "audit" })).total, 0);
     assert.equal((await records(reader, { kind: "organization" })).total, 0);
+  });
+  await test("Address defaults reuse legacy emergency IDs and preserve inherited/direct permission precedence", async () => {
+    const defaults = await q(id.sa, "context");
+    assert(defaults.groups.some((g) => g.name === "Address"));
+    assert(defaults.fields.some((f) => f.key === "current_barangay"));
+    assert(!defaults.fields.some((f) => f.key === "region"));
+    assert(
+      !defaults.fields.some((f) => f.key === "emergency_contact_name"),
+      "Reuse the existing emergency-name field rather than duplicate it",
+    );
+    const legacy = defaults.fields.find((f) => f.key === "emergency_name");
+    assert.equal(legacy.id, "11111111-1111-1111-1111-111111111112");
+    assert.equal(legacy.group_name, "Address");
+    const decide = (key) =>
+      as(
+        id.admin,
+        (c) =>
+          c.query(
+            "select app_private.field_decision($1,'R','branch',$2,null) r",
+            [key, id.b1],
+          ),
+        "postgres",
+      ).then((r) => r.rows[0].r);
+    assert.equal((await decide("emergency_name")).allowed, true);
+    assert.equal((await decide("emergency_contact_private")).allowed, false);
+    assert.equal(
+      (await decide("address")).allowed,
+      false,
+      "New Address fields are default-denied",
+    );
+    await owner.query(
+      "insert into public.field_access_policies(user_id,field_id,action,effect) values($1,$2,'R','deny')",
+      [id.admin, legacy.id],
+    );
+    assert.equal((await decide("emergency_name")).allowed, false);
+    await assert.rejects(
+      as(id.viewer, (c) =>
+        c.query("select * from app_private.address_barangays"),
+      ),
+      { code: "42501" },
+    );
+  });
+  await test("official address hierarchy is enforced in PostgreSQL and normalized names/provinceless cities work", async () => {
+    const good = {
+      name: "Official Address Test",
+      address: "12 Test Street",
+      province: "Davao del Sur",
+      city_municipality: "Davao City",
+      barangay: "AGDAO",
+      postal_code: "9999",
+      current_city_municipality: "Caloocan City",
+      current_province: null,
+    };
+    const e = (
+      await m(id.sa, "employee_create", {
+        target_level: "branch",
+        branch_id: id.b1,
+        values: good,
+      })
+    ).id;
+    assert.equal(
+      (await q(id.sa, "employee", { id: e })).employee.values.postal_code,
+      "9999",
+    );
+    for (const values of [
+      { province: "Pangasinan" },
+      { barangay: "Agd" },
+      { province: "Imaginary" },
+      { current_province: "Davao del Sur" },
+    ])
+      await assert.rejects(
+        m(id.sa, "employee_update", {
+          id: e,
+          expected_version: await revision(e),
+          values,
+        }),
+        { code: "22023" },
+      );
+    await assert.rejects(
+      m(id.admin, "employee_update", {
+        id: e,
+        expected_version: await revision(e),
+        values: { province: "Davao del Sur" },
+      }),
+      { code: "42501" },
+    );
+    assert.equal(
+      (await q(id.sa, "employee", { id: e })).employee.values.province,
+      "Davao del Sur",
+    );
+    assert.equal(
+      (
+        await owner.query(
+          "select count(*) n from app_private.address_barangays",
+        )
+      ).rows[0].n,
+      "42011",
+    );
+  });
+  await test("invalid address creation and bulk edits roll back employee values, audit, versions and outbox", async () => {
+    const totals = async () =>
+      (
+        await owner.query(
+          "select (select count(*) from public.employees) employees,(select count(*) from public.audit_log) audit,(select count(*) from public.sync_outbox) outbox",
+        )
+      ).rows[0];
+    const before = await totals();
+    await assert.rejects(
+      m(id.sa, "employee_create", {
+        target_level: "branch",
+        branch_id: id.b1,
+        values: {
+          name: "Bad Address",
+          province: "Pangasinan",
+          city_municipality: "Davao City",
+          barangay: "Agdao",
+        },
+      }),
+      { code: "22023" },
+    );
+    assert.deepEqual(await totals(), before);
+    const a = (
+      await m(id.sa, "employee_create", {
+        target_level: "branch",
+        branch_id: id.b1,
+        values: {
+          name: "Bulk Address One",
+          province: "Davao del Sur",
+          city_municipality: "City of Davao",
+          barangay: "Agdao",
+        },
+      })
+    ).id;
+    const b = (
+      await m(id.sa, "employee_create", {
+        target_level: "branch",
+        branch_id: id.b1,
+        values: {
+          name: "Bulk Address Two",
+          province: "Pangasinan",
+          city_municipality: "Malasiqui",
+          barangay: "Agdao",
+        },
+      })
+    ).id;
+    const av = await revision(a),
+      bv = await revision(b),
+      snapshot = await totals();
+    await assert.rejects(
+      m(id.sa, "bulk_update", {
+        rows: [
+          { id: a, row_version: av },
+          { id: b, row_version: bv },
+        ],
+        values: { city_municipality: "City of Davao" },
+      }),
+      { code: "22023" },
+    );
+    assert.equal(await revision(a), av);
+    assert.equal(await revision(b), bv);
+    assert.deepEqual(await totals(), snapshot);
+  });
+  await test("concurrent address edits retain one versioned winner and never commit a mixed hierarchy", async () => {
+    const e = (
+      await m(id.sa, "employee_create", {
+        target_level: "branch",
+        branch_id: id.b1,
+        values: { name: "Concurrent Address Test" },
+      })
+    ).id;
+    const responses = await concurrent(
+      "employee_update",
+      [
+        {
+          id: e,
+          expected_version: await revision(e),
+          values: {
+            province: "Davao del Sur",
+            city_municipality: "Davao City",
+            barangay: "Agdao",
+          },
+        },
+        {
+          id: e,
+          expected_version: await revision(e),
+          values: {
+            province: "Pangasinan",
+            city_municipality: "Malasiqui",
+            barangay: "Agdao",
+          },
+        },
+      ],
+      [id.sa, id.sa],
+    );
+    assert.equal(responses.filter((r) => r.ok).length, 1);
+    const current = (await q(id.sa, "employee", { id: e })).employee.values;
+    await owner.query("select app_private.validate_address($1,'')", [current]);
   });
   await test("1000-row realistic query profile records observed latency and plan", async () => {
     await owner.query(

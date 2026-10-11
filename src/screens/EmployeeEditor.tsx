@@ -1,3 +1,11 @@
+import { AddressFields } from "../components/forms/AddressFields";
+import {
+  addressKeys,
+  addressValue,
+  addressAccess,
+  relationshipOptions,
+} from "../address/addressFields";
+import { addressValidationError } from "../address/addressService";
 import { FloatingNotification } from "../components/FloatingNotification";
 import { useEffect, useState } from "react";
 import { Dialog } from "../components/Dialog";
@@ -25,7 +33,9 @@ export function EmployeeEditor({
     [target, setTarget] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [confirmArchive, setConfirmArchive] = useState(false);
+    [confirmArchive, setConfirmArchive] = useState(false),
+    [addressValid, setAddressValid] = useState<Record<string, boolean>>({}),
+    [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
   useEffect(() => {
     let active = true;
     if (row) {
@@ -68,11 +78,48 @@ export function EmployeeEditor({
       (f.key === "name" || f.type !== "system") &&
       f.actions.includes(row ? "U" : "C"),
   );
-  const groups = [...new Set(editable.map((f) => f.group_name))];
+  const addressFieldKeys = new Set(
+    ["", "current_"].flatMap((prefix) =>
+      addressKeys.map((key) => prefix + key),
+    ),
+  );
+  const regular = editable.filter((f) => !addressFieldKeys.has(f.key));
+  const groups = [...new Set(regular.map((f) => f.group_name))];
+  const draft = { ...values, ...changed };
   async function save() {
     setError("");
     setBusy(true);
     try {
+      if (Object.values(addressValid).includes(false))
+        throw new Error(
+          "Confirm locations from the official lists before saving.",
+        );
+      const problems: Record<string, string> = {};
+      for (const prefix of ["", "current_"]) {
+        if (!addressKeys.some((key) => Object.hasOwn(changed, prefix + key)))
+          continue;
+        const hierarchy = ["province", "city_municipality", "barangay"];
+        // Hidden unchanged values are validated by the database, never fetched to validate in the browser.
+        if (
+          !hierarchy.every(
+            (key) =>
+              Object.hasOwn(changed, prefix + key) ||
+              fields.find((f) => f.key === prefix + key)?.actions.includes("R"),
+          )
+        )
+          continue;
+        const problem = await addressValidationError(
+          addressValue(draft, prefix),
+        );
+        if (problem) problems[prefix] = problem;
+      }
+      setAddressErrors(problems);
+      if (Object.keys(problems).length)
+        throw new Error("Correct the highlighted address before saving.");
+      const missing = editable.find(
+        (f) => f.required && (draft[f.key] == null || draft[f.key] === ""),
+      );
+      if (missing) throw new Error(`${missing.label} is required.`);
       const o = options.find((o) => o.id === target);
       const p = row
         ? {
@@ -118,14 +165,37 @@ export function EmployeeEditor({
         )}
         {groups.map((g) => (
           <fieldset key={g}>
-            <legend>{g}</legend>
+            <legend>
+              {g === "Address" &&
+              regular
+                .filter((f) => f.group_name === g)
+                .every((f) => f.key.startsWith("emergency_contact_"))
+                ? "Emergency contact"
+                : g}
+            </legend>
             <div className="form-grid">
-              {editable
+              {regular
                 .filter((f) => f.group_name === g)
                 .map((f) => (
                   <div key={f.key}>
                     <ValueEditor
-                      field={f}
+                      field={
+                        [
+                          "emergency_contact_relationship",
+                          "emergency_relationship",
+                        ].includes(f.key)
+                          ? {
+                              ...f,
+                              type: "select",
+                              options: [
+                                ...new Set([
+                                  ...relationshipOptions,
+                                  ...(f.options ?? []),
+                                ]),
+                              ],
+                            }
+                          : f
+                      }
                       value={
                         Object.hasOwn(changed, f.key)
                           ? changed[f.key]
@@ -152,6 +222,43 @@ export function EmployeeEditor({
             </div>
           </fieldset>
         ))}
+        {["", "current_"].map((prefix) => {
+          const access = addressAccess(fields, !!row, prefix);
+          if (!Object.values(access).some((right) => right.visible))
+            return null;
+          return (
+            <fieldset key={prefix || "home"}>
+              <legend>{prefix ? "Current Address" : "Home Address"}</legend>
+              <AddressFields
+                value={addressValue(draft, prefix)}
+                access={access}
+                disabled={busy}
+                onValidityChange={(valid) =>
+                  setAddressValid((old) =>
+                    old[prefix] === valid ? old : { ...old, [prefix]: valid },
+                  )
+                }
+                onChange={(_, patch) => {
+                  setChanged((old) => ({
+                    ...old,
+                    ...Object.fromEntries(
+                      Object.entries(patch).map(([key, value]) => [
+                        prefix + key,
+                        value,
+                      ]),
+                    ),
+                  }));
+                  setAddressErrors((old) => ({ ...old, [prefix]: "" }));
+                }}
+              />
+              {addressErrors[prefix] && (
+                <p role="alert" className="address-error">
+                  {addressErrors[prefix]}
+                </p>
+              )}
+            </fieldset>
+          );
+        })}
         {row && (
           <>
             <h3>Authorized current information</h3>
@@ -252,7 +359,11 @@ export function EmployeeEditor({
         <button onClick={onClose}>Cancel</button>
         <button
           className="primary"
-          disabled={busy || !Object.keys(changed).length}
+          disabled={
+            busy ||
+            !Object.keys(changed).length ||
+            Object.values(addressValid).includes(false)
+          }
           onClick={save}
         >
           {busy ? "Saving…" : "Save to Supabase"}
