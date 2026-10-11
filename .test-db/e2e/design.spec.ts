@@ -213,7 +213,7 @@ test("navy and gray theme maintains readable text and keyboard focus", async ({
   for (const { selector, ratio } of ratios)
     expect(ratio, selector).toBeGreaterThanOrEqual(4.5);
   const active = page
-    .getByRole("navigation")
+    .getByRole("navigation", { name: "Main navigation" })
     .getByRole("link", { name: "Overview", exact: true });
   await active.focus();
   await page.keyboard.press("Tab");

@@ -1,17 +1,17 @@
 :root {
   font-family: "Segoe UI Variable", "Aptos", "Segoe UI", system-ui, sans-serif;
   color: #18263b;
-  background: #f1f3f7;
+  background: #f3f6f8;
   font-synthesis: none;
   --primary: #234a7d;
   --primary-hover: #18375f;
   --ink: #18263b;
   --muted: #56647a;
-  --paper: #f1f3f7;
-  --line: #dbe1ea;
-  --control-line: #8492a6;
+  --paper: #f3f6f8;
+  --line: #e1e6eb;
+  --control-line: #ccd4dd;
   --tint: #eaf0f8;
-  --navy: #14243d;
+  --navy: #1c2432;
   --navy-raised: #223a5b;
   --nav-text: #c4cfdf;
   --focus: #447bc1;
@@ -435,9 +435,6 @@ main:has(> .data-panel) > :not(.data-panel) {
   padding: 10px 16px;
   border-bottom: 1px solid var(--line);
 }
-.record-explorer .chips {
-  padding-inline: 16px;
-}
 .record-explorer table {
   min-width: 820px;
   font-size: 13px;
@@ -680,12 +677,6 @@ a.stat:hover {
   padding: 10px 16px;
   border-top: 0;
 }
-.register .chips {
-  padding-inline: 16px;
-}
-.register .chips:empty {
-  display: none;
-}
 .register .register-tools {
   padding: 6px 16px 10px;
   gap: 8px;
@@ -830,19 +821,6 @@ a.stat:hover {
 .advanced-filter > input {
   flex: 1;
   width: 180px;
-}
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 8px 0;
-}
-.chips button {
-  min-height: 32px;
-  padding: 3px 10px;
-  background: var(--tint);
-  color: var(--primary);
-  font-size: 12px;
 }
 .register-tools {
   padding: 4px 0 14px;
@@ -2321,5 +2299,516 @@ dialog > footer {
   }
   dialog > footer {
     padding: 12px 16px;
+  }
+}
+
+/* Directory reference: dark section header, compact icon rail, quiet controls. */
+:root {
+  --header-ink: #f6f8fc;
+  --header-muted: #d0d8e4;
+  --header-control: #303c50;
+  --input-focus-bg: #edf2f7;
+}
+input:not([type="checkbox"]):focus,
+textarea:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--control-line);
+  background: var(--input-focus-bg);
+}
+.search-control:focus-within,
+.picker-search:focus-within,
+.picker-contained .picker-search:focus-within {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--control-line);
+  background: var(--input-focus-bg);
+}
+.search-control input,
+.search-control input:focus,
+.picker-search input,
+.picker-search input:focus {
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
+.column-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.column-heading svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.register-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.register-heading h2 {
+  font-size: 18px;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.section-navigation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.section-navigation a {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--header-muted);
+}
+.section-navigation a:hover,
+.section-navigation a[aria-current="page"] {
+  background: var(--header-control);
+  color: var(--header-ink);
+  text-decoration: none;
+}
+.topbar {
+  background: var(--navy);
+  color: var(--header-ink);
+  border-color: var(--navy);
+  padding: 10px 24px;
+  min-height: 60px;
+  gap: 24px;
+}
+.workspace-title {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.breadcrumb {
+  color: var(--header-muted);
+  border-right: 1px solid var(--header-control);
+  padding-right: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.topbar button {
+  color: var(--header-muted);
+  background: var(--header-control);
+  border-color: transparent;
+  width: 32px;
+  padding: 5px;
+}
+.topbar button:hover {
+  color: var(--header-ink);
+  background: var(--navy-raised);
+}
+.topbar .environment-badge,
+.topbar .avatar {
+  color: var(--header-ink);
+  background: var(--header-control);
+}
+.topbar .account-name small {
+  color: var(--header-muted);
+}
+.table-region th,
+.record-table th {
+  background: #e9eef2;
+  font-size: 12px;
+  font-weight: 500;
+  border-right: 1px solid var(--line);
+}
+.table-region td,
+.record-table td {
+  border-bottom-color: #edf0f3;
+}
+.filterbar .picker-trigger,
+.register-tools .picker-trigger {
+  background: #edf1f4;
+  border-color: transparent;
+  border-radius: 5px;
+}
+.register .filterbar,
+.record-explorer .filterbar {
+  border-bottom: 0;
+  gap: 8px;
+  padding-block: 12px;
+}
+.register > .section-heading,
+.record-heading {
+  padding-block: 18px;
+  border-bottom: 0;
+}
+.record-heading h2 {
+  font-size: 18px;
+}
+@media (min-width: 761px) {
+  .workspace-title h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .workspace-title .breadcrumb {
+    display: inline;
+    border-right: 0;
+    padding-right: 0;
+  }
+  .sidebar {
+    width: 72px;
+    padding: 14px;
+  }
+  .workspace {
+    margin-left: 72px;
+    width: calc(100% - 72px);
+  }
+  .sidebar .brand {
+    padding: 0 0 20px;
+    justify-content: center;
+  }
+  .sidebar .brand > span:last-child,
+  .sidebar .rail-label,
+  .sidebar-bottom p {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .sidebar .workspace-label {
+    display: none;
+  }
+  .sidebar .nav-group-label {
+    height: 1px;
+    font-size: 0;
+    padding: 0;
+    margin: 10px 6px;
+    border-top: 1px solid var(--line);
+  }
+  .sidebar nav {
+    gap: 8px;
+  }
+  .sidebar nav a {
+    justify-content: center;
+    width: 44px;
+    min-height: 44px;
+    padding: 10px;
+    border-radius: 7px;
+  }
+  .sidebar nav a.active {
+    box-shadow: none;
+    background: var(--tint);
+  }
+  .sidebar-bottom {
+    justify-content: center;
+    padding: 18px 0 0;
+  }
+  main {
+    padding: 22px 28px;
+  }
+  .register.panel,
+  .panel.record-explorer {
+    background: var(--paper);
+    border: 0;
+    border-radius: 0;
+  }
+  .register > .section-heading,
+  .register .filterbar,
+  .register .register-tools,
+  .record-heading,
+  .record-explorer .filterbar {
+    padding-inline: 0;
+  }
+  .register .filterbar > .search-control,
+  .record-explorer .filterbar > .search-control {
+    flex: 0 1 320px;
+    min-width: 180px;
+    background: var(--surface);
+  }
+  .register .filterbar > .search-control:focus-within,
+  .record-explorer .filterbar > .search-control:focus-within {
+    background: var(--input-focus-bg);
+  }
+  .filter-reset {
+    margin-left: auto;
+  }
+  .register .table-region,
+  .record-explorer .data-scroll-region {
+    border: 1px solid var(--line);
+    border-radius: 7px 7px 0 0;
+    background: var(--surface);
+  }
+  .register .pagination,
+  .record-explorer .pagination {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: 0;
+    border-radius: 0 0 7px 7px;
+  }
+  .table-region td {
+    padding-block: 9px;
+  }
+  .workspace-footer {
+    background: var(--paper);
+  }
+}
+@media (max-width: 1100px) and (min-width: 761px) {
+  .topbar {
+    gap: 14px;
+    padding-inline: 18px;
+  }
+  .workspace-title .breadcrumb {
+    display: none;
+  }
+  .section-navigation a {
+    padding-inline: 9px;
+  }
+}
+@media (max-width: 760px) {
+  .section-navigation {
+    display: none;
+  }
+  .topbar {
+    gap: 8px;
+    padding: 8px 12px;
+    min-height: 60px;
+  }
+  .topbar button {
+    width: 44px;
+    min-height: 44px;
+  }
+  .workspace-title {
+    gap: 0;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+  .register-heading h2 {
+    display: none;
+  }
+  .register .filterbar,
+  .record-explorer .filterbar {
+    padding-block: 10px;
+  }
+  .record-heading {
+    padding-block: 12px;
+  }
+  .record-heading h2 {
+    font-size: 15px;
+  }
+}
+@media (max-height: 500px) {
+  .topbar {
+    min-height: 48px;
+    padding-block: 4px;
+  }
+  .register > .section-heading,
+  .record-heading {
+    padding-block: 6px;
+  }
+  .register .filterbar,
+  .record-explorer .filterbar {
+    padding-block: 6px;
+  }
+  main {
+    padding: 10px 14px;
+  }
+}
+
+/* Dense data workspace: row sizes remain stable when values differ. */
+.table-region td {
+  height: 36px;
+  padding: 2px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+}
+.cell-value {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-region .selection {
+  padding: 0;
+  text-align: center;
+  text-overflow: clip;
+}
+.table-region .selection input {
+  margin: 0;
+  vertical-align: middle;
+}
+.table-region .text-link {
+  display: block;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-region th {
+  padding: 2px 10px;
+  height: 34px;
+}
+.table-region th button,
+.table-header-label {
+  min-height: 28px;
+}
+.picker-trigger.has-value .picker-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+.picker-trigger > svg {
+  flex-shrink: 0;
+}
+.picker-clear {
+  align-self: center;
+}
+.picker-options strong,
+.picker-options small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.filterbar .picker:has(.has-value),
+.toolbar-views:has(.has-value) {
+  max-width: min(280px, 100%);
+}
+.toolbar-views:has(.has-value) .picker {
+  max-width: 100%;
+}
+.filterbar .picker:has(.has-value) .picker-trigger,
+.toolbar-views .picker-trigger.has-value {
+  max-width: 100%;
+  width: 100%;
+}
+.record-explorer td {
+  height: 44px;
+  padding: 3px 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+}
+.record-explorer th {
+  padding: 3px 10px;
+}
+.record-explorer td:first-child strong {
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.record-explorer td:first-child small {
+  margin-top: 0;
+  font-size: 11px;
+  line-height: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notification-content strong,
+.notification-content small {
+  display: block;
+}
+.notification-content small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+@media (min-width: 761px) {
+  main {
+    padding: 8px 16px;
+  }
+  .topbar {
+    min-height: 48px;
+    padding-block: 6px;
+  }
+  .sidebar {
+    padding-top: 8px;
+  }
+  .sidebar .brand {
+    padding-bottom: 12px;
+  }
+  .register > .section-heading,
+  .record-heading {
+    padding-block: 6px;
+  }
+  .register-heading h2,
+  .record-heading h2 {
+    font-size: 16px;
+  }
+  .register .filterbar,
+  .record-explorer .filterbar {
+    padding-block: 6px;
+  }
+  .register .pagination,
+  .record-explorer .pagination {
+    padding: 4px 12px;
+  }
+  .workspace-footer {
+    padding: 3px 16px;
+    line-height: 1.4;
+  }
+}
+@media (max-width: 760px) {
+  main {
+    padding: 6px 8px;
+  }
+  .topbar {
+    min-height: 52px;
+    padding-block: 4px;
+  }
+  .register > .section-heading,
+  .record-heading {
+    padding-block: 6px;
+  }
+  .register .filterbar,
+  .record-explorer .filterbar {
+    padding-block: 6px;
+  }
+  .register .pagination,
+  .record-explorer .pagination {
+    padding: 4px 8px;
+  }
+  .table-region td {
+    height: 50px;
+    padding: 2px 10px;
+  }
+  .record-explorer td {
+    height: 52px;
+  }
+  .table-region .text-link {
+    min-height: 44px;
+  }
+  .table-region th button {
+    min-height: 40px;
+  }
+  .table-region .pin-0 {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+  .workspace-footer {
+    padding: 3px 8px;
+    line-height: 1.4;
+    font-size: 10px;
+  }
+  .workspace-footer > span:last-child {
+    display: none;
+  }
+  .record-explorer .filterbar > .picker:has(.has-value) {
+    max-width: min(220px, 100%);
   }
 }

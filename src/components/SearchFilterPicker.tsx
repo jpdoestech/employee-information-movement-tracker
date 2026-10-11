@@ -172,6 +172,11 @@ export function SearchFilterPicker({
     setHighlight(0);
   }, [search]);
   const selected = options.filter((o) => value.includes(o.id));
+  const selectionText = selected.length
+    ? selected.map((o) => o.label).join(", ")
+    : value.length
+      ? `${displayLabel || label} · ${value.length}`
+      : displayLabel || label;
   return (
     <div className="picker">
       <button
@@ -180,19 +185,18 @@ export function SearchFilterPicker({
         disabled={disabled}
         className={`picker-trigger${value.length ? " has-value" : ""}${value.length && clearable ? " has-clear" : ""}`}
         aria-label={label}
+        title={
+          selected
+            .map((o) => [o.label, o.context].filter(Boolean).join(" · "))
+            .join(", ") || selectionText
+        }
         aria-expanded={open}
         aria-controls={id}
         aria-haspopup="dialog"
         onClick={() => (open ? close() : start())}
       >
         {Icon && <Icon size={15} aria-hidden />}
-        <span className="picker-label">
-          {selected.length === 1
-            ? selected[0].label
-            : value.length
-              ? `${displayLabel || label} · ${value.length}`
-              : displayLabel || label}
-        </span>
+        <span className="picker-label">{selectionText}</span>
         {compactLabel && !value.length && (
           <span className="picker-compact-label">{compactLabel}</span>
         )}

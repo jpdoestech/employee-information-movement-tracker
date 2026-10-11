@@ -36,7 +36,6 @@ export function FilterBar({
     (search: string) => query<Option[]>("options", { search }),
     [],
   );
-  const quick = options.find((o) => o.id === filter.quick?.id);
   return (
     <>
       <div className="filterbar">
@@ -54,6 +53,7 @@ export function FilterBar({
           <SearchFilterPicker
             mode="multiple"
             label="Status"
+            icon={CircleDot}
             options={statuses}
             value={filter.statuses}
             onChange={(statuses) => set({ statuses })}
@@ -134,29 +134,6 @@ export function FilterBar({
           <RotateCcw size={16} aria-hidden />
           <span>Reset</span>
         </button>
-      </div>
-      <div className="chips">
-        {filter.quick && (
-          <button onClick={() => set({ quick: null })}>
-            {quick?.label || "Selected organization"} ×
-          </button>
-        )}
-        {[...filter.branches, ...filter.clients, ...filter.statuses].map(
-          (id) => (
-            <button
-              key={id}
-              onClick={() =>
-                set({
-                  branches: filter.branches.filter((x) => x !== id),
-                  clients: filter.clients.filter((x) => x !== id),
-                  statuses: filter.statuses.filter((x) => x !== id),
-                })
-              }
-            >
-              {options.find((o) => o.id === id)?.label || id} ×
-            </button>
-          ),
-        )}
       </div>
     </>
   );

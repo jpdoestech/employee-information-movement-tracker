@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { demoQuery, demoMutate } from "./demo";
 import { requireConfirmation } from "./components/TransactionConfirmation";
+import { trackTransaction } from "./transactions";
 const url = import.meta.env.VITE_SUPABASE_URL,
   key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const elevatedKey = key?.startsWith("eyJ")
@@ -49,12 +50,14 @@ export async function query<T = any>(
 export async function preview(operation: string, p: unknown) {
   if (demo) return { valid: true };
   if (!supabase) throw new Error("Supabase is not configured");
-  const { data, error } = await supabase.rpc("transaction_preview", {
-    operation,
-    p,
+  return trackTransaction("Validating transaction", async () => {
+    const { data, error } = await supabase!.rpc("transaction_preview", {
+      operation,
+      p,
+    });
+    if (error) throw new Error(error.message);
+    return data;
   });
-  if (error) throw new Error(error.message);
-  return data;
 }
 const pendingRequests = new Map<string, string>();
 export async function mutate<T = any>(
@@ -63,52 +66,54 @@ export async function mutate<T = any>(
   requestId?: string,
   confirmed = false,
 ): Promise<T> {
+  const labels: Record<string, string> = {
+    employee_create: "Create employee",
+    employee_update: "Save employee changes",
+    employee_delete: "Archive employee",
+    bulk_update: "Update selected employees",
+    movement: "Record movement",
+    void_movement: "Void or correct movement",
+    organization: "Save organization",
+    field: "Save field definition",
+    group: "Save field group",
+    save_view: "Save personal view",
+    scope: "Change access scope",
+    policy: "Change access policy",
+    profile: "Change user account",
+    capability: "Change user capability",
+    workbook: "Change workbook settings",
+    sync_now: "Reconcile workbooks",
+  };
   if (!confirmed) {
-    const labels: Record<string, string> = {
-      employee_create: "Create employee",
-      employee_update: "Save employee changes",
-      employee_delete: "Archive employee",
-      bulk_update: "Update selected employees",
-      movement: "Record movement",
-      void_movement: "Void or correct movement",
-      organization: "Save organization",
-      field: "Save field definition",
-      group: "Save field group",
-      save_view: "Save personal view",
-      scope: "Change access scope",
-      policy: "Change access policy",
-      profile: "Change user account",
-      capability: "Change user capability",
-      workbook: "Change workbook settings",
-      sync_now: "Reconcile workbooks",
-    };
     await requireConfirmation(
       labels[operation] || "Confirm changes",
       "Continue with this transaction? Review your entries before saving.",
     );
   }
-  if (demo) return demoMutate(operation, p) as T;
-  if (!supabase) throw new Error("Supabase is not configured.");
-  const fingerprint = operation + JSON.stringify(p);
-  const id =
-    requestId || pendingRequests.get(fingerprint) || crypto.randomUUID();
-  pendingRequests.set(fingerprint, id);
-  const { data, error } = await supabase.rpc("tracker_mutate", {
-    operation,
-    p,
-    request_id: id,
+  return trackTransaction(labels[operation] || "Saving changes", async () => {
+    if (demo) return demoMutate(operation, p) as T;
+    if (!supabase) throw new Error("Supabase is not configured.");
+    const fingerprint = operation + JSON.stringify(p);
+    const id =
+      requestId || pendingRequests.get(fingerprint) || crypto.randomUUID();
+    pendingRequests.set(fingerprint, id);
+    const { data, error } = await supabase.rpc("tracker_mutate", {
+      operation,
+      p,
+      request_id: id,
+    });
+    if (error)
+      throw new Error(
+        error.code === "23505"
+          ? operation === "field" || operation === "group"
+            ? "This name or machine key already exists, including inactive definitions. Reuse, expand applicability or reactivate the existing definition."
+            : "This code or name is already in use. Review existing records."
+          : error.message,
+      );
+    setTimeout(() => {
+      if (pendingRequests.get(fingerprint) === id)
+        pendingRequests.delete(fingerprint);
+    }, 5000);
+    return data as T;
   });
-  if (error)
-    throw new Error(
-      error.code === "23505"
-        ? operation === "field" || operation === "group"
-          ? "This name or machine key already exists, including inactive definitions. Reuse, expand applicability or reactivate the existing definition."
-          : "This code or name is already in use. Review existing records."
-        : error.message,
-    );
-  setTimeout(() => {
-    if (pendingRequests.get(fingerprint) === id)
-      pendingRequests.delete(fingerprint);
-  }, 5000);
-  return data as T;
 }

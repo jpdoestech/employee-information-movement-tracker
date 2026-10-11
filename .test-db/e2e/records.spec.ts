@@ -114,6 +114,13 @@ test("movement employee search reaches records beyond the loaded employee page",
   await expect(
     page.getByRole("region", { name: "Movement records" }),
   ).toContainText("Synthetic promotion verification");
+  const movementRow = page
+    .getByRole("region", { name: "Movement records" })
+    .locator("tbody tr")
+    .first();
+  expect((await movementRow.boundingBox())!.height).toBe(44);
+  await page.setViewportSize({ width: 375, height: 740 });
+  expect((await movementRow.boundingBox())!.height).toBe(52);
   await page.goto("/#audit");
   await expect(
     page.getByRole("region", { name: "Audit records" }),
@@ -191,4 +198,3 @@ test("client creation prefix produces separate System and Client-based IDs", asy
     await expect(table).toContainText("EMP-");
   }
 });
-

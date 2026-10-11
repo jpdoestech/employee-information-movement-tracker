@@ -10,6 +10,7 @@ import {
   Plus,
 } from "lucide-react";
 import { query } from "../api";
+import { contentWidths } from "../tableSizing";
 import { movementTypes, type Option } from "../domain";
 import { SearchFilterPicker } from "./SearchFilterPicker";
 import { Popover } from "./Popover";
@@ -221,6 +222,55 @@ export function RecordExplorer({
     );
     columns = 6;
   }
+  const columnLabels =
+    kind === "movements"
+      ? [
+          "Employee",
+          "Transaction",
+          "Effective date",
+          "State",
+          "Reason",
+          "Actions",
+        ]
+      : kind === "audit"
+        ? ["Operation", "Entity", "Record reference", "Recorded (Manila)"]
+        : [
+            "Organization",
+            "Code",
+            "Type",
+            "Parent branch",
+            "Status",
+            "Actions",
+          ];
+  const recordWidths = contentWidths(
+    columnLabels,
+    data.items.map((r) =>
+      kind === "movements"
+        ? [
+            r.employee_name || r.employee_number || "Authorized employee",
+            movementTypes.find((t) => t.id === r.type)?.label || r.type || "",
+            r.effective_on || "",
+            r.state || "",
+            r.reason || "—",
+            onCorrect ? "Void / correct" : "",
+          ]
+        : kind === "audit"
+          ? [
+              r.operation?.replaceAll("_", " ") || "",
+              r.entity || "",
+              r.entity_id?.slice(0, 8) || "",
+              when(r.created_at),
+            ]
+          : [
+              r.label || "",
+              r.code || "",
+              r.kind?.replaceAll("_", " ") || "",
+              r.kind === "client" ? r.context || "" : "—",
+              r.active ? "Active" : "Inactive",
+              onEdit ? "Edit" : "",
+            ],
+    ),
+  );
   return (
     <section className="panel data-panel record-explorer">
       <div className="record-heading">
@@ -243,13 +293,7 @@ export function RecordExplorer({
           <input
             type="search"
             aria-label={`Search ${kind}`}
-            placeholder={
-              kind === "audit"
-                ? "Search activity…"
-                : kind === "organization"
-                  ? "Search organizations…"
-                  : "Search movements…"
-            }
+            placeholder="Search…"
             value={filter.search}
             onChange={(e) => set({ search: e.target.value })}
           />
@@ -348,35 +392,6 @@ export function RecordExplorer({
           <span>Reset</span>
         </button>
       </div>
-      {(filter.types.length > 0 || count > 0) && (
-        <div className="chips">
-          {(["types", "states", "branches", "clients"] as const).flatMap(
-            (key) =>
-              filter[key].map((id) => (
-                <button
-                  key={`${key}-${id}`}
-                  aria-label={`Remove filter ${choices.find((o) => o.id === id)?.label || options.find((o) => o.id === id)?.label || id}`}
-                  onClick={() =>
-                    set({ [key]: filter[key].filter((v) => v !== id) })
-                  }
-                >
-                  {choices.find((o) => o.id === id)?.label ||
-                    options.find((o) => o.id === id)?.label ||
-                    id}{" "}
-                  ×
-                </button>
-              )),
-          )}
-          {(["from", "to"] as const).map(
-            (key) =>
-              filter[key] && (
-                <button key={key} onClick={() => set({ [key]: "" })}>
-                  {key === "from" ? "From" : "Through"} {filter[key]} ×
-                </button>
-              ),
-          )}
-        </div>
-      )}
       <div
         className="data-scroll-region"
         tabIndex={0}
@@ -390,7 +405,18 @@ export function RecordExplorer({
         }
         aria-busy={loading}
       >
-        <table aria-label={title}>
+        <table
+          aria-label={title}
+          style={{
+            width: recordWidths.reduce((sum, width) => sum + width, 0),
+            minWidth: recordWidths.reduce((sum, width) => sum + width, 0),
+          }}
+        >
+          <colgroup>
+            {recordWidths.map((width, index) => (
+              <col key={index} style={{ width }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>{headers}</tr>
           </thead>
@@ -399,7 +425,11 @@ export function RecordExplorer({
               <tr key={r.id}>
                 {kind === "movements" ? (
                   <>
-                    <td>
+                    <td
+                      title={[r.employee_name, r.employee_number]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    >
                       <strong>
                         {r.employee_name ||
                           r.employee_number ||
@@ -415,7 +445,7 @@ export function RecordExplorer({
                     <td>
                       <span className="badge">{r.state}</span>
                     </td>
-                    <td>{r.reason || "—"}</td>
+                    <td title={r.reason || "—"}>{r.reason || "—"}</td>
                     <td>
                       {onCorrect && r.state !== "Voided" && (
                         <button onClick={() => onCorrect(r)}>
@@ -426,7 +456,9 @@ export function RecordExplorer({
                   </>
                 ) : kind === "audit" ? (
                   <>
-                    <td>{r.operation?.replaceAll("_", " ")}</td>
+                    <td title={r.operation?.replaceAll("_", " ")}>
+                      {r.operation?.replaceAll("_", " ")}
+                    </td>
                     <td>{r.entity || "—"}</td>
                     <td>
                       <code title={r.entity_id}>
@@ -437,12 +469,14 @@ export function RecordExplorer({
                   </>
                 ) : (
                   <>
-                    <td>
+                    <td title={r.label}>
                       <strong>{r.label}</strong>
                     </td>
                     <td>{r.code || "—"}</td>
                     <td>{r.kind?.replaceAll("_", " ")}</td>
-                    <td>{r.kind === "client" ? r.context : "—"}</td>
+                    <td title={r.kind === "client" ? r.context : undefined}>
+                      {r.kind === "client" ? r.context : "—"}
+                    </td>
                     <td>
                       <span className="badge">
                         {r.active ? "Active" : "Inactive"}

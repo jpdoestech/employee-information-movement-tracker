@@ -1,8 +1,29 @@
-import type { CSSProperties } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { useMemo, type CSSProperties } from "react";
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Hash,
+  UserRound,
+  Building2,
+  BriefcaseBusiness,
+  Activity,
+  Fingerprint,
+  Columns3,
+  type LucideIcon,
+} from "lucide-react";
 import type { Employee, Field, Layout } from "../domain";
-const width = (k: string) =>
-  k === "employee_number" ? 152 : k === "name" ? 232 : 188;
+import { contentWidths } from "../tableSizing";
+const columnIcons: Record<string, LucideIcon> = {
+  employee_number: Hash,
+  name: UserRound,
+  client_employee_number: Fingerprint,
+  status: Activity,
+  position: BriefcaseBusiness,
+  branch: Building2,
+  client: BriefcaseBusiness,
+};
+const columnIcon = (key: string) => columnIcons[key] || Columns3;
 export function EmployeeTable({
   rows,
   fields,
@@ -27,6 +48,15 @@ export function EmployeeTable({
   );
   const pinned = layout.pinned.filter((k) => columns.includes(k));
   const order = [...pinned, ...columns.filter((k) => !pinned.includes(k))];
+  const widths = useMemo(() => {
+    const sized = contentWidths(
+      columns.map((key) => fields.find((f) => f.key === key)?.label || key),
+      rows.map((row) => columns.map((key) => String(row.values[key] ?? "—"))),
+      66,
+    );
+    return Object.fromEntries(columns.map((key, i) => [key, sized[i]]));
+  }, [rows, fields, columns.join("|")]);
+  const width = (key: string) => widths[key];
   function style(k: string): CSSProperties {
     return {
       width: width(k),
@@ -48,6 +78,7 @@ export function EmployeeTable({
     >
       <table
         style={{
+          width: order.reduce((s, k) => s + width(k), onSelect ? 44 : 0),
           minWidth: order.reduce((s, k) => s + width(k), onSelect ? 44 : 0),
         }}
       >
@@ -95,7 +126,13 @@ export function EmployeeTable({
               >
                 {onSort ? (
                   <button type="button" onClick={() => onSort(k)}>
-                    {fields.find((f) => f.key === k)?.label}
+                    <span className="column-heading">
+                      {(() => {
+                        const Icon = columnIcon(k);
+                        return <Icon size={14} aria-hidden />;
+                      })()}
+                      {fields.find((f) => f.key === k)?.label}
+                    </span>
                     {layout.filter.sort === k ? (
                       layout.filter.direction === "asc" ? (
                         <ArrowUp size={13} aria-hidden />
@@ -143,6 +180,7 @@ export function EmployeeTable({
                   key={k}
                   className={`${cls(k)} ${k === "name" ? "employee-name" : k === "employee_number" ? "employee-id" : ""}`}
                   style={style(k)}
+                  title={String(row.values[k] ?? "—")}
                 >
                   {i === 0 && onOpen ? (
                     <button
@@ -159,7 +197,9 @@ export function EmployeeTable({
                       {String(row.values[k] ?? "—")}
                     </span>
                   ) : (
-                    String(row.values[k] ?? "—")
+                    <span className="cell-value">
+                      {String(row.values[k] ?? "—")}
+                    </span>
                   )}
                 </td>
               ))}

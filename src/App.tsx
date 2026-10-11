@@ -71,6 +71,7 @@ export default function App() {
     [rows, setRows] = useState<Employee[]>([]),
     [total, setTotal] = useState(0),
     [selected, setSelected] = useState<string[]>([]),
+    [activeViewId, setActiveViewId] = useState(""),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -203,6 +204,22 @@ export default function App() {
   const readable = fields.filter((f) => f.actions.includes("R") && f.active);
   const tableLayout = { ...layout, filter };
   const currentNav = nav.find((n) => n.id === page) || nav[0];
+  const visibleNav = nav.filter(
+    (n) =>
+      !["fields", "permissions", "sync", "audit"].includes(n.id) ||
+      (n.id === "fields"
+        ? can("schema_manage")
+        : n.id === "permissions"
+          ? ctx?.profile.role === "superadmin"
+          : n.id === "sync"
+            ? can("sync_manage")
+            : can("audit_read")),
+  );
+  const sectionNav = visibleNav.filter((n) =>
+    ["dashboard", "employees", "movements"].includes(page)
+      ? ["dashboard", "employees", "movements"].includes(n.id)
+      : !["dashboard", "employees", "movements"].includes(n.id),
+  );
   async function exportCSV() {
     setBusy(true);
     try {
@@ -339,34 +356,24 @@ export default function App() {
         </a>
         <div className="workspace-label">WORKSPACE</div>
         <nav aria-label="Main navigation" id="workspace-navigation">
-          {nav
-            .filter(
-              (n) =>
-                !["fields", "permissions", "sync", "audit"].includes(n.id) ||
-                (n.id === "fields"
-                  ? can("schema_manage")
-                  : n.id === "permissions"
-                    ? ctx?.profile.role === "superadmin"
-                    : n.id === "sync"
-                      ? can("sync_manage")
-                      : can("audit_read")),
-            )
-            .map((n) => (
-              <Fragment key={n.id}>
-                {n.id === "organization" && (
-                  <span className="nav-group-label">ADMINISTRATION</span>
-                )}
-                <a
-                  key={n.id}
-                  href={`#${n.id}`}
-                  className={page === n.id ? "active" : ""}
-                  aria-current={page === n.id ? "page" : undefined}
-                >
-                  <n.icon size={18} aria-hidden="true" />
-                  {n.label}
-                </a>
-              </Fragment>
-            ))}
+          {visibleNav.map((n) => (
+            <Fragment key={n.id}>
+              {n.id === "organization" && (
+                <span className="nav-group-label">ADMINISTRATION</span>
+              )}
+              <a
+                key={n.id}
+                title={n.label}
+                aria-label={n.label}
+                href={`#${n.id}`}
+                className={page === n.id ? "active" : ""}
+                aria-current={page === n.id ? "page" : undefined}
+              >
+                <n.icon size={18} aria-hidden="true" />
+                <span className="rail-label">{n.label}</span>
+              </a>
+            </Fragment>
+          ))}
         </nav>
         <div className="sidebar-bottom">
           <ShieldCheck size={19} />
@@ -393,10 +400,21 @@ export default function App() {
           >
             <Menu size={22} />
           </button>
-          <div>
-            <span className="breadcrumb">Workspace / </span>
+          <div className="workspace-title">
+            <span className="breadcrumb">Employee Tracker</span>
             <h1>{currentNav.label}</h1>
           </div>
+          <nav className="section-navigation" aria-label="Section navigation">
+            {sectionNav.map((n) => (
+              <a
+                key={n.id}
+                href={`#${n.id}`}
+                aria-current={page === n.id ? "page" : undefined}
+              >
+                {n.label}
+              </a>
+            ))}
+          </nav>
           <div className="account">
             {isDemo() && (
               <span
@@ -568,7 +586,8 @@ export default function App() {
           {ctx && page === "employees" && (
             <section className="panel register">
               <div className="section-heading">
-                <div>
+                <div className="register-heading">
+                  <h2>Employee records</h2>
                   <span className="record-count">
                     <strong>{total}</strong> records
                   </span>
@@ -716,8 +735,9 @@ export default function App() {
                       .filter((v) => v.name !== "__active__")
                       .map((v) => ({ id: v.id, label: v.name })),
                   ]}
-                  value={[]}
+                  value={activeViewId ? [activeViewId] : []}
                   onChange={(v) => {
+                    setActiveViewId(v[0] || "");
                     const view = ctx.views.find((x) => x.id === v[0]);
                     if (view) {
                       const safe = reconcileLayout(view.config, fields);
