@@ -1,7 +1,7 @@
 import { RecordExplorer } from "../components/RecordExplorer";
 import { FloatingNotification } from "../components/FloatingNotification";
-import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
+import { Plus, Search, FolderPlus } from "lucide-react";
 import { query, mutate } from "../api";
 import { Dialog } from "../components/Dialog";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
@@ -153,6 +153,8 @@ export function FieldBuilder({
     [draft, setDraft] = useState<any>(),
     [group, setGroup] = useState<any>(),
     [search, setSearch] = useState(""),
+    [groupFilter, setGroupFilter] = useState<string[]>([]),
+    [stateFilter, setStateFilter] = useState<string[]>([]),
     [targets, setTargets] = useState<string[]>([]),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -242,94 +244,171 @@ export function FieldBuilder({
   }
   return (
     <>
-      <div className="section-heading">
-        <div>
-          <h2>Field definitions</h2>
-          <p>
-            Configure fields once. Authorized forms and column choosers update
-            automatically.
-          </p>
-        </div>
-        <div className="actions">
-          <button
-            onClick={() =>
-              setGroup({ name: "", description: "", active: true })
-            }
-          >
-            New group
-          </button>
-          <button className="primary" onClick={() => edit()}>
-            <Plus size={16} />
-            New field
-          </button>
-        </div>
-      </div>
-      <label className="search-control">
-        Search fields
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search active and inactive definitions"
-        />
-      </label>
-      {groups.map((g: any) => (
-        <section className="panel field-group" key={g.id}>
-          <div className="section-heading">
-            <div>
-              <h3>{g.name}</h3>
-              <p>
-                {g.description ||
-                  "Group permissions can inherit to new fields."}
-              </p>
-            </div>
+      <section className="admin-workspace field-workspace panel data-panel">
+        <div className="record-heading">
+          <div>
+            <h2>Field definitions</h2>
+            <span>{fields.length} definitions</span>
+          </div>
+          <div className="actions">
             <button
               onClick={() =>
-                setGroup({ ...g, expected_version: g.row_version })
+                setGroup({ name: "", description: "", active: true })
               }
             >
-              Edit group
+              <FolderPlus size={15} aria-hidden />
+              New group
+            </button>
+            <button className="primary" onClick={() => edit()}>
+              <Plus size={15} aria-hidden />
+              New field
             </button>
           </div>
-          {fields
-            .filter(
-              (f) =>
-                f.group_id === g.id &&
-                f.label.toLowerCase().includes(search.toLowerCase()),
-            )
-            .map((f) => (
-              <div className="field-row" key={f.id}>
-                <div>
-                  <strong>{f.label}</strong>
-                  <small>
-                    {f.key} · {f.type} ·{" "}
-                    {f.scope_mode === "all"
-                      ? "All authorized targets"
-                      : "Selected targets"}
-                  </small>
-                </div>
-                <span className="badge">
-                  {f.sensitivity === "restricted"
-                    ? "Explicit grant required"
-                    : f.active
-                      ? "Active"
-                      : "Inactive"}
-                </span>
-                {f.type !== "system" && (
-                  <button onClick={() => edit(f)}>Edit field</button>
-                )}
-              </div>
-            ))}
-        </section>
-      ))}
+        </div>
+        <div className="filterbar">
+          <label className="search-control">
+            <Search size={16} aria-hidden />
+            <input
+              type="search"
+              aria-label="Search fields"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search definitions�"
+            />
+          </label>
+          <SearchFilterPicker
+            mode="multiple"
+            label="Field groups"
+            options={groups.map((g: any) => ({ id: g.id, label: g.name }))}
+            value={groupFilter}
+            onChange={setGroupFilter}
+          />
+          <SearchFilterPicker
+            mode="multiple"
+            label="Definition status"
+            options={[
+              { id: "active", label: "Active" },
+              { id: "inactive", label: "Inactive" },
+            ]}
+            value={stateFilter}
+            onChange={setStateFilter}
+          />
+        </div>
+        <div
+          className="data-scroll-region definition-list"
+          role="region"
+          aria-label="Field definitions"
+          tabIndex={0}
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Machine key</th>
+                <th>Type</th>
+                <th>Applicability</th>
+                <th>Status</th>
+                <th>
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {groups
+                .filter(
+                  (g: any) => !groupFilter.length || groupFilter.includes(g.id),
+                )
+                .map((g: any) => {
+                  const matching = fields.filter(
+                    (f) =>
+                      f.group_id === g.id &&
+                      `${f.label} ${f.key} ${f.help_text || ""}`
+                        .toLowerCase()
+                        .includes(search.toLowerCase()) &&
+                      (!stateFilter.length ||
+                        stateFilter.includes(f.active ? "active" : "inactive")),
+                  );
+                  if (!matching.length && (search || stateFilter.length))
+                    return null;
+                  return (
+                    <Fragment key={g.id}>
+                      <tr className="definition-group">
+                        <th colSpan={6}>
+                          <div>
+                            <strong>{g.name}</strong>
+                            <small>
+                              {matching.length} fields
+                              {!g.active ? " � Inactive group" : ""}
+                            </small>
+                            <button
+                              onClick={() =>
+                                setGroup({
+                                  ...g,
+                                  expected_version: g.row_version,
+                                })
+                              }
+                              aria-label={`Edit group ${g.name}`}
+                            >
+                              Edit group
+                            </button>
+                          </div>
+                        </th>
+                      </tr>
+                      {matching.map((f) => (
+                        <tr key={f.id}>
+                          <td>
+                            <strong>{f.label}</strong>
+                            {f.sensitivity === "restricted" && (
+                              <small>Explicit field grant</small>
+                            )}
+                          </td>
+                          <td>
+                            <code>{f.key}</code>
+                          </td>
+                          <td>{f.type.replaceAll("_", " ")}</td>
+                          <td>
+                            {f.scope_mode === "all"
+                              ? "All authorized targets"
+                              : "Selected targets"}
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${f.active ? "success" : ""}`}
+                            >
+                              {f.active ? "Active" : "Inactive"}
+                            </span>
+                          </td>
+                          <td>
+                            {f.type !== "system" && (
+                              <button
+                                onClick={() => edit(f)}
+                                aria-label={`Edit field ${f.label}`}
+                              >
+                                Edit field
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+        <div className="admin-panel-footer">
+          New fields follow configured inheritance; restricted fields require
+          explicit grants.
+        </div>
+      </section>
       {draft && (
         <Dialog
           title={draft.id ? "Edit field definition" : "Create field definition"}
           onClose={() => setDraft(undefined)}
           wide
         >
-          <div className="dialog-body">
-            <p>
+          <div className="dialog-body definition-editor">
+            <p className="form-note">
               Existing active and inactive names are checked by the database.
               Reuse or expand a matching field rather than duplicating it.
             </p>
@@ -352,30 +431,39 @@ export function FieldBuilder({
                   pattern="[a-z][a-z0-9_]*"
                 />
               </label>
-              <SearchFilterPicker
-                mode="single"
-                label="Field group"
-                options={groups.map((g: any) => ({ id: g.id, label: g.name }))}
-                value={[draft.group_id]}
-                onChange={(v) => setDraft({ ...draft, group_id: v[0] })}
-              />
-              <SearchFilterPicker
-                mode="single"
-                label="Field type"
-                options={[
-                  "short_text",
-                  "long_text",
-                  "integer",
-                  "decimal",
-                  "date",
-                  "checkbox",
-                  "select",
-                  "email",
-                  "phone",
-                ].map((id) => ({ id, label: id.replace("_", " ") }))}
-                value={[draft.type]}
-                onChange={(v) => setDraft({ ...draft, type: v[0] })}
-              />
+              <div className="form-control">
+                <span>Field group</span>
+                <SearchFilterPicker
+                  mode="single"
+                  label="Field group"
+                  options={groups.map((g: any) => ({
+                    id: g.id,
+                    label: g.name,
+                  }))}
+                  value={[draft.group_id]}
+                  onChange={(v) => setDraft({ ...draft, group_id: v[0] })}
+                />
+              </div>
+              <div className="form-control">
+                <span>Field type</span>
+                <SearchFilterPicker
+                  mode="single"
+                  label="Field type"
+                  options={[
+                    "short_text",
+                    "long_text",
+                    "integer",
+                    "decimal",
+                    "date",
+                    "checkbox",
+                    "select",
+                    "email",
+                    "phone",
+                  ].map((id) => ({ id, label: id.replace("_", " ") }))}
+                  value={[draft.type]}
+                  onChange={(v) => setDraft({ ...draft, type: v[0] })}
+                />
+              </div>
             </div>
             <label>
               Help text

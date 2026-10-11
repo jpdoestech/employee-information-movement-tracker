@@ -2812,3 +2812,302 @@ textarea:focus {
     max-width: min(220px, 100%);
   }
 }
+/* Compact administration workspaces share the register's stationary frame. */
+.admin-workspace {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.admin-workspace .record-heading {
+  flex: none;
+  padding: 8px 12px;
+}
+.admin-workspace .record-heading h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.admin-workspace .record-heading span {
+  font-size: 12px;
+}
+.admin-workspace .filterbar {
+  flex: none;
+  padding: 6px 12px;
+}
+.admin-panel-footer {
+  flex: none;
+  padding: 6px 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+}
+.definition-list table {
+  min-width: 880px;
+  table-layout: auto;
+  width: max-content;
+}
+.definition-list td,
+.definition-list th {
+  padding: 5px 12px;
+  font-size: 13px;
+  height: 36px;
+  white-space: nowrap;
+}
+.definition-list td:first-child {
+  min-width: 180px;
+}
+.definition-list td small {
+  display: block;
+  font-size: 11px;
+  line-height: 14px;
+}
+.definition-list code {
+  font-size: 12px;
+}
+.definition-list .definition-group th {
+  position: static;
+  background: var(--tint);
+}
+.definition-group div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.definition-group small {
+  color: var(--muted);
+  font-weight: 400;
+}
+.definition-group button {
+  margin-left: auto;
+  border-color: transparent;
+  background: transparent;
+}
+.definition-editor {
+  display: grid;
+  gap: 12px;
+}
+.definition-editor > p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.definition-editor label,
+.definition-editor .checks label {
+  margin: 0;
+  gap: 4px;
+}
+.definition-editor .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 0;
+}
+.form-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.form-control > .picker {
+  width: 100%;
+}
+.form-control .picker-trigger {
+  width: 100%;
+}
+.definition-editor .checks {
+  gap: 8px 16px;
+  margin: 0;
+}
+.admin-tabs {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  padding: 4px 8px;
+  overflow-x: auto;
+}
+.admin-tabs button {
+  white-space: nowrap;
+  background: transparent;
+  border-color: transparent;
+}
+.admin-tabs button[aria-current] {
+  background: var(--tint);
+  color: var(--primary);
+}
+.admin-scroll-region {
+  overflow: auto;
+  min-height: 0;
+  padding: 8px 0;
+}
+.security-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+  gap: 12px;
+}
+.security-workspace .panel {
+  padding: 12px;
+  margin: 0;
+}
+.security-workspace h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.security-workspace p {
+  font-size: 12px;
+  margin: 4px 0 10px;
+}
+.security-workspace label {
+  margin: 8px 0;
+  gap: 4px;
+  font-size: 13px;
+}
+.security-workspace .checks {
+  gap: 6px 14px;
+  margin: 6px 0;
+}
+.security-workspace .checks label {
+  margin: 0;
+  padding-block: 4px;
+}
+.security-workspace .form-grid {
+  gap: 10px;
+  margin: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+.security-workspace .form-grid > .picker {
+  margin: 4px 0 8px;
+}
+.security-workspace .field-row {
+  padding: 8px 0;
+  gap: 8px;
+  font-size: 13px;
+}
+.security-workspace .field-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.security-workspace .field-row button {
+  flex: none;
+}
+.security-workspace hr {
+  margin: 14px 0;
+}
+.security-workspace .account-form,
+.security-workspace .register-policy {
+  max-width: 920px;
+}
+.row-number-preference {
+  margin: 0 0 10px;
+  font-size: 13px;
+  gap: 8px;
+}
+.row-number-preference small {
+  color: var(--muted);
+  font-weight: 400;
+}
+.table-region .row-ordinal {
+  position: sticky;
+  left: 0;
+  width: 48px;
+  min-width: 48px;
+  padding: 0 6px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  z-index: 3;
+}
+.table-region th.row-ordinal {
+  z-index: 6;
+}
+.table-region .selection {
+  left: var(--row-number-width, 0px);
+}
+@media (max-width: 1100px) {
+  .security-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .admin-workspace .record-heading {
+    padding: 6px 8px;
+  }
+  .admin-workspace .record-heading > div {
+    min-width: 0;
+  }
+  .admin-workspace .record-heading .actions {
+    flex-wrap: nowrap;
+  }
+  .admin-workspace .record-heading .actions button {
+    padding-inline: 8px;
+    gap: 4px;
+  }
+  .definition-list td,
+  .definition-list th {
+    height: 50px;
+  }
+  .definition-editor .form-grid,
+  .security-workspace .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .security-workspace .panel {
+    padding: 10px;
+  }
+  .admin-tabs {
+    gap: 0;
+  }
+  .admin-tabs button {
+    font-size: 12px;
+    padding-inline: 8px;
+  }
+  .row-number-preference {
+    flex-wrap: wrap;
+  }
+  .table-region:has(th.selection) .pin-0 {
+    left: calc(var(--row-number-width, 0px) + 44px) !important;
+  }
+  .table-region:not(:has(th.selection)) .pin-0 {
+    left: var(--row-number-width, 0px) !important;
+  }
+}
+.security-form > button,
+.account-form > button {
+  margin: 4px 6px 4px 0;
+}
+.security-workspace .form-control {
+  margin-bottom: 8px;
+}
+.security-workspace .form-control > .picker {
+  width: 100%;
+}
+.security-grid {
+  align-items: start;
+}
+@media (min-width: 761px) {
+  .security-workspace label:has(> input[type="checkbox"]),
+  .definition-editor label:has(> input[type="checkbox"]) {
+    min-height: 32px;
+  }
+}
+.compat-dropdown-surface {
+  position: absolute;
+  z-index: 10;
+  width: min(100%, 420px);
+  max-height: min(320px, 50dvh);
+  overflow: auto;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.compat-dropdown-surface > button {
+  width: 100%;
+  text-align: left;
+  justify-content: start;
+  border-color: transparent;
+}

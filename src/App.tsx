@@ -575,6 +575,7 @@ export default function App() {
                   rows={rows.slice(0, 5)}
                   fields={fields}
                   layout={tableLayout}
+                  rowNumbersAllowed={ctx.register_settings.row_numbers_allowed}
                   onOpen={(r) => {
                     setEditing(r);
                     setDialog("employee");
@@ -804,6 +805,7 @@ export default function App() {
                 rows={rows}
                 fields={fields}
                 layout={tableLayout}
+                rowNumbersAllowed={ctx.register_settings.row_numbers_allowed}
                 selected={selected}
                 onSelect={setSelected}
                 onOpen={(r) => {
@@ -954,6 +956,7 @@ export default function App() {
       {ctx && dialog === "columns" && (
         <ColumnDesigner
           layout={tableLayout}
+          rowNumbersAllowed={ctx.register_settings.row_numbers_allowed}
           fields={fields}
           rows={rows}
           onClose={() => setDialog(null)}

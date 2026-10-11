@@ -142,6 +142,7 @@ const context: Context = {
   },
   today: localToday(),
   revision: 1,
+  register_settings: { row_numbers_allowed: true, row_version: 1 },
   fields,
   groups: [
     { id: "core", name: "Core identity", active: true, row_version: 1 },
@@ -442,6 +443,13 @@ export async function demoMutate(op: string, p: any) {
         active: true,
         row_version: 1,
       });
+  } else if (op === "register_settings") {
+    if (p.expected_version !== context.register_settings.row_version)
+      throw new Error("Register settings changed; reload before saving");
+    context.register_settings = {
+      row_numbers_allowed: p.row_numbers_allowed,
+      row_version: context.register_settings.row_version + 1,
+    };
   } else if (op === "save_view") {
     const v = context.views.find((v) => v.name === p.name);
     if (v) v.config = p.config;

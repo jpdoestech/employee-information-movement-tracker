@@ -45,6 +45,11 @@ export async function query<T = any>(
     special ? { q } : { operation, q },
   );
   if (error) throw new Error(error.message);
+  if (operation === "context") {
+    const settings = await supabase.rpc("register_settings");
+    if (settings.error) throw new Error(settings.error.message);
+    return { ...data, register_settings: settings.data } as T;
+  }
   return data as T;
 }
 export async function preview(operation: string, p: unknown) {
@@ -77,6 +82,7 @@ export async function mutate<T = any>(
     field: "Save field definition",
     group: "Save field group",
     save_view: "Save personal view",
+    register_settings: "Save register display policy",
     scope: "Change access scope",
     policy: "Change access policy",
     profile: "Change user account",
@@ -97,11 +103,14 @@ export async function mutate<T = any>(
     const id =
       requestId || pendingRequests.get(fingerprint) || crypto.randomUUID();
     pendingRequests.set(fingerprint, id);
-    const { data, error } = await supabase.rpc("tracker_mutate", {
-      operation,
-      p,
-      request_id: id,
-    });
+    const { data, error } =
+      operation === "register_settings"
+        ? await supabase.rpc("set_register_settings", { p, request_id: id })
+        : await supabase.rpc("tracker_mutate", {
+            operation,
+            p,
+            request_id: id,
+          });
     if (error)
       throw new Error(
         error.code === "23505"

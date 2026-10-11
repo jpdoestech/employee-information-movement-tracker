@@ -213,6 +213,111 @@ try {
       "2",
     );
   });
+  await test("register display policy denies non-superadmins, raw access and anonymous calls", async () => {
+    const read = () =>
+      as(id.viewer, (c) =>
+        c.query("select public.register_settings() r").then((r) => r.rows[0].r),
+      );
+    assert.equal((await read()).row_numbers_allowed, true);
+    for (const user of [id.admin, id.viewer])
+      await assert.rejects(
+        as(user, (c) =>
+          c.query("select public.set_register_settings($1,$2)", [
+            { row_numbers_allowed: false, expected_version: 1, reason: "Test" },
+            randomUUID(),
+          ]),
+        ),
+        (e) => e.code === "42501",
+      );
+    await assert.rejects(
+      as(id.sa, (c) =>
+        c.query(
+          "update public.register_display_settings set row_numbers_allowed=false where id=true",
+        ),
+      ),
+      (e) => e.code === "42501",
+    );
+    await assert.rejects(
+      as(null, (c) => c.query("select public.register_settings()"), "anon"),
+      (e) => e.code === "42501",
+    );
+  });
+  await test("register policy saves are atomic, versioned, audited and idempotent", async () => {
+    const request = randomUUID(),
+      payload = {
+        row_numbers_allowed: false,
+        expected_version: 1,
+        reason: "Hide row ordinals",
+      };
+    const save = (p, req = randomUUID()) =>
+      as(id.sa, (c) =>
+        c
+          .query("select public.set_register_settings($1,$2) r", [p, req])
+          .then((r) => r.rows[0].r),
+      );
+    const result = await save(payload, request);
+    assert.equal(result.row_numbers_allowed, false);
+    assert.equal(result.row_version, 2);
+    assert.deepEqual(await save(payload, request), result);
+    await assert.rejects(
+      save({ ...payload, row_numbers_allowed: true }, request),
+    );
+    await assert.rejects(
+      save({ ...payload, row_numbers_allowed: true }),
+      (e) => e.code === "40001",
+    );
+    assert.equal(
+      (
+        await owner.query(
+          "select count(*) n from public.audit_log where entity='register_settings'",
+        )
+      ).rows[0].n,
+      "1",
+    );
+    await save({
+      row_numbers_allowed: true,
+      expected_version: 2,
+      reason: "Restore row ordinals",
+    });
+    const clients = await Promise.all(
+      [0, 1].map(async () => {
+        const c = db.getPgClient();
+        await c.connect();
+        opened.push(c);
+        return c;
+      }),
+    );
+    const outcomes = await Promise.allSettled(
+      clients.map((c) =>
+        as(
+          id.sa,
+          (c) =>
+            c.query("select public.set_register_settings($1,$2)", [
+              {
+                row_numbers_allowed: false,
+                expected_version: 3,
+                reason: "Concurrent setting",
+              },
+              randomUUID(),
+            ]),
+          "authenticated",
+          c,
+        ),
+      ),
+    );
+    assert.equal(outcomes.filter((r) => r.status === "fulfilled").length, 1);
+    assert.equal(
+      outcomes.filter(
+        (r) => r.status === "rejected" && r.reason.code === "40001",
+      ).length,
+      1,
+    );
+    await save({
+      row_numbers_allowed: true,
+      expected_version: 4,
+      reason: "Restore after race",
+    });
+  });
   await test("raw tables and alternate privilege escalation denied", async () => {
     for (const t of [
       "employees",

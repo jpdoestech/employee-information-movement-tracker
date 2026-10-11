@@ -43,11 +43,17 @@ export type Filter = {
   limit: number;
   offset: number;
 };
-export type Layout = { columns: string[]; pinned: string[]; filter: Filter };
+export type Layout = {
+  columns: string[];
+  pinned: string[];
+  filter: Filter;
+  showRowNumbers?: boolean;
+};
 export type Context = {
   profile: { id: string; display_name: string; role: string };
   today: string;
   revision: number;
+  register_settings: { row_numbers_allowed: boolean; row_version: number };
   fields: Field[];
   groups: {
     id: string;

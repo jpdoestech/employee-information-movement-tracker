@@ -33,6 +33,7 @@ export function EmployeeTable({
   selected = [],
   onSelect,
   preview = false,
+  rowNumbersAllowed = false,
 }: {
   rows: Employee[];
   fields: Field[];
@@ -42,7 +43,10 @@ export function EmployeeTable({
   selected?: string[];
   onSelect?: (ids: string[]) => void;
   preview?: boolean;
+  rowNumbersAllowed?: boolean;
 }) {
+  const numbered = rowNumbersAllowed && layout.showRowNumbers !== false;
+  const leadingWidth = (numbered ? 48 : 0) + (onSelect ? 44 : 0);
   const columns = layout.columns.filter((k) =>
     fields.some((f) => f.key === k && f.actions.includes("R")),
   );
@@ -61,7 +65,7 @@ export function EmployeeTable({
     return {
       width: width(k),
       minWidth: width(k),
-      "--pin-left": `${pinned.slice(0, pinned.indexOf(k)).reduce((n, c) => n + width(c), 0) + (onSelect ? 44 : 0)}px`,
+      "--pin-left": `${pinned.slice(0, pinned.indexOf(k)).reduce((n, c) => n + width(c), 0) + leadingWidth}px`,
     } as CSSProperties;
   }
   function cls(k: string) {
@@ -74,12 +78,15 @@ export function EmployeeTable({
     <div
       className="table-region"
       tabIndex={0}
+      style={
+        { "--row-number-width": `${numbered ? 48 : 0}px` } as CSSProperties
+      }
       aria-label={preview ? "Live column preview" : "Scrollable employee table"}
     >
       <table
         style={{
-          width: order.reduce((s, k) => s + width(k), onSelect ? 44 : 0),
-          minWidth: order.reduce((s, k) => s + width(k), onSelect ? 44 : 0),
+          width: order.reduce((s, k) => s + width(k), leadingWidth),
+          minWidth: order.reduce((s, k) => s + width(k), leadingWidth),
         }}
       >
         <caption className="sr-only">
@@ -89,6 +96,11 @@ export function EmployeeTable({
         </caption>
         <thead>
           <tr>
+            {numbered && (
+              <th className="row-ordinal" scope="col" aria-label="Row number">
+                No.
+              </th>
+            )}
             {onSelect && (
               <th className="selection">
                 <input
@@ -153,12 +165,17 @@ export function EmployeeTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {rows.map((row, rowIndex) => (
             <tr
               key={row.id}
               className={selected.includes(row.id) ? "selected-row" : ""}
               aria-selected={onSelect ? selected.includes(row.id) : undefined}
             >
+              {numbered && (
+                <td className="row-ordinal">
+                  {(preview ? 0 : layout.filter.offset) + rowIndex + 1}
+                </td>
+              )}
               {onSelect && (
                 <td className="selection">
                   <input

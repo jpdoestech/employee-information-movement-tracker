@@ -558,13 +558,13 @@ for (const width of [375, 1440]) {
       "Employee Name",
     );
     await expect(
-      dialog.getByRole("table").getByRole("columnheader").first(),
+      dialog.getByRole("table").locator("thead th:not(.row-ordinal)").first(),
     ).toContainText("System ID");
     await dialog
       .getByRole("button", { name: "Pin employee_number", exact: true })
       .click();
     await expect(
-      dialog.getByRole("table").getByRole("columnheader").first(),
+      dialog.getByRole("table").locator("thead th:not(.row-ordinal)").first(),
     ).toContainText("Employee Name");
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     await page
@@ -585,8 +585,8 @@ for (const width of [375, 1440]) {
     await expect(
       page
         .getByLabel("Scrollable employee table")
-        .getByRole("columnheader")
-        .nth(1),
+        .locator("thead th:not(.row-ordinal):not(.selection)")
+        .first(),
     ).toContainText("System ID");
   });
 }

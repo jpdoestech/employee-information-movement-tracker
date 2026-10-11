@@ -17,12 +17,14 @@ export function ColumnDesigner({
   rows,
   onApply,
   onClose,
+  rowNumbersAllowed,
 }: {
   layout: Layout;
   fields: Field[];
   rows: Employee[];
   onApply: (draft: Layout, name: string) => Promise<void>;
   onClose: () => void;
+  rowNumbersAllowed: boolean;
 }) {
   const [draft, setDraft] = useState(structuredClone(layout)),
     [name, setName] = useState("My employee view"),
@@ -60,6 +62,22 @@ export function ColumnDesigner({
             />
           </div>
         </div>
+        <label className="row-number-preference">
+          <input
+            type="checkbox"
+            disabled={!rowNumbersAllowed}
+            checked={rowNumbersAllowed && draft.showRowNumbers !== false}
+            onChange={(e) =>
+              setDraft({ ...draft, showRowNumbers: e.target.checked })
+            }
+          />
+          Show row numbers{" "}
+          <small>
+            {rowNumbersAllowed
+              ? "Fixed first column"
+              : "Disabled by the superadmin"}
+          </small>
+        </label>
         <div className="column-designer-grid">
           <section className="column-order">
             <h3>
@@ -130,6 +148,7 @@ export function ColumnDesigner({
               fields={fields}
               layout={draft}
               preview
+              rowNumbersAllowed={rowNumbersAllowed}
             />
           </section>
         </div>
