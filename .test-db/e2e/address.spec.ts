@@ -229,35 +229,59 @@ test("debounced concurrent searches share loading and ignore obsolete results", 
   page,
 }) => {
   let requests = 0;
+  let releaseIndex!: () => void;
+  const indexResponse = new Promise<void>((resolve) => {
+    releaseIndex = resolve;
+  });
   await page.route("**/barangay-search-index.json*", async (route) => {
     requests++;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Keep loading observable until the assertion, regardless of runner speed.
+    await indexResponse;
     await route.continue();
   });
-  await editor(page);
-  const home = page.getByRole("group", { name: "Home Address", exact: true }),
-    current = page.getByRole("group", { name: "Current Address", exact: true });
-  await home
-    .getByRole("combobox", { name: "Barangay", exact: true })
-    .fill("Agd");
-  await expect.poll(() => requests).toBe(1);
-  await current
-    .getByRole("combobox", { name: "Barangay", exact: true })
-    .fill("San");
-  await current
-    .getByRole("combobox", { name: "Barangay", exact: true })
-    .fill("DefinitelyAbsent");
-  await expect(
-    page.getByText("Loading Philippine locations", { exact: false }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("No matching locations.", { exact: true }),
-  ).toBeVisible();
-  expect(requests).toBe(1);
-  await expect(page.getByRole("option")).toHaveCount(0);
-  await home.getByRole("combobox", { name: "Barangay", exact: true }).click();
-  await expect(
-    page.getByRole("option", { name: /Agdao City of Davao/ }),
-  ).toBeVisible();
-  expect(requests).toBe(1);
+  try {
+    await editor(page);
+    await page.clock.install();
+    const home = page.getByRole("group", { name: "Home Address", exact: true }),
+      current = page.getByRole("group", {
+        name: "Current Address",
+        exact: true,
+      });
+    await home
+      .getByRole("combobox", { name: "Barangay", exact: true })
+      .fill("Agd");
+    await expect.poll(() => requests).toBe(1);
+    await current
+      .getByRole("combobox", { name: "Barangay", exact: true })
+      .fill("San");
+    // Let this search join the pending index load before making it obsolete.
+    await page.clock.runFor(150);
+    await current
+      .getByRole("combobox", { name: "Barangay", exact: true })
+      .fill("DefinitelyAbsent");
+    await page.clock.runFor(150);
+    await expect(
+      page.getByText("Loading Philippine locations", { exact: false }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Loading locations...", { exact: true }),
+    ).toBeVisible();
+    expect(requests).toBe(1);
+    releaseIndex();
+    await expect(
+      page.getByText("No matching locations.", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Loading Philippine locations", { exact: false }),
+    ).toHaveCount(0);
+    expect(requests).toBe(1);
+    await expect(page.getByRole("option")).toHaveCount(0);
+    await home.getByRole("combobox", { name: "Barangay", exact: true }).click();
+    await expect(
+      page.getByRole("option", { name: /Agdao City of Davao/ }),
+    ).toBeVisible();
+    expect(requests).toBe(1);
+  } finally {
+    releaseIndex();
+  }
 });
