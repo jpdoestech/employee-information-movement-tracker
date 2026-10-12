@@ -61,6 +61,9 @@ export type Context = {
     active: boolean;
     row_version: number;
     description?: string;
+    display_order?: number;
+    tab_name?: string;
+    tab_order?: number;
   }[];
   capabilities: string[];
   views: { id: string; name: string; config: Layout }[];

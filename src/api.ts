@@ -81,6 +81,7 @@ export async function mutate<T = any>(
     organization: "Save organization",
     field: "Save field definition",
     group: "Save field group",
+    form_layout: "Save employee form tabs",
     save_view: "Save personal view",
     register_settings: "Save register display policy",
     scope: "Change access scope",

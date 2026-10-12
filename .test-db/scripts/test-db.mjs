@@ -1,4 +1,5 @@
 import EmbeddedPostgres from "embedded-postgres";
+import { employeeFixture } from "./employee-fixtures.mjs";
 import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
@@ -77,7 +78,11 @@ const q = (user, op, p = {}) =>
 const m = (user, op, p, req = randomUUID()) =>
   as(user, (c) =>
     c
-      .query("select public.tracker_mutate($1,$2,$3) r", [op, p, req])
+      .query("select public.tracker_mutate($1,$2,$3) r", [
+        op,
+        employeeFixture(op, p),
+        req,
+      ])
       .then((r) => r.rows[0].r),
   );
 const worker = (op, p = {}) =>
@@ -118,7 +123,7 @@ async function concurrent(
               c
                 .query("select public.tracker_mutate($1,$2,$3) r", [
                   operation,
-                  p,
+                  employeeFixture(operation, p),
                   requestIds[i] || randomUUID(),
                 ])
                 .then((r) => r.rows[0].r),
@@ -577,7 +582,7 @@ try {
     );
     assert.equal(
       (await q(id.sa, "employee", { id: e1 })).employee.values.name,
-      "Synthetic Renamed",
+      "Test, Synthetic Renamed",
     );
   });
   await test("future transfer preserves today; GiST prevents primary overlaps", async () => {
@@ -917,7 +922,7 @@ try {
         "bulk_update",
         {
           rows: [{ id: e1, row_version: v }],
-          values: { name: "Preview only" },
+          values: { first_name: "Preview only" },
         },
       ]),
     );
@@ -1279,6 +1284,13 @@ try {
           .query("select public.field_scope_preview($1) r", [p])
           .then((r) => r.rows[0].r),
       );
+    const hiddenParts = await draftPreview(user, { scope_mode: "all" });
+    assert.equal(hiddenParts.scoped_employee_count, 0);
+    assert.deepEqual(hiddenParts.samples, []);
+    await owner.query(
+      "insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'R','allow' from public.field_definitions where key=any(array['last_name','first_name','middle_name','suffix'])",
+      [user],
+    );
     const result = await draftPreview(user, { scope_mode: "all" });
     assert.equal(result.resolved_targets, 2); // Assigned branch and its one client only.
     assert(result.scoped_employee_count > 0);
@@ -1420,7 +1432,7 @@ try {
     });
     for (const [i, r] of records.entries()) {
       const row = (await q(id.sa, "employee", { id: r.id })).employee;
-      assert.equal(row.values.name, "Synthetic bulk changed");
+      assert.equal(row.values.name, "Test, Synthetic bulk changed");
       assert.equal(row.values.email, "bulk@example.invalid");
       assert.equal(row.values.secret_note, "Hidden preserved " + i);
       assert(
@@ -2121,6 +2133,168 @@ try {
       sheetsApiRequests: 0,
       googleIntegration: "Not configured; no live API calls",
     });
+  });
+  await test("structured names require separate identity values and preserve legacy records", async () => {
+    await assert.rejects(
+      as(id.sa, (c) =>
+        c.query("select public.tracker_mutate('employee_create',$1,$2)", [
+          { values: { name: "Unstructured input" } },
+          randomUUID(),
+        ]),
+      ),
+      { code: "22023" },
+    );
+    const created = await m(id.sa, "employee_create", {
+      values: {
+        last_name: "Cruz",
+        first_name: "Ana",
+        middle_name: "Maria",
+        suffix: "Jr.",
+      },
+    });
+    const record = (await q(id.sa, "employee", { id: created.id })).employee;
+    assert.equal(record.values.name, "Cruz, Ana Maria Jr.");
+    assert.equal(record.values.first_name, "Ana");
+    await assert.rejects(
+      m(id.sa, "employee_update", {
+        id: created.id,
+        expected_version: record.row_version,
+        values: { last_name: null },
+      }),
+      { code: "22023" },
+    );
+    const after = (await q(id.sa, "employee", { id: created.id })).employee;
+    assert.equal(after.row_version, record.row_version);
+    assert.equal(after.values.last_name, "Cruz");
+    const legacy = (
+      await owner.query(
+        "insert into public.employees(name) values('Preserved legacy identity') returning id",
+      )
+    ).rows[0];
+    assert.equal(
+      (await q(id.sa, "employee", { id: legacy.id })).employee.values.name,
+      "Preserved legacy identity",
+    );
+    assert.equal(
+      (await q(id.sa, "employee", { id: legacy.id })).employee.values
+        .first_name,
+      null,
+    );
+  });
+  await test("component denials suppress combined name search and permit authorized blind updates", async () => {
+    const user = randomUUID();
+    await owner.query("insert into auth.users(id) values($1);", [user]);
+    await owner.query(
+      "insert into public.user_profiles(id,display_name,role) values($1,'Synthetic name operator','admin')",
+      [user],
+    );
+    await owner.query(
+      "insert into public.user_scope_grants(user_id,scope_type,actions) values($1,'unassigned',array['C','R','U','D'])",
+      [user],
+    );
+    await owner.query(
+      "insert into public.field_access_policies(user_id,group_id,action,effect,inherit_new) select $1,group_id,a,'allow',true from public.field_definitions cross join unnest(array['C','R','U','D']) a where key='name'",
+      [user],
+    );
+    await owner.query(
+      "insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'R','deny' from public.field_definitions where key='middle_name'",
+      [user],
+    );
+    const created = await m(id.sa, "employee_create", {
+      values: {
+        last_name: "Sample",
+        first_name: "Accessible",
+        middle_name: "HiddenMarkerAlphabet",
+      },
+    });
+    const values = (await q(user, "employee", { id: created.id })).employee
+      .values;
+    assert(!Object.hasOwn(values, "name"));
+    assert(!Object.hasOwn(values, "middle_name"));
+    assert.equal(values.first_name, "Accessible");
+    assert.equal(
+      (await q(user, "employees", { search: "HiddenMarkerAlphabet" })).total,
+      0,
+    );
+    await m(user, "employee_update", {
+      id: created.id,
+      expected_version: 1,
+      values: { middle_name: "UpdatedHiddenMarker" },
+    });
+    assert.equal(
+      (await q(id.sa, "employee", { id: created.id })).employee.values.name,
+      "Sample, Accessible UpdatedHiddenMarker",
+    );
+    await owner.query(
+      "insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'U','deny' from public.field_definitions where key='first_name'",
+      [user],
+    );
+    await assert.rejects(
+      m(user, "employee_update", {
+        id: created.id,
+        expected_version: 2,
+        values: { first_name: "Forbidden" },
+      }),
+      { code: "42501" },
+    );
+  });
+  await test("form tabs are superadmin-only, atomic, versioned and idempotent without policy changes", async () => {
+    const groups = (
+      await owner.query(
+        "select id,row_version,name,tab_name,tab_order from public.field_groups where id=any($1::uuid[]) order by id",
+        [[id.core, id.contact]],
+      )
+    ).rows;
+    const p = {
+      groups: groups.map((g) => ({
+        id: g.id,
+        expected_version: g.row_version,
+        tab_name: "Personal",
+        tab_order: 3,
+      })),
+    };
+    const beforePolicies = (
+      await owner.query("select count(*) n from public.field_access_policies")
+    ).rows[0].n;
+    await assert.rejects(m(id.admin, "form_layout", p), { code: "42501" });
+    await assert.rejects(
+      m(id.sa, "form_layout", {
+        groups: p.groups.map((g, i) => ({
+          ...g,
+          expected_version: i ? 0 : g.expected_version,
+        })),
+      }),
+      { code: "40001" },
+    );
+    assert.deepEqual(
+      (
+        await owner.query(
+          "select id,row_version,name,tab_name,tab_order from public.field_groups where id=any($1::uuid[]) order by id",
+          [[id.core, id.contact]],
+        )
+      ).rows,
+      groups,
+    );
+    const request = randomUUID();
+    await m(id.sa, "form_layout", p, request);
+    await m(id.sa, "form_layout", p, request);
+    const saved = (
+      await owner.query(
+        "select tab_name,tab_order,row_version from public.field_groups where id=any($1::uuid[]) order by id",
+        [[id.core, id.contact]],
+      )
+    ).rows;
+    saved.forEach((g, i) => {
+      assert.equal(g.tab_name, "Personal");
+      assert.equal(g.tab_order, 3);
+      assert.equal(Number(g.row_version), Number(groups[i].row_version) + 1);
+    });
+    assert.equal(
+      (await owner.query("select count(*) n from public.field_access_policies"))
+        .rows[0].n,
+      beforePolicies,
+    );
+    await assert.rejects(m(id.sa, "form_layout", p), { code: "40001" });
   });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(

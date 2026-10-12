@@ -65,7 +65,9 @@ export function ValueEditor({
                 : e.target.value,
             )
           }
-          maxLength={f.type === "long_text" ? 10000 : 500}
+          maxLength={
+            f.validation?.max_length ?? (f.type === "long_text" ? 10000 : 500)
+          }
         />
       )}
       <small>{f.help_text}</small>

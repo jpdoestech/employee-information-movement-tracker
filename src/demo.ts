@@ -5,6 +5,7 @@ import {
 } from "./address/addressFields";
 import { addressValidationError } from "./address/addressService";
 import { matchesFilterValue } from "./filterValues";
+import { combinedName, nameKeys, nameLabels } from "./employeeForm";
 import {
   defaultFilter,
   localToday,
@@ -93,6 +94,13 @@ const fields: Field[] = base.map(([key, label, type], i) => ({
   actions: ["C", "R", "U", "D"],
 }));
 fields.push(
+  ...nameKeys.map((key, i) => ({
+    ...fields.find((f) => f.key === "name")!,
+    id: `field-${key}`,
+    key,
+    label: nameLabels[i],
+    validation: { max_length: 80 },
+  })),
   ...addressDefinitions.map((f, i) => ({
     ...f,
     id: `field-${f.key}`,
@@ -167,11 +175,27 @@ const context: Context = {
   register_settings: { row_numbers_allowed: true, row_version: 1 },
   fields,
   groups: [
-    { id: "address", name: "Address", active: true, row_version: 1 },
-    { id: "core", name: "Core identity", active: true, row_version: 1 },
+    {
+      id: "address",
+      name: "Address",
+      active: true,
+      row_version: 1,
+      tab_name: "Address",
+      tab_order: 20,
+    },
+    {
+      id: "core",
+      name: "Core identity",
+      active: true,
+      row_version: 1,
+      tab_name: "Profile",
+      tab_order: 0,
+    },
     {
       id: "contact",
       name: "Contact information",
+      tab_name: "Contact",
+      tab_order: 10,
       active: true,
       row_version: 1,
     },
@@ -372,6 +396,54 @@ export async function demoQuery(op: string, q: any = {}) {
   throw new Error("Unknown demo query");
 }
 export async function demoMutate(op: string, p: any) {
+  if (op === "form_layout") {
+    if (context.profile.role !== "superadmin")
+      throw new Error("Only a Superadmin may configure form tabs");
+    for (const item of p.groups) {
+      const group = context.groups.find((g) => g.id === item.id);
+      if (!group || group.row_version !== item.expected_version)
+        throw new Error("Field groups changed; reload before applying tabs");
+      if (
+        !item.tab_name.trim() ||
+        item.tab_name === "Record history" ||
+        item.tab_name.length > 60 ||
+        !Number.isInteger(item.tab_order) ||
+        item.tab_order < 0 ||
+        item.tab_order > 999
+      )
+        throw new Error("Invalid tab name or order");
+    }
+    for (const item of p.groups)
+      Object.assign(
+        context.groups.find((g) => g.id === item.id)!,
+        {
+          tab_name: item.tab_name,
+          tab_order: item.tab_order,
+          row_version: item.expected_version + 1,
+        },
+      );
+    context.revision++;
+    return { saved: true };
+  }
+  function structuredValues(values: Record<string, unknown>) {
+    for (const key of ["last_name", "first_name"])
+      if (typeof values[key] !== "string" || !String(values[key]).trim())
+        throw new Error("Last Name and First Name are required");
+    if (
+      nameKeys.some(
+        (key) =>
+          values[key] != null &&
+          (typeof values[key] !== "string" || String(values[key]).length > 80),
+      )
+    )
+      throw new Error("Name parts must be text of at most 80 characters");
+    return combinedName(values);
+  }
+  if (op === "employee_create")
+    p = {
+      ...p,
+      values: { ...p.values, name: structuredValues(p.values ?? {}) },
+    };
   if (
     p.values &&
     ("client_employee_number" in p.values || "employee_number" in p.values)
@@ -428,6 +500,15 @@ export async function demoMutate(op: string, p: any) {
     if (op !== "employee_delete")
       for (const t of targets) {
         const e = employees.find((e) => e.id === t.id)!;
+        if (nameKeys.some((key) => Object.hasOwn(p.values ?? {}, key)))
+          structuredValues({ ...e.values, ...p.values });
+        else if (
+          Object.hasOwn(p.values ?? {}, "name") &&
+          nameKeys.some((key) => e.values[key] != null)
+        )
+          throw new Error(
+            "Edit the separate name fields to change a structured employee name",
+          );
         for (const prefix of ["", "current_"])
           if (
             addressKeys.some((key) =>
@@ -446,6 +527,8 @@ export async function demoMutate(op: string, p: any) {
         employees = employees.filter((x) => x.id !== e.id);
       else {
         Object.assign(e.values, p.values);
+        if (nameKeys.some((key) => Object.hasOwn(p.values ?? {}, key)))
+          e.values.name = structuredValues(e.values);
         e.row_version++;
       }
     }

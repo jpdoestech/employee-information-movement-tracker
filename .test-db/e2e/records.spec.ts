@@ -180,8 +180,9 @@ test("client creation prefix produces separate System and Client-based IDs", asy
       .getByRole("option", { name: /COMPANY ABC/ })
       .click();
     await employee
-      .getByLabel("Employee Name", { exact: true })
+      .getByLabel("First Name", { exact: false })
       .fill(`Client identity sample ${n}`);
+    await employee.getByLabel("Last Name", { exact: false }).fill("Test");
     await employee
       .getByRole("button", { name: "Save to Supabase", exact: true })
       .click();

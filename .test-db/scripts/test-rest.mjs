@@ -1,5 +1,6 @@
 // Run against a disposable Supabase project, never an employee production database.
 import { createClient } from "@supabase/supabase-js";
+import { employeeFixture } from "./employee-fixtures.mjs";
 import pg from "pg";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -107,7 +108,11 @@ try {
     [[uid[1], uid[2]]],
   );
   const request = (c, op, p) =>
-    c.rpc("tracker_mutate", { operation: op, p, request_id: randomUUID() });
+    c.rpc("tracker_mutate", {
+      operation: op,
+      p: employeeFixture(op, p),
+      request_id: randomUUID(),
+    });
   const first = await request(publicClients[0], "employee_create", {
     target_level: "branch",
     branch_id: b1,

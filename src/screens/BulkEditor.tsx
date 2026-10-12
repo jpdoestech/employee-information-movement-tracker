@@ -4,6 +4,7 @@ import { Dialog } from "../components/Dialog";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import { ValueEditor } from "../components/ValueEditor";
 import { mutate, preview as validatePreview } from "../api";
+import { nameKeys } from "../employeeForm";
 import type { Employee, Field } from "../domain";
 export function BulkEditor({
   rows,
@@ -24,7 +25,8 @@ export function BulkEditor({
   const allowed = fields.filter(
     (f) =>
       f.active &&
-      (f.type !== "system" || f.key === "name") &&
+      (f.type !== "system" ||
+        nameKeys.includes(f.key as (typeof nameKeys)[number])) &&
       f.actions.includes("U"),
   );
   return (
@@ -58,7 +60,14 @@ export function BulkEditor({
               {keys.map((k) => (
                 <ValueEditor
                   key={k}
-                  field={allowed.find((f) => f.key === k)!}
+                  field={
+                    nameKeys.includes(k as (typeof nameKeys)[number])
+                      ? {
+                          ...allowed.find((f) => f.key === k)!,
+                          type: "short_text",
+                        }
+                      : allowed.find((f) => f.key === k)!
+                  }
                   value={patch[k]}
                   blind={
                     !allowed.find((f) => f.key === k)!.actions.includes("R")

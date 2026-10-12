@@ -1,4 +1,5 @@
 import { RecordExplorer } from "../components/RecordExplorer";
+import { FormTabEditor } from "../components/FormTabEditor";
 import { FloatingNotification } from "../components/FloatingNotification";
 import { Fragment, useEffect, useState } from "react";
 import { Plus, Search, FolderPlus } from "lucide-react";
@@ -151,6 +152,7 @@ export function FieldBuilder({
   onSaved: () => void;
 }) {
   const [schema, setSchema] = useState<any>(),
+    [editingTabs, setEditingTabs] = useState(false),
     [draft, setDraft] = useState<any>(),
     [group, setGroup] = useState<any>(),
     [search, setSearch] = useState(""),
@@ -265,6 +267,9 @@ export function FieldBuilder({
             <span>{fields.length} definitions</span>
           </div>
           <div className="actions">
+            {context.profile.role === "superadmin" && (
+              <button onClick={() => setEditingTabs(true)}>Form tabs</button>
+            )}
             <button
               onClick={() =>
                 setGroup({ name: "", description: "", active: true })
@@ -826,6 +831,13 @@ export function FieldBuilder({
             </button>
           </footer>
         </Dialog>
+      )}
+      {editingTabs && (
+        <FormTabEditor
+          groups={groups}
+          onClose={() => setEditingTabs(false)}
+          onSaved={onSaved}
+        />
       )}
     </>
   );

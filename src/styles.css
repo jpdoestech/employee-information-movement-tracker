@@ -3255,3 +3255,111 @@ textarea:focus {
   min-width: 0;
   gap: 3px;
 }
+/* Employee entry: stationary tab navigation and actions, scrolling section only. */
+dialog.employee-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  height: min(720px, calc(100dvh - 32px));
+  overflow: hidden;
+}
+.employee-dialog > header,
+.employee-dialog > footer,
+.employee-editor-summary,
+.employee-form-tabs {
+  flex: 0 0 auto;
+}
+.employee-editor-summary {
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.employee-editor-summary p {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.employee-editor-summary .picker {
+  width: min(100%, 360px);
+}
+.employee-form-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 20px 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+}
+.employee-form-tabs [role="tab"] {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  white-space: nowrap;
+  padding: 6px 12px;
+  min-height: 36px;
+  color: var(--muted);
+}
+.employee-form-tabs [aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+.employee-tab-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.employee-tab-body [role="tabpanel"][hidden] {
+  display: none;
+}
+.employee-tab-body fieldset {
+  margin: 0 0 16px;
+}
+.employee-tab-body .field {
+  margin: 0;
+  gap: 4px;
+}
+.employee-tab-body .field > small:empty {
+  display: none;
+}
+.employee-name-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 960px) {
+  .employee-name-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .employee-name-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.form-tab-setting {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(160px, 2fr) 80px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.form-tab-setting strong small {
+  display: block;
+  font-weight: 400;
+  color: var(--muted);
+}
+@media (max-width: 760px) {
+  .employee-editor-summary {
+    padding: 8px 16px;
+  }
+  .employee-form-tabs {
+    padding-inline: 12px;
+  }
+  .employee-form-tabs [role="tab"] {
+    min-height: 44px;
+  }
+  .form-tab-setting {
+    grid-template-columns: minmax(0, 1fr) 72px;
+  }
+  .form-tab-setting > strong {
+    grid-column: 1 / -1;
+  }
+}

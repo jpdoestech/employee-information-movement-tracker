@@ -28,6 +28,13 @@ Migration `20261011000300_creation_applicability_preview.sql` changes only the c
 
 ## Remaining work and order
 
+The structured-name and tabbed-entry amendment is implemented in migration
+`20261011000400_employee_names_and_form_tabs.sql`. New profiles require separate
+first and last names; existing identities are preserved. Superadmin tab settings
+merge presentation groups without changing policies. See
+[employee-names-and-tabs.md](employee-names-and-tabs.md) for permissions, legacy
+records, layout settings and migration prerequisites.
+
 1. Run the full disposable Supabase Auth/PostgREST/drift CI job at the final commit. Native PostgreSQL with simulated `auth.uid()` does not substitute for it. The REST harness now checks creation preview scope and same-JWT revocation.
 2. Configure and verify a standalone staging target, Auth redirects/trusted accounts, migration history/diff, realistic branch volumes, and backup restoration. Public frontend values alone do not establish staging ownership or permission to apply SQL.
 3. Configure the consumer Google OAuth application/account and backend secrets, approve workbook policies and sharing, then verify provisioning, transfer cleanup, retries/revocation/network/quota failures and reconciliation against actual Sheets. App CRUD must continue during failures.
