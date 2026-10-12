@@ -138,3 +138,5 @@ versions on failure, idempotent replay, field denial, rejection of direct system
 field patches, and one winner for concurrent same-version position edits.
 Untouched Position is omitted from profile payloads, including synthetic demo
 saves; existing name/contact/number edit regression tests pass unchanged.
+
+Field configuration verification: a shared Lucide registry covers every supported type; Field Builder restores saved defaults including unchecked checkbox values. Input width is optional, responsive numeric metadata (10–80ch); maximum text length and numeric bounds remain separate server-validated rules. A migration enforces superadmin ownership of choices/defaults/validation without changing inheritance or CRUD checks. Tests cover invalid metadata, unauthorized configuration, persisted false defaults, phone/desktop setup and existing responsive flows.

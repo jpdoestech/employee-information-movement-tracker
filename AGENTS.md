@@ -4,7 +4,7 @@ Use the supplied full v1.8 specification in `docs/` as the authoritative applica
 
 # Current and future UI
 
-Use the installed UI UX Pro Max skill for UI work. The approved direction is a compact, data-focused enterprise interface inspired by the supplied employee-directory reference: navy accents, gray canvas, white surfaces, thin dividers, restrained radii, readable typography, and prominent data tables. See `docs/design-reference.md` and shared tokens in `src/styles.css`.
+Use the installed ui-styling skill as the primary UI/UX styling guide. UI UX Pro Max may supplement accessibility and interaction review. The approved direction is a compact, data-focused enterprise interface inspired by the supplied employee-directory reference: navy accents, gray canvas, white surfaces, thin dividers, restrained radii, readable typography, and prominent data tables. See `docs/design-reference.md` and shared tokens in `src/styles.css`.
 
 The latest directory reference uses a dark navy section header, compact desktop icon rail, and left-aligned search/filter toolbar. Preserve labelled mobile navigation. Inputs use a subtle filled focus state and a stable border; do not add an outline or external shadow inside composite search inputs. Applied selections stay in filter triggers with X clear controls; do not add a separate applied-filter chip row beneath any data toolbar. Keep keyboard focus visible on buttons/navigation and retain every existing feature.
 
@@ -29,3 +29,5 @@ All modal headers use one compact title and close icon; footers share the same a
 Keep shared picker footers to one compact row. Bulk selection controls belong above larger lists; do not add separate count and bulk-action rows beneath a short option list. Simple toolbar filters stay compact dropdowns, while More Filters uses a centered modal.
 
 Employee row numbers are display ordinals (filtered offset + row index + 1), not permanent IDs or field values. Keep No. pinned at the far left, ahead of selection and identity columns. The database-backed superadmin register setting gates availability; personal saved views may hide numbers but cannot override that gate. Exclude ordinals from field definitions, CRUD policies, search, sort and exports. Field Definitions uses a grouped, compact table in a stationary workspace; Access Rules uses compact policy forms and separate Accounts / Register settings sections with an internally scrolling body.
+
+Use shared minimalist field-type icons at the leading edge of input controls and beside table-header/type labels. Keep accessible field labels compact; do not add oversized type descriptions. Superadmins configure choices, defaults, validation and optional responsive input widths through Field Builder; preserve database enforcement and existing values.

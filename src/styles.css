@@ -3830,3 +3830,44 @@ dialog.employee-edit-dialog[open] {
     grid-column: 1 / -1;
   }
 }
+
+/* Minimal leading icons share the table-header visual language. */
+.field-type-icon {
+  flex-shrink: 0;
+  color: var(--muted);
+  vertical-align: middle;
+}
+.field-type-label,
+.picker-options strong:has(.field-type-icon) {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.value-type-icon {
+  position: absolute;
+  left: 9px;
+  top: 18px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  display: flex;
+}
+.value-control.has-type-icon > input:not([type="checkbox"]),
+.value-control.has-type-icon > textarea {
+  padding-left: 28px;
+}
+.value-control.checkbox-control {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+.value-control.checkbox-control > input[type="checkbox"] {
+  margin-left: 28px;
+}
+@media (max-width: 760px), (pointer: coarse) {
+  .value-type-icon {
+    top: 22px;
+  }
+  .value-control.checkbox-control {
+    min-height: 44px;
+  }
+}

@@ -1,3 +1,4 @@
+import { FieldTypeIcon } from "./FieldTypeIcon";
 import {
   useContext,
   useEffect,
@@ -345,7 +346,10 @@ export function SearchFilterPicker({
                       <Building2 size={18} aria-hidden />
                     ) : null}
                     <span>
-                      <strong>{o.label}</strong>
+                      <strong>
+                        {o.field_type && <FieldTypeIcon type={o.field_type} />}
+                        {o.label}
+                      </strong>
                       {o.context && <small>{o.context}</small>}
                     </span>
                     {mode === "single" && value.includes(o.id) && (

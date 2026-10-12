@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { displayFieldValue, parseNumberInput } from "../fieldValues";
 import { governmentIdError, normalizeGovernmentId } from "../governmentIds";
 import { valueWidth } from "../controlSizing";
+import { FieldTypeIcon, fieldTypeIcons } from "./FieldTypeIcon";
 
 function NumberInput({
   id,
@@ -87,10 +88,16 @@ export function ValueEditor({
             f.options,
             f.validation?.government_id_digits,
             f.key,
+            f.validation?.input_width,
           ),
         }}
-        className={`value-control${showClear && f.type !== "select" ? " with-clear" : ""}${f.type === "long_text" ? " multiline" : ""}`}
+        className={`value-control${f.type !== "select" ? " has-type-icon" : ""}${f.type === "checkbox" ? " checkbox-control" : ""}${showClear && f.type !== "select" ? " with-clear" : ""}${f.type === "long_text" ? " multiline" : ""}`}
       >
+        {f.type !== "select" && (
+          <span className="value-type-icon">
+            <FieldTypeIcon type={f.type} size={14} />
+          </span>
+        )}
         {f.type === "checkbox" ? (
           <input
             id={id}
@@ -101,6 +108,7 @@ export function ValueEditor({
         ) : f.type === "select" ? (
           <SearchFilterPicker
             mode="single"
+            icon={fieldTypeIcons[f.type]}
             label={f.label}
             clearable={clearable}
             options={(f.options || []).map((id) => ({ id, label: id }))}
@@ -110,6 +118,7 @@ export function ValueEditor({
         ) : f.type === "long_text" ? (
           <textarea
             id={id}
+            maxLength={f.validation?.max_length ?? 10000}
             value={String(value ?? "")}
             onChange={(e) => onChange(e.target.value)}
           />
@@ -118,6 +127,8 @@ export function ValueEditor({
         ) : (
           <input
             id={id}
+            min={f.type === "integer" ? f.validation?.min : undefined}
+            max={f.type === "integer" ? f.validation?.max : undefined}
             type={
               f.type === "integer" || f.type === "decimal"
                 ? "number"

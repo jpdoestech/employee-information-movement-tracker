@@ -1,3 +1,5 @@
+import { FieldTypeIcon } from "../components/FieldTypeIcon";
+import { fieldConfigurationError, textFieldTypes } from "../fieldConfiguration";
 import { RecordExplorer } from "../components/RecordExplorer";
 import { FormTabEditor } from "../components/FormTabEditor";
 import { FloatingNotification } from "../components/FloatingNotification";
@@ -8,7 +10,7 @@ import { Dialog } from "../components/Dialog";
 import { confirmTransaction } from "../components/TransactionConfirmation";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import { ValueEditor } from "../components/ValueEditor";
-import { fieldTypeLabel, parseNumberInput } from "../fieldValues";
+import { fieldTypeLabel } from "../fieldValues";
 import type { Context, Field, Option } from "../domain";
 export function Organization({
   options,
@@ -223,7 +225,7 @@ export function FieldBuilder({
   ]);
   function edit(f?: Field) {
     setError("");
-    setSample("");
+    setSample(f?.default_value ?? "");
     setDraft(
       f
         ? {
@@ -389,7 +391,12 @@ export function FieldBuilder({
                           <td>
                             <code>{f.key}</code>
                           </td>
-                          <td>{fieldTypeLabel(f.type)}</td>
+                          <td>
+                            <span className="field-type-label">
+                              <FieldTypeIcon type={f.type} />
+                              {fieldTypeLabel(f.type)}
+                            </span>
+                          </td>
                           <td>
                             {f.scope_mode === "all"
                               ? "All authorized targets"
@@ -473,6 +480,10 @@ export function FieldBuilder({
                 <SearchFilterPicker
                   mode="single"
                   label="Field type"
+                  disabled={
+                    context.profile.role !== "superadmin" ||
+                    !!draft.validation?.government_id_digits
+                  }
                   options={[
                     "short_text",
                     "long_text",
@@ -483,9 +494,29 @@ export function FieldBuilder({
                     "select",
                     "email",
                     "phone",
-                  ].map((id) => ({ id, label: fieldTypeLabel(id) }))}
+                  ].map((id) => ({
+                    id,
+                    label: fieldTypeLabel(id),
+                    field_type: id,
+                  }))}
                   value={[draft.type]}
-                  onChange={(v) => setDraft({ ...draft, type: v[0] })}
+                  onChange={(v) => {
+                    if (
+                      v[0] === draft.type ||
+                      draft.validation?.government_id_digits
+                    )
+                      return;
+                    setSample(v[0] === "checkbox" ? false : "");
+                    setDraft({
+                      ...draft,
+                      type: v[0],
+                      options: [],
+                      validation: {
+                        input_width: draft.validation?.input_width,
+                      },
+                      default_value: undefined,
+                    });
+                  }}
                 />
               </div>
             </div>
@@ -544,6 +575,7 @@ export function FieldBuilder({
               <label>
                 Dropdown choices (one per line)
                 <textarea
+                  disabled={context.profile.role !== "superadmin"}
                   value={draft.options.join("\n")}
                   onChange={(e) =>
                     setDraft({
@@ -555,11 +587,36 @@ export function FieldBuilder({
               </label>
             )}
             <div className="form-grid">
-              {["min", "max", "max_length"].map((k) => (
+              {[
+                ...(["integer", "decimal"].includes(draft.type)
+                  ? ["min", "max"]
+                  : []),
+                ...(textFieldTypes.includes(draft.type) ? ["max_length"] : []),
+                "input_width",
+              ].map((k) => (
                 <label key={k}>
-                  {k.replace("_", " ")}
+                  {k === "input_width"
+                    ? "Input width (characters)"
+                    : k.replace("_", " ")}
                   <input
                     type="number"
+                    disabled={context.profile.role !== "superadmin"}
+                    min={
+                      k === "input_width"
+                        ? 10
+                        : k === "max_length"
+                          ? 1
+                          : undefined
+                    }
+                    max={
+                      k === "input_width"
+                        ? 80
+                        : k === "max_length"
+                          ? 10000
+                          : undefined
+                    }
+                    step={k === "min" || k === "max" ? "any" : 1}
+                    placeholder={k === "input_width" ? "Automatic" : undefined}
                     value={draft.validation?.[k] ?? ""}
                     onChange={(e) =>
                       setDraft({
@@ -710,10 +767,16 @@ export function FieldBuilder({
                 Scope changes refresh workbook projections.
               </p>
             </div>
-            <h3>Form preview</h3>
+            <h3>Default value & form preview</h3>
+            <small>
+              Display width controls the form size; maximum length controls the
+              data allowed. Defaults apply only to new records with create
+              permission.
+            </small>
             <label>
               <input
                 type="checkbox"
+                disabled={context.profile.role !== "superadmin"}
                 checked={
                   draft.default_value !== undefined &&
                   draft.default_value !== null
@@ -721,7 +784,11 @@ export function FieldBuilder({
                 onChange={(e) =>
                   setDraft({
                     ...draft,
-                    default_value: e.target.checked ? sample : undefined,
+                    default_value: e.target.checked
+                      ? draft.type === "checkbox"
+                        ? Boolean(sample)
+                        : sample
+                      : undefined,
                   })
                 }
               />
@@ -732,7 +799,10 @@ export function FieldBuilder({
               value={sample}
               onChange={(v) => {
                 setSample(v);
-                if (draft.default_value !== undefined)
+                if (
+                  context.profile.role === "superadmin" &&
+                  draft.default_value !== undefined
+                )
                   setDraft({ ...draft, default_value: v });
               }}
             />
@@ -758,14 +828,8 @@ export function FieldBuilder({
               onClick={async () => {
                 setBusy(true);
                 try {
-                  if (
-                    draft.type === "decimal" &&
-                    typeof draft.default_value === "string" &&
-                    typeof parseNumberInput(draft.default_value) === "string"
-                  )
-                    throw new Error(
-                      "Enter a valid numeric default before saving.",
-                    );
+                  const invalid = fieldConfigurationError(draft);
+                  if (invalid) throw new Error(invalid);
                   await mutate("field", {
                     ...draft,
                     targets: targets.map((id) => {

@@ -110,7 +110,20 @@ export function EmployeeEditor({
       addressKeys.map((key) => prefix + key),
     ),
   );
-  const draft = { ...values, ...changed };
+  const defaults = row
+    ? {}
+    : Object.fromEntries(
+        fields
+          .filter(
+            (f) =>
+              f.active &&
+              f.actions.includes("C") &&
+              f.type !== "system" &&
+              f.default_value != null,
+          )
+          .map((f) => [f.key, f.default_value]),
+      );
+  const draft = { ...defaults, ...values, ...changed };
   const department = fields.find(
     (f) =>
       f.key === "department" &&
@@ -470,6 +483,7 @@ export function EmployeeEditor({
                                 f.options,
                                 f.validation?.government_id_digits,
                                 f.key,
+                                f.validation?.input_width,
                               ),
                             } as CSSProperties
                           }
@@ -524,7 +538,7 @@ export function EmployeeEditor({
                             value={
                               Object.hasOwn(changed, f.key)
                                 ? changed[f.key]
-                                : values[f.key]
+                                : draft[f.key]
                             }
                             blind={!!row && !f.actions.includes("R")}
                             clearable={

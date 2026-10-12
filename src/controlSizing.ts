@@ -8,7 +8,15 @@ export function valueWidth(
   labels: string[] = [],
   digits?: number,
   key?: string,
+  configuredWidth?: number,
 ) {
+  if (
+    configuredWidth &&
+    Number.isInteger(configuredWidth) &&
+    configuredWidth >= 10 &&
+    configuredWidth <= 80
+  )
+    return `${configuredWidth}ch`;
   if (["last_name", "first_name", "middle_name"].includes(key ?? ""))
     return "24ch";
   if (key === "suffix") return "10ch";

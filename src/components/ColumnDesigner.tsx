@@ -32,7 +32,12 @@ export function ColumnDesigner({
     [error, setError] = useState("");
   const options = fields
     .filter((f) => f.active && f.list_eligible && f.actions.includes("R"))
-    .map((f) => ({ id: f.key, label: f.label, context: f.group_name }));
+    .map((f) => ({
+      id: f.key,
+      label: f.label,
+      context: f.group_name,
+      field_type: f.type,
+    }));
   return (
     <Dialog title="Customize Columns" onClose={onClose} wide>
       <div className="dialog-body column-designer">

@@ -2571,6 +2571,78 @@ try {
     });
     assert.equal(result.total, 0);
   });
+  await test("field configuration bounds, typed defaults and superadmin ownership", async () => {
+    for (const validation of [
+      { input_width: 9 },
+      { input_width: 81 },
+      { input_width: 12.5 },
+      { max_length: 0 },
+      { max_length: 10001 },
+      { input_width: "wide" },
+    ]) {
+      await assert.rejects(
+        m(id.sa, "field", {
+          group_id: id.contact,
+          key: "invalid_field_sizing",
+          label: "Invalid field sizing",
+          type: "short_text",
+          validation,
+        }),
+        { code: "22023" },
+      );
+    }
+    await assert.rejects(
+      m(id.admin, "field", {
+        group_id: id.contact,
+        key: "unauthorized_field_config",
+        label: "Unauthorized field config",
+        type: "select",
+        options: ["Yes", "No"],
+      }),
+      { code: "42501" },
+    );
+    const field = await m(id.sa, "field", {
+      group_id: id.contact,
+      key: "configured_check",
+      label: "Configured check",
+      type: "checkbox",
+      default_value: false,
+      validation: { input_width: 18 },
+    });
+    const stored = (await q(id.sa, "schema")).fields.find(
+      (f) => f.id === field.id,
+    );
+    assert.equal(stored.default_value, false);
+    assert.equal(stored.validation.input_width, 18);
+    await assert.rejects(
+      m(id.admin, "field", {
+        ...stored,
+        expected_version: stored.row_version,
+        default_value: true,
+      }),
+      { code: "42501" },
+    );
+    const created = await m(id.sa, "employee_create", {
+      target_level: "branch",
+      branch_id: id.b1,
+      values: { name: "Synthetic configured default" },
+    });
+    assert.equal(
+      (await q(id.sa, "employee", { id: created.id })).employee.values
+        .configured_check,
+      false,
+    );
+    await assert.rejects(
+      m(id.sa, "field", {
+        group_id: id.contact,
+        key: "bad_check_default",
+        label: "Bad check default",
+        type: "checkbox",
+        default_value: "false",
+      }),
+      { code: "22023" },
+    );
+  });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
     ".test-db/reports/verification/database.json",

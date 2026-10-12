@@ -7,6 +7,7 @@ export type Option = {
   active?: boolean;
   row_version?: number;
   code?: string;
+  field_type?: string;
 };
 export type Field = {
   id: string;
@@ -24,6 +25,7 @@ export type Field = {
   help_text?: string;
   options?: string[];
   validation?: Record<string, number>;
+  default_value?: unknown;
   actions: string[];
 };
 export type Employee = {

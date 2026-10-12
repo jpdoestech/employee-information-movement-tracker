@@ -1,3 +1,4 @@
+import { fieldTypeIcons } from "./FieldTypeIcon";
 import { useMemo, type CSSProperties } from "react";
 import {
   ArrowUpDown,
@@ -24,7 +25,8 @@ const columnIcons: Record<string, LucideIcon> = {
   branch: Building2,
   client: BriefcaseBusiness,
 };
-const columnIcon = (key: string) => columnIcons[key] || Columns3;
+const columnIcon = (key: string, type: string) =>
+  columnIcons[key] || fieldTypeIcons[type] || Columns3;
 export function EmployeeTable({
   rows,
   fields,
@@ -149,7 +151,10 @@ export function EmployeeTable({
                   <button type="button" onClick={() => onSort(k)}>
                     <span className="column-heading">
                       {(() => {
-                        const Icon = columnIcon(k);
+                        const Icon = columnIcon(
+                          k,
+                          fields.find((f) => f.key === k)?.type ?? "system",
+                        );
                         return <Icon size={14} aria-hidden />;
                       })()}
                       {fields.find((f) => f.key === k)?.label}

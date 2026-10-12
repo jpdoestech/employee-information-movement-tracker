@@ -1,3 +1,4 @@
+import { fieldConfigurationError } from "./fieldConfiguration";
 import {
   addressDefinitions,
   addressKeys,
@@ -515,6 +516,20 @@ export async function demoMutate(op: string, p: any) {
       throw new Error("Name parts must be text of at most 80 characters");
     return combinedName(values);
   }
+  if (op === "employee_create") {
+    const defaults = Object.fromEntries(
+      fields
+        .filter(
+          (f) =>
+            f.active &&
+            f.type !== "system" &&
+            f.actions.includes("C") &&
+            f.default_value != null,
+        )
+        .map((f) => [f.key, f.default_value]),
+    );
+    p = { ...p, values: { ...defaults, ...p.values } };
+  }
   if (op === "employee_create")
     p = {
       ...p,
@@ -656,6 +671,8 @@ export async function demoMutate(op: string, p: any) {
       }
     }
   } else if (op === "field") {
+    const invalid = fieldConfigurationError(p);
+    if (invalid) throw new Error(invalid);
     const f = fields.find((f) => f.id === p.id);
     if (
       fields.some(
