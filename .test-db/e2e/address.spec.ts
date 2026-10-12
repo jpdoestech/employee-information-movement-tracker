@@ -133,7 +133,11 @@ test("load failure supports retry without retyping and stale searches cannot rep
   await expect(
     page.getByText("No matching locations.", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("option")).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("listbox", { name: "Barangay suggestions" })
+      .getByRole("option"),
+  ).toHaveCount(0);
 });
 test("addresses and emergency contact save through confirmation and edit existing names", async ({
   page,
@@ -281,7 +285,11 @@ test("debounced concurrent searches share loading and ignore obsolete results", 
       page.getByText("Loading Philippine locations", { exact: false }),
     ).toHaveCount(0);
     expect(requests).toBe(1);
-    await expect(page.getByRole("option")).toHaveCount(0);
+    await expect(
+      page
+        .getByRole("listbox", { name: "Barangay suggestions" })
+        .getByRole("option"),
+    ).toHaveCount(0);
     await home.getByRole("combobox", { name: "Barangay", exact: true }).click();
     await expect(
       page.getByRole("option", { name: /Agdao City of Davao/ }),

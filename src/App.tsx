@@ -1,5 +1,6 @@
 import { ColumnFilters } from "./components/ColumnFilters";
 import { RecordExplorer } from "./components/RecordExplorer";
+import { RowsPerPage } from "./components/RowsPerPage";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -743,19 +744,12 @@ export default function App() {
                   {total ? filter.offset + 1 : 0}–
                   {Math.min(filter.offset + filter.limit, total)} of {total}
                 </span>
-                <SearchFilterPicker
-                  mode="single"
-                  label="Rows per page"
-                  clearable={false}
-                  options={[10, 25, 50, 100].map((n) => ({
-                    id: String(n),
-                    label: String(n),
-                  }))}
-                  value={[String(filter.limit)]}
-                  onChange={(v) =>
+                <RowsPerPage
+                  value={filter.limit}
+                  onChange={(limit) =>
                     setFilter({
                       ...filter,
-                      limit: Number(v[0] || 25),
+                      limit,
                       offset: 0,
                     })
                   }

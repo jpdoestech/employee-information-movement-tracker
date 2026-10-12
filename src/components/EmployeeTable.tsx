@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { Employee, Field, Layout } from "../domain";
-import { contentWidths } from "../tableSizing";
+import { contentWidths, useFontMetrics } from "../tableSizing";
 const columnIcons: Record<string, LucideIcon> = {
   employee_number: Hash,
   name: UserRound,
@@ -52,6 +52,7 @@ export function EmployeeTable({
   );
   const pinned = layout.pinned.filter((k) => columns.includes(k));
   const order = [...pinned, ...columns.filter((k) => !pinned.includes(k))];
+  const fontReady = useFontMetrics();
   const widths = useMemo(() => {
     const sized = contentWidths(
       columns.map((key) => fields.find((f) => f.key === key)?.label || key),
@@ -59,7 +60,7 @@ export function EmployeeTable({
       66,
     );
     return Object.fromEntries(columns.map((key, i) => [key, sized[i]]));
-  }, [rows, fields, columns.join("|")]);
+  }, [rows, fields, columns.join("|"), fontReady]);
   const width = (key: string) => widths[key];
   function style(k: string): CSSProperties {
     return {
@@ -168,8 +169,35 @@ export function EmployeeTable({
           {rows.map((row, rowIndex) => (
             <tr
               key={row.id}
-              className={selected.includes(row.id) ? "selected-row" : ""}
+              className={`${selected.includes(row.id) ? "selected-row" : ""}${onOpen ? " employee-record-row" : ""}`}
               aria-selected={onSelect ? selected.includes(row.id) : undefined}
+              tabIndex={onOpen ? 0 : undefined}
+              onClick={
+                onOpen
+                  ? (event) => {
+                      if (
+                        (event.target as Element).closest(
+                          "button,a,input,select,textarea",
+                        )
+                      )
+                        return;
+                      onOpen(row);
+                    }
+                  : undefined
+              }
+              onKeyDown={
+                onOpen
+                  ? (event) => {
+                      if (
+                        event.target !== event.currentTarget ||
+                        !["Enter", " "].includes(event.key)
+                      )
+                        return;
+                      event.preventDefault();
+                      onOpen(row);
+                    }
+                  : undefined
+              }
             >
               {numbered && (
                 <td className="row-ordinal">

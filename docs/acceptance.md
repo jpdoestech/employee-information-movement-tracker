@@ -77,3 +77,20 @@ See `requirements-status.md` for the cumulative audit. No hosted migration, stag
 The structured-name/tab amendment passed build, 33 unit checks, 49 native PostgreSQL checks and all 77 Chromium E2E checks on 2026-10-11. Existing names are preserved; each component uses the shared authorization evaluator, and form-layout settings retain atomic revision/idempotency behavior. See [employee names and tabs](employee-names-and-tabs.md).
 
 The next release-verification slice fixes the REST applicability sample expectation to the server-generated name and adds real-JWT structured-name validation, hidden-component search protection, blind updates, concurrent revisions, duplicate create replay, and atomic Superadmin tab settings. CI now rejects nonempty schema diffs through `.test-db/scripts/assert-no-drift.mjs`; nine unit cases cover empty/comment-only reports, nested comments, executable SQL, unexpected output and malformed reports. All 42 unit checks and 49 native database checks passed locally, with all 21 migrations applied to a fresh disposable database. Docker/Supabase CLI are unavailable here, so the updated Auth/REST harness and actual CLI drift generation have not run locally. No schema migration or application behavior changed in this slice, and no hosted database or deployment was touched.
+
+## Typography, pagination and employee row editing (2026-10-12)
+
+Production build, all 42 unit checks and all 81 Chromium E2E checks passed. The
+shared Inter 4.1 variable font is served locally with its original OFL license and
+a critical preload. Column measurements use the shared family and refresh after
+font loading. Desktop and phone screenshots were inspected; existing uniform row
+heights, pinned columns, workspace bounds and pagination checks pass.
+
+Employees and the shared record explorer use a compact, labelled 10/25/50/100
+rows-per-page selector without search. Page-size changes reset the offset. Employee
+row data cells and Enter/Space open the existing secured profile editor; checkboxes
+still select rows for bulk actions. New tests verify editing, cancellation, retained
+drafts and confirmed saves at phone/laptop widths. Two address no-results assertions
+now target the Barangay suggestion list rather than counting unrelated pagination
+options; retry, concurrent loading and stale-response assertions remain intact.
+No database migration, permission or transaction changes were required.

@@ -369,7 +369,7 @@ for (const [width, height] of [
     ).toBe(true);
     expect(await page.locator("main").evaluate((el) => el.scrollTop)).toBe(0);
     const rowsPicker = (await page
-      .getByRole("button", { name: "Rows per page", exact: true })
+      .getByRole("combobox", { name: "Rows per page", exact: true })
       .boundingBox())!;
     expect(rowsPicker.width).toBeLessThan(110);
     await page.screenshot({

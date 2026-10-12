@@ -10,7 +10,8 @@ import {
   Plus,
 } from "lucide-react";
 import { query } from "../api";
-import { contentWidths } from "../tableSizing";
+import { contentWidths, useFontMetrics } from "../tableSizing";
+import { RowsPerPage } from "./RowsPerPage";
 import { movementTypes, type Option } from "../domain";
 import { SearchFilterPicker } from "./SearchFilterPicker";
 import { Popover } from "./Popover";
@@ -242,6 +243,7 @@ export function RecordExplorer({
             "Status",
             "Actions",
           ];
+  useFontMetrics();
   const recordWidths = contentWidths(
     columnLabels,
     data.items.map((r) =>
@@ -512,16 +514,9 @@ export function RecordExplorer({
           {Math.min(filter.offset + data.items.length, data.total)} of{" "}
           {data.total}
         </span>
-        <SearchFilterPicker
-          mode="single"
-          label="Rows per page"
-          clearable={false}
-          options={[10, 25, 50, 100].map((n) => ({
-            id: String(n),
-            label: String(n),
-          }))}
-          value={[String(filter.limit)]}
-          onChange={(v) => set({ limit: Number(v[0] || 25) })}
+        <RowsPerPage
+          value={filter.limit}
+          onChange={(limit) => set({ limit })}
         />
         <button
           aria-label="Previous page"

@@ -1,5 +1,16 @@
 # Read-only design review
 
+Current typography (2026-10-12): Inter 4.1 variable upright is bundled locally at
+`src/assets/fonts/InterVariable.woff2`, using the shared `--font-sans` token for
+pages, tables, forms, pickers and dialogs. UI UX Pro Max's Minimal Swiss guidance
+uses one Inter family with weight-based hierarchy for enterprise dashboards.
+Existing sizes, touch targets and tabular-number styles remain unchanged. One
+critical font preload and `font-display: swap` keep text available while loading;
+Vite emits the same hashed asset for both CSS and preload, including Pages paths.
+Source: https://github.com/rsms/inter/tree/v4.1 (unmodified font from
+`docs/font-files/InterVariable.woff2`). Its SIL Open Font License 1.1 is retained
+in `src/assets/fonts/Inter-LICENSE.txt`. No runtime font CDN request is required.
+
 Verified live main on 2026-10-10 (Asia/Manila): coop-sys `54bbf05cc9211a603a011051803e5de44a815319`; hr-management `99a28c937f16c8f582649ea8c89370ff00cb032d`. Snapshots cloned under Codex temporary storage; reference checkouts were never edited. User also permits relevant read-only inspection at `C:/Users/USER/Documents/GitHub/coop-sys` and `C:/Users/USER/Documents/GitHub/hr-management`.
 
 Inspected coop-sys paths:
@@ -49,3 +60,11 @@ All mutations and hosted transaction previews use shared progress tracking after
 Field Definitions shares the stationary workspace frame and uses a compact grouped table, searchable by label, machine key and help text, with group/status pickers and existing edit actions. Its definition editor uses a labelled two-column grid on desktop and one column on phones. Access Rules separates policy management, accounts/capabilities and register display settings. Policy forms have compact spacing and readable labels; the current policy list sits beside the editor on wide screens and below it on narrow screens. Only the administration content region scrolls.
 
 The optional No. column is always pinned before selection and employee identity columns. Numbers indicate positions in the current filtered/sorted result and continue across pages. Superadmins allow or disable this display under Permissions → Register settings; users hide/show it in Customize Columns when allowed. Personal view preferences persist, but never override the global display setting. No. is presentation metadata, not an editable field, persistent employee identifier or authorization boundary; it is omitted from export and synchronization.
+
+Pagination uses a shared compact native `RowsPerPage` selector for the fixed
+10/25/50/100 values; it is pagination configuration, not an entity/list filter.
+It has no search, clear or confirmation controls and resets the offset on change.
+The existing searchable picker remains the standard for data filters.
+Employee data rows open the existing secured profile editor on click or Enter/Space.
+Bulk-selection checkboxes and existing interactive cell actions keep their own
+behavior; column previews remain read-only.
