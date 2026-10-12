@@ -100,9 +100,10 @@ export const movementTypes = [
   ["position", "Promotion / Position Change"],
   ["status", "Employment Status Change"],
 ].map(([id, label]) => ({ id, label }));
-export const statuses = ["Active", "Inactive", "Resigned", "Terminated"].map(
-  (id) => ({ id, label: id }),
-);
+export const statuses = ["Active", "Inactive", "Separated"].map((id) => ({
+  id,
+  label: id,
+}));
 export function reconcileLayout(layout: Layout, fields: Field[]): Layout {
   const known = new Set(
     fields

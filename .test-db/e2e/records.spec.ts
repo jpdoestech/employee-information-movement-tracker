@@ -131,6 +131,14 @@ test("movement employee search reaches records beyond the loaded employee page",
     .getByRole("region", { name: "Movement records" })
     .locator("tbody tr")
     .first();
+  await expect(
+    page.getByRole("columnheader", { name: "From", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "To", exact: true }),
+  ).toBeVisible();
+  await expect(movementRow.locator("td").nth(2)).toHaveText("Coordinator");
+  await expect(movementRow.locator("td").nth(3)).toHaveText("Senior Analyst");
   expect((await movementRow.boundingBox())!.height).toBe(44);
   const correction = movementRow.getByRole("button", {
     name: "Void / correct",

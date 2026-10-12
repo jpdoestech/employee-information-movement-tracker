@@ -33,7 +33,7 @@ for (const width of [375, 1440]) {
     await page.getByRole("button", { name: "Status", exact: true }).click();
     await picker.getByRole("option", { name: "Inactive", exact: true }).click();
     await picker
-      .getByRole("option", { name: "Terminated", exact: true })
+      .getByRole("option", { name: "Separated", exact: true })
       .click();
     await expect(
       picker.getByRole("button", { name: "Select visible", exact: true }),

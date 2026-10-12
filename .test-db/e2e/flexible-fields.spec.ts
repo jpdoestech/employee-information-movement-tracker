@@ -41,11 +41,17 @@ for (const [width, height] of [
         .click();
       await expect(suffix).toHaveValue("");
     }
+    await profile
+      .getByRole("button", { name: "Employment Status", exact: true })
+      .click();
+    await page
+      .getByRole("dialog", { name: "Employment Status options", exact: true })
+      .getByRole("option", { name: "Inactive", exact: true })
+      .click();
     for (const [label, selected] of [
       ["Separation Category", "VOLUNTARY"],
       ["Reason for Separation", "Better Job Opportunity"],
       ["Employment Type", "Project-based"],
-      ["Status Reason", "Personal reasons"],
     ]) {
       const trigger = profile.getByRole("button", { name: label, exact: true });
       await trigger.click();
@@ -60,8 +66,8 @@ for (const [width, height] of [
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(width);
     }
-    for (const label of ["Date Hired", "Status Effective Date"]) {
-      const date = profile.getByLabel(label, { exact: true });
+    for (const label of ["Date Hired", "Effective Date"]) {
+      const date = profile.getByLabel(new RegExp(`^${label}( \\*)?$`));
       await date.fill("2026-10-06");
       await expect(date).toHaveValue("2026-10-06");
       const room = await date.evaluate((e) => {
@@ -91,8 +97,6 @@ for (const [width, height] of [
       .getByRole("dialog", { name: "Discard unsaved changes?", exact: true })
       .getByRole("button", { name: "Continue editing", exact: true })
       .click();
-    await expect(profile.getByLabel("Date Hired", { exact: true })).toHaveValue(
-      "2026-10-06",
-    );
+    await expect(profile.getByLabel(/^Date Hired/)).toHaveValue("2026-10-06");
   });
 }

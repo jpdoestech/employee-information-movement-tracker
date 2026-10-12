@@ -40,8 +40,7 @@ export function MovementEditor({
   const [separationCategory, setSeparationCategory] = useState(""),
     [separationReason, setSeparationReason] = useState(""),
     [separationDetails, setSeparationDetails] = useState("");
-  const separating =
-    typ === "status" && ["Resigned", "Terminated"].includes(value);
+  const separating = typ === "status" && !!value && value !== "Active";
   const [assignments, setAssignments] = useState<any[]>([]),
     [selectedEmployee, setSelectedEmployee] = useState<Option[]>([]),
     [assignmentId, setAssignmentId] = useState(""),

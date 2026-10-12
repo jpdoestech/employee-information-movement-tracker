@@ -32,6 +32,8 @@ export type RecordRow = {
   effective_on?: string;
   state?: string;
   reason?: string;
+  from_value?: string;
+  to_value?: string;
   operation?: string;
   entity?: string;
   entity_id?: string;
@@ -204,6 +206,18 @@ export function RecordExplorer({
           </span>
         </th>
         {heading("type", "Transaction")}
+        <th>
+          <span className="record-column-label">
+            <ArrowLeft size={13} aria-hidden />
+            From
+          </span>
+        </th>
+        <th>
+          <span className="record-column-label">
+            <ArrowRight size={13} aria-hidden />
+            To
+          </span>
+        </th>
         {heading("effective_on", "Effective date")}
         <th>
           <span className="record-column-label">
@@ -220,7 +234,7 @@ export function RecordExplorer({
         <th>Actions</th>
       </>
     );
-    columns = 6;
+    columns = 8;
   } else if (kind === "audit") {
     headers = (
       <>
@@ -251,6 +265,8 @@ export function RecordExplorer({
       ? [
           "Employee",
           "Transaction",
+          "From",
+          "To",
           "Effective date",
           "State",
           "Reason",
@@ -274,6 +290,8 @@ export function RecordExplorer({
         ? [
             r.employee_name || r.employee_number || "Authorized employee",
             movementTypes.find((t) => t.id === r.type)?.label || r.type || "",
+            r.from_value || "—",
+            r.to_value || "—",
             r.effective_on || "",
             r.state || "",
             r.reason || "—",
@@ -297,13 +315,13 @@ export function RecordExplorer({
     ),
     60,
     kind === "movements"
-      ? ["", "", "text-date"]
+      ? ["", "", "", "", "text-date"]
       : kind === "audit"
         ? ["", "", "text-id", "text-date"]
         : ["", "text-id"],
   );
   // The date heading includes a type icon and sort direction in addition to text.
-  if (kind === "movements") recordWidths[2] = Math.max(recordWidths[2], 160);
+  if (kind === "movements") recordWidths[4] = Math.max(recordWidths[4], 160);
   return (
     <section className="panel data-panel record-explorer">
       <div className="record-heading">
@@ -477,6 +495,8 @@ export function RecordExplorer({
                       {movementTypes.find((t) => t.id === r.type)?.label ||
                         r.type}
                     </td>
+                    <td title={r.from_value || "—"}>{r.from_value || "—"}</td>
+                    <td title={r.to_value || "—"}>{r.to_value || "—"}</td>
                     <td className="text-date">{r.effective_on}</td>
                     <td>
                       <span className="badge">{r.state}</span>

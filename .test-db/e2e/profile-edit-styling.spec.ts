@@ -16,7 +16,7 @@ for (const [width, height] of [
     const row = page
       .getByLabel("Scrollable employee table")
       .locator("tbody tr")
-      .first();
+      .nth(1);
     await row.locator("td.employee-name").click();
     const editor = page.getByRole("dialog", {
       name: "Employee profile",
@@ -88,6 +88,10 @@ for (const [width, height] of [
       exact: true,
     });
     await save.click();
+    await page
+      .getByRole("dialog", { name: "Classify employment changes", exact: true })
+      .getByRole("button", { name: "Official change", exact: true })
+      .click();
     const confirm = page.getByRole("dialog", {
       name: "Save employee changes",
       exact: true,
@@ -95,6 +99,10 @@ for (const [width, height] of [
     await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(position).toHaveValue("Senior Analyst");
     await save.click();
+    await page
+      .getByRole("dialog", { name: "Classify employment changes", exact: true })
+      .getByRole("button", { name: "Official change", exact: true })
+      .click();
     await confirm
       .getByRole("button", { name: "Continue", exact: true })
       .click();

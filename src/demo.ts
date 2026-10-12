@@ -12,6 +12,7 @@ import {
   profileDefinitions,
   separationCategories,
   separationReasons,
+  employmentError,
 } from "./profileFields";
 import {
   governmentDefinitions,
@@ -631,6 +632,25 @@ export async function demoMutate(op: string, p: any) {
   )
     throw new Error("Identity fields are system-managed");
   if (op.startsWith("employee_") || op === "bulk_update") {
+    if (p.employment || p.initial_employment) {
+      const change = p.employment || p.initial_employment;
+      const e = employees.find((e) => e.id === p.id);
+      const draft = {
+        ...e?.values,
+        ...p.values,
+        ...change,
+        position: change.position ?? p.initial_position ?? e?.values.position,
+        status: change.status ?? e?.values.status ?? "Active",
+      };
+      if (!["official", "correction"].includes(change.change_kind))
+        throw new Error("Choose official change or typo correction");
+      if (change.change_kind === "correction" && change.status != null)
+        throw new Error("Status changes require an official movement");
+      const problem = employmentError(draft);
+      if (problem) throw new Error(problem.message);
+      if (change.position != null && change.change_kind === "official")
+        p.position_change = change.position;
+    }
     if (op === "employee_update" && Object.hasOwn(p, "position_change")) {
       if (
         typeof p.position_change !== "string" ||
@@ -680,7 +700,7 @@ export async function demoMutate(op: string, p: any) {
         row_version: 1,
         values: {
           employee_number: `EMP-${String(employees.length + 1).padStart(7, "0")}`,
-          status: "Active",
+          status: p.initial_employment?.status ?? "Active",
           position: p.initial_position ?? "",
           branch:
             org.find((o) => o.id === p.branch_id || o.id === p.target_level)
@@ -741,6 +761,7 @@ export async function demoMutate(op: string, p: any) {
       }
     for (const t of targets) {
       const e = employees.find((e) => e.id === t.id)!;
+      const previous = { ...e.values };
       if (op === "employee_delete")
         employees = employees.filter((x) => x.id !== e.id);
       else {
@@ -748,12 +769,64 @@ export async function demoMutate(op: string, p: any) {
         if (nameKeys.some((key) => Object.hasOwn(p.values ?? {}, key)))
           e.values.name = structuredValues(e.values);
         e.row_version++;
+        if (
+          p.employment?.change_kind === "correction" &&
+          p.employment.position != null
+        )
+          e.values.position = p.employment.position;
+        if (
+          p.employment?.status != null &&
+          p.employment.status !== e.values.status
+        ) {
+          history.unshift({
+            id: crypto.randomUUID(),
+            employee_id: e.id,
+            type: "status",
+            from_value: String(previous.status || "—"),
+            to_value: p.employment.status,
+            status: p.employment.status,
+            effective_on: e.values.status_effective_date ?? context.today,
+            reason:
+              e.values.separation_details ||
+              e.values.separation_reason ||
+              "Official employment status change",
+            state:
+              (e.values.status_effective_date ?? context.today) > context.today
+                ? "Scheduled"
+                : "Effective",
+            employee_name: e.values.name,
+            employee_number: e.values.employee_number,
+          });
+          if (
+            (e.values.status_effective_date ?? context.today) <= context.today
+          )
+            e.values.status = p.employment.status;
+        }
+        if (
+          p.employment?.change_kind === "official" &&
+          Object.hasOwn(p.values, "department") &&
+          p.position_change == null
+        )
+          history.unshift({
+            id: crypto.randomUUID(),
+            employee_id: e.id,
+            type: "position",
+            from_value: `Department: ${previous.department || "—"}`,
+            to_value: `Department: ${p.values.department || "—"}`,
+            effective_on: context.today,
+            reason: "Official department change from profile",
+            state: "Effective",
+            employee_name: e.values.name,
+            employee_number: e.values.employee_number,
+          });
         if (op === "employee_update" && Object.hasOwn(p, "position_change")) {
           e.values.position = p.position_change.trim();
           history.unshift({
             id: crypto.randomUUID(),
             employee_id: e.id,
             type: "position",
+            from_value: String(previous.position || "—"),
+            to_value: e.values.position,
             position: e.values.position,
             effective_on: context.today,
             reason: "Position updated from employee profile",
@@ -857,7 +930,7 @@ export async function demoMutate(op: string, p: any) {
   } else if (op === "movement") {
     if (
       p.type === "status" &&
-      ["Resigned", "Terminated"].includes(p.status) &&
+      ["Separated", "Resigned", "Terminated"].includes(p.status) &&
       (!separationCategories.includes(p.separation_category) ||
         !separationReasons.includes(p.separation_reason) ||
         (p.separation_reason === "Others (specify)" &&
@@ -872,6 +945,27 @@ export async function demoMutate(op: string, p: any) {
     if (p.client_id) clientIdentity(e, p.client_id);
     history.unshift({
       ...p,
+      from_value:
+        p.type === "position"
+          ? String(e.values.position || "—")
+          : p.type === "status"
+            ? String(e.values.status || "—")
+            : [e.values.branch, e.values.client].filter(Boolean).join(" / "),
+      to_value:
+        p.type === "position"
+          ? p.position
+          : p.type === "status"
+            ? p.status
+            : p.target_level === "head_office"
+              ? "Head Office"
+              : p.target_level === "unassigned"
+                ? "Unassigned"
+                : [
+                    org.find((o) => o.id === p.branch_id)?.label,
+                    org.find((o) => o.id === p.client_id)?.label,
+                  ]
+                    .filter(Boolean)
+                    .join(" / "),
       id: crypto.randomUUID(),
       employee_name: e.values.name,
       employee_number: e.values.employee_number,
@@ -911,7 +1005,8 @@ export async function demoMutate(op: string, p: any) {
   context.revision++;
   audit.unshift({
     id: audit.length + 1,
-    operation: op,
+    operation:
+      p.employment?.change_kind === "correction" ? "typo_correction" : op,
     entity: op.startsWith("employee") || op === "movement" ? "employee" : op,
     entity_id: p.employee_id || p.id,
     created_at: new Date().toISOString(),

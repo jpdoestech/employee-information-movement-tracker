@@ -1,4 +1,46 @@
 export const separationCategories = ["VOLUNTARY", "INVOLUNTARY"];
+export const employmentOrder = [
+  "department",
+  "position",
+  "date_hired",
+  "employment_type",
+  "status",
+  "status_effective_date",
+  "separation_category",
+  "separation_reason",
+  "separation_details",
+  "remarks",
+];
+export const inactiveEmploymentRequired = [
+  "department",
+  "position",
+  "date_hired",
+  "employment_type",
+  "status_effective_date",
+  "separation_category",
+  "separation_reason",
+];
+export function employmentStatus(value: unknown) {
+  return ["Resigned", "Terminated"].includes(String(value))
+    ? "Separated"
+    : String(value || "Active");
+}
+export function employmentError(values: Record<string, unknown>) {
+  if (employmentStatus(values.status) === "Active") return;
+  const missing = inactiveEmploymentRequired.find(
+    (key) => !String(values[key] ?? "").trim(),
+  );
+  if (missing)
+    return {
+      key: missing,
+      message: `${employmentOrder.includes(missing) ? missing.replaceAll("_", " ") : missing} is required when employment is not active.`,
+    };
+  if (
+    values.separation_reason === "Others (specify)" &&
+    !String(values.separation_details ?? "").trim()
+  )
+    return { key: "separation_details", message: "Specify the other reason." };
+}
 export const separationReasons = [
   "Health Concerns",
   "Better Job Opportunity",
@@ -10,6 +52,10 @@ export const separationReasons = [
   "AWOL",
   "Store Variance",
   "Family Reason",
+  "Personal reasons",
+  "End of contract",
+  "Resignation",
+  "Retirement",
   "Others (specify)",
 ];
 // These are editable metadata defaults, not a separate HR module or authorization path.
@@ -30,7 +76,7 @@ export const profileDefinitions = [
   },
   {
     key: "separation_details",
-    label: "Other Separation Reason",
+    label: "Specify reason",
     type: "short_text",
     group: "employment",
     validation: { max_length: 500 },
@@ -73,27 +119,11 @@ export const profileDefinitions = [
     ],
   },
   {
-    key: "status_reason",
-    label: "Status Reason",
-    type: "select",
-    group: "employment",
-    options: [
-      "Active / Normal",
-      "Personal reasons",
-      "End of contract",
-      "Resignation",
-      "Retirement",
-      "Other",
-    ],
-    help_text:
-      "Profile context only. Record employment status changes through Movements.",
-  },
-  {
     key: "status_effective_date",
-    label: "Status Effective Date",
+    label: "Effective Date",
     type: "date",
     group: "employment",
-    help_text: "Profile reference date; it does not schedule a status change.",
+    help_text: "Official status changes take effect on this date.",
   },
   { key: "remarks", label: "Remarks", type: "long_text", group: "employment" },
 ];
