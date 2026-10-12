@@ -34,10 +34,11 @@ npx supabase@2.120.0 db reset
 npx supabase@2.120.0 db lint --level error
 node .test-db/scripts/test-rest.mjs --local-cli
 npx supabase@2.120.0 migration list --local
-npx supabase@2.120.0 db diff --local --schema public,app_private
+npx supabase@2.120.0 db diff --local --schema public,app_private > .test-db/reports/verification/local-drift.sql
+node .test-db/scripts/assert-no-drift.mjs .test-db/reports/verification/local-drift.sql
 ```
 
-`db reset` destroys the disposable local database. The REST harness creates synthetic accounts/fixtures; reset afterward. CI runs both native tests and a separate full Supabase job. No production migrations or deployment run automatically.
+`db reset` destroys the disposable local database. The REST harness creates synthetic accounts/fixtures; reset afterward. CI runs both native tests and a separate full Supabase job. The drift gate accepts only empty/comment-only SQL; unexplained statements fail CI and require review plus a forward migration. Generated SQL is never executed by this check. No production migrations or deployment run automatically.
 
 ## Implementation
 

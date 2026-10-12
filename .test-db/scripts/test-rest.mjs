@@ -244,7 +244,10 @@ try {
     assert.ifError(preview.error);
     assert.equal(preview.data.resolved_targets, 1);
     assert.equal(preview.data.scoped_employee_count, 1);
-    assert.equal(preview.data.samples[0].name, "Synthetic REST employee One");
+    assert.equal(
+      preview.data.samples[0].name,
+      "Test, Synthetic REST employee One",
+    );
     const excluded = await publicClients[1].rpc("field_scope_preview", {
       q: {
         scope_mode: "selected",
@@ -260,6 +263,207 @@ try {
           q: { scope_mode: "all" },
         })
       ).error,
+    );
+  });
+  await test("structured identity validation and retry preserve one REST-created record", async () => {
+    const client = publicClients[0];
+    const raw = (p, request_id = randomUUID()) =>
+      client.rpc("tracker_mutate", {
+        operation: "employee_create",
+        p,
+        request_id,
+      });
+    const rejected = await raw({
+      target_level: "branch",
+      branch_id: b1,
+      values: { name: "Legacy-only input" },
+    });
+    assert.equal(rejected.error?.code, "22023");
+    const p = {
+      target_level: "branch",
+      branch_id: b1,
+      values: {
+        last_name: "Cruz",
+        first_name: "Ana",
+        middle_name: "Maria",
+        suffix: "Jr.",
+      },
+    };
+    const requestId = randomUUID();
+    const attempts = await Promise.all([raw(p, requestId), raw(p, requestId)]);
+    attempts.forEach((r) => assert.ifError(r.error));
+    assert.equal(attempts[0].data.id, attempts[1].data.id);
+    const eid = attempts[0].data.id;
+    const detail = await client.rpc("tracker_query", {
+      operation: "employee",
+      q: { id: eid },
+    });
+    assert.ifError(detail.error);
+    assert.equal(detail.data.employee.values.name, "Cruz, Ana Maria Jr.");
+    const version = detail.data.employee.row_version;
+    const invalid = await request(client, "employee_update", {
+      id: eid,
+      expected_version: version,
+      values: { last_name: null },
+    });
+    assert.equal(invalid.error?.code, "22023");
+    const unchanged = await client.rpc("tracker_query", {
+      operation: "employee",
+      q: { id: eid },
+    });
+    assert.ifError(unchanged.error);
+    assert.equal(unchanged.data.employee.row_version, version);
+    assert.equal(unchanged.data.employee.values.last_name, "Cruz");
+    const changedRetry = await raw(
+      { ...p, values: { ...p.values, first_name: "Different" } },
+      requestId,
+    );
+    assert(
+      changedRetry.error,
+      "A request ID cannot be reused with a different identity",
+    );
+  });
+  await test("same-JWT component denial hides combined identity and permits authorized blind edits", async () => {
+    const marker = `HiddenMiddle${randomUUID()}`;
+    const created = await request(publicClients[0], "employee_create", {
+      target_level: "branch",
+      branch_id: b1,
+      values: {
+        last_name: "Sample",
+        first_name: "Readable",
+        middle_name: marker,
+      },
+    });
+    assert.ifError(created.error);
+    const eid = created.data.id;
+    await owner.query(
+      "insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'R','deny' from public.field_definitions where key='middle_name'",
+      [uid[1]],
+    );
+    const detail = await publicClients[1].rpc("tracker_query", {
+      operation: "employee",
+      q: { id: eid },
+    });
+    assert.ifError(detail.error);
+    const values = detail.data.employee.values;
+    assert(!Object.hasOwn(values, "name"));
+    assert(!Object.hasOwn(values, "middle_name"));
+    assert.equal(values.first_name, "Readable");
+    const search = await publicClients[1].rpc("tracker_query", {
+      operation: "employees",
+      q: { search: marker },
+    });
+    assert.ifError(search.error);
+    assert.equal(search.data.total, 0);
+    const changed = await request(publicClients[1], "employee_update", {
+      id: eid,
+      expected_version: detail.data.employee.row_version,
+      values: { middle_name: "Blind update" },
+    });
+    assert.ifError(changed.error);
+    const checked = await publicClients[0].rpc("tracker_query", {
+      operation: "employee",
+      q: { id: eid },
+    });
+    assert.ifError(checked.error);
+    assert.equal(
+      checked.data.employee.values.name,
+      "Sample, Readable Blind update",
+    );
+    await owner.query(
+      "insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'U','deny' from public.field_definitions where key='first_name'",
+      [uid[1]],
+    );
+    const denied = await request(publicClients[1], "employee_update", {
+      id: eid,
+      expected_version: checked.data.employee.row_version,
+      values: { first_name: "Forbidden" },
+    });
+    assert.equal(denied.error?.code, "42501");
+  });
+  await test("real-JWT concurrent edits commit once and report a revision conflict", async () => {
+    const created = await request(publicClients[0], "employee_create", {
+      target_level: "branch",
+      branch_id: b1,
+      values: { last_name: "Race", first_name: "Initial" },
+    });
+    assert.ifError(created.error);
+    const attempts = await Promise.all(
+      [publicClients[0], publicClients[1]].map((client, i) =>
+        request(client, "employee_update", {
+          id: created.data.id,
+          expected_version: 1,
+          values: { last_name: `Winner ${i}` },
+        }),
+      ),
+    );
+    assert.equal(attempts.filter((r) => !r.error).length, 1);
+    assert.equal(attempts.find((r) => r.error)?.error.code, "40001");
+    const after = await publicClients[0].rpc("tracker_query", {
+      operation: "employee",
+      q: { id: created.data.id },
+    });
+    assert.ifError(after.error);
+    assert.equal(after.data.employee.row_version, 2);
+    assert.match(after.data.employee.values.name, /^Winner [01], Initial$/);
+  });
+  await test("form-layout REST writes are Superadmin-only, atomic and replay-safe", async () => {
+    const read = () =>
+      owner.query(
+        "select id,row_version,tab_name,tab_order from public.field_groups order by id limit 2",
+      );
+    const before = (await read()).rows;
+    assert.equal(before.length, 2);
+    const policies = (
+      await owner.query(
+        "select jsonb_agg(to_jsonb(p) order by id) as policies from public.field_access_policies p",
+      )
+    ).rows[0].policies;
+    const p = {
+      groups: before.map((g) => ({
+        id: g.id,
+        expected_version: g.row_version,
+        tab_name: "REST Personal",
+        tab_order: 3,
+      })),
+    };
+    for (const client of publicClients.slice(1)) {
+      const denied = await request(client, "form_layout", p);
+      assert.equal(denied.error?.code, "42501");
+    }
+    const stale = await request(publicClients[0], "form_layout", {
+      groups: p.groups.map((g, i) => ({
+        ...g,
+        expected_version: i ? 0 : g.expected_version,
+      })),
+    });
+    assert.equal(stale.error?.code, "40001");
+    assert.deepEqual((await read()).rows, before);
+    const requestId = randomUUID();
+    const save = () =>
+      publicClients[0].rpc("tracker_mutate", {
+        operation: "form_layout",
+        p,
+        request_id: requestId,
+      });
+    const attempts = await Promise.all([save(), save()]);
+    attempts.forEach((r) => {
+      assert.ifError(r.error);
+      assert.deepEqual(r.data, { saved: true });
+    });
+    const after = (await read()).rows;
+    after.forEach((g, i) => {
+      assert.equal(g.tab_name, "REST Personal");
+      assert.equal(g.tab_order, 3);
+      assert.equal(Number(g.row_version), Number(before[i].row_version) + 1);
+    });
+    assert.deepEqual(
+      (
+        await owner.query(
+          "select jsonb_agg(to_jsonb(p) order by id) as policies from public.field_access_policies p",
+        )
+      ).rows[0].policies,
+      policies,
     );
   });
   await test("revocation takes effect with the same JWT without re-login", async () => {
@@ -312,6 +516,7 @@ try {
     JSON.stringify(
       {
         results,
+        verifiedAt: new Date().toISOString(),
         environment: "Disposable full Supabase with distinct real Auth JWTs",
       },
       null,

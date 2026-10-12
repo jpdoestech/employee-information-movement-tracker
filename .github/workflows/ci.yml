@@ -46,6 +46,7 @@ jobs:
       - run: node .test-db/scripts/test-rest.mjs --local-cli
       - run: supabase migration list --local
       - run: supabase db diff --local --schema public,app_private > .test-db/reports/verification/local-drift.sql
+      - run: node .test-db/scripts/assert-no-drift.mjs .test-db/reports/verification/local-drift.sql
       - run: supabase stop --no-backup
         if: always()
       - uses: actions/upload-artifact@v4
