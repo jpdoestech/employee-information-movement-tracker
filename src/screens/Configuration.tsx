@@ -888,6 +888,10 @@ export function FieldBuilder({
                 }
               />
             </label>
+            <p className="help-text">
+              A standalone tab with the same name follows this group name.
+              Custom or shared tab names are managed using Form tabs.
+            </p>
             <label>
               <input
                 type="checkbox"

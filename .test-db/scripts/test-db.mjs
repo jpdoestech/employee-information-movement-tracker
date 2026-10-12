@@ -2305,6 +2305,80 @@ try {
     );
     await assert.rejects(m(id.sa, "form_layout", p), { code: "40001" });
   });
+  await test("group renames follow standalone tab names and preserve shared layouts and policies", async () => {
+    const gid = randomUUID();
+    await owner.query(
+      "insert into public.field_groups(id,name,tab_name) values($1,'Renamable entries','Renamable entries')",
+      [gid],
+    );
+    const before = (
+      await owner.query("select count(*) n from public.field_access_policies")
+    ).rows[0].n;
+    const payload = {
+      id: gid,
+      expected_version: 1,
+      name: "Client details",
+      active: true,
+    };
+    await assert.rejects(m(id.viewer, "group", payload), { code: "42501" });
+    const request = randomUUID();
+    await m(id.sa, "group", payload, request);
+    await m(id.sa, "group", payload, request);
+    const saved = (
+      await owner.query(
+        "select name,tab_name,row_version from public.field_groups where id=$1",
+        [gid],
+      )
+    ).rows[0];
+    assert.equal(saved.tab_name, "Client details");
+    assert.equal(Number(saved.row_version), 2);
+    await assert.rejects(m(id.sa, "group", payload), { code: "40001" });
+    await m(id.sa, "form_layout", {
+      groups: [
+        { id: gid, expected_version: 2, tab_name: "Custom tab", tab_order: 45 },
+      ],
+    });
+    await m(id.sa, "group", {
+      ...payload,
+      expected_version: 3,
+      name: "Renamed section",
+    });
+    assert.equal(
+      (
+        await owner.query(
+          "select tab_name from public.field_groups where id=$1",
+          [gid],
+        )
+      ).rows[0].tab_name,
+      "Custom tab",
+    );
+    const shared = (
+      await owner.query(
+        "select row_version from public.field_groups where id=$1",
+        [id.contact],
+      )
+    ).rows[0];
+    await m(id.sa, "group", {
+      id: id.contact,
+      expected_version: shared.row_version,
+      name: "Contact details",
+      active: true,
+    });
+    assert.equal(
+      (
+        await owner.query(
+          "select tab_name from public.field_groups where id=$1",
+          [id.contact],
+        )
+      ).rows[0].tab_name,
+      "Personal",
+    );
+    assert.equal(
+      (await owner.query("select count(*) n from public.field_access_policies"))
+        .rows[0].n,
+      before,
+    );
+  });
   await test("profile defaults and initial position use the secured idempotent create transaction", async () => {
     const schema = await q(id.sa, "schema");
     for (const key of [

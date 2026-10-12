@@ -15,10 +15,12 @@ async function bounded(el: Locator, width: number, height: number) {
   );
 }
 for (const [width, height] of [
+  [320, 740],
   [375, 812],
   [768, 1024],
   [1366, 768],
   [812, 375],
+  [1920, 1080],
 ]) {
   test(`shared page typography at ${width}x${height}`, async ({ page }) => {
     await page.setViewportSize({ width, height });
@@ -79,6 +81,10 @@ for (const [width, height] of [
       page.getByRole("searchbox", { name: "Search employees" }),
       "12px",
     );
+    expect(await page.locator(".register > .section-heading").evaluate(e => getComputedStyle(e).paddingLeft)).toBe("12px");
+    expect(await page.locator(".register > .section-heading").evaluate(e => getComputedStyle(e).paddingRight)).toBe("12px");
+    if (width > 760)
+      expect((await page.locator(".register .search-control").boundingBox())!.width).toBeLessThanOrEqual(320);
     if (width < 760)
       expect(
         (await page.locator(".register .search-control").boundingBox())!.width,

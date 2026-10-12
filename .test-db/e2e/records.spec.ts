@@ -38,6 +38,18 @@ for (const [width, height] of [
         .locator(".record-explorer .pagination")
         .boundingBox())!;
       expect(footer.y + footer.height).toBeLessThanOrEqual(height + 1);
+      const search = (await page
+        .locator(".record-explorer .search-control")
+        .boundingBox())!;
+      expect(search.height).toBe(width > 760 ? 36 : 44);
+      const reset = (await page
+        .getByRole("button", { name: "Reset filters", exact: true })
+        .boundingBox())!;
+      if (width > 760) {
+        expect(
+          Math.abs(search.y + search.height / 2 - reset.y - reset.height / 2),
+        ).toBeLessThanOrEqual(1);
+      }
       await page
         .getByRole("button", { name: "More filters", exact: true })
         .click();
@@ -120,6 +132,17 @@ test("movement employee search reaches records beyond the loaded employee page",
     .locator("tbody tr")
     .first();
   expect((await movementRow.boundingBox())!.height).toBe(44);
+  const correction = movementRow.getByRole("button", {
+    name: "Void / correct",
+    exact: true,
+  });
+  await expect(correction).toBeVisible();
+  expect(
+    await correction.evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+  await page.screenshot({
+    path: ".test-db/reports/verification/movement-list-desktop.png",
+  });
   await page.setViewportSize({ width: 375, height: 740 });
   expect((await movementRow.boundingBox())!.height).toBe(52);
   await page.goto("/#audit");

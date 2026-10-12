@@ -20,6 +20,10 @@ describe("Field setup", () => {
   });
   it("separates bounded display sizing from data length", () => {
     expect(valueWidth("short_text", [], undefined, undefined, 18)).toBe("18ch");
+    expect(valueWidth("date", [], undefined, undefined, 10)).toBe("28ch");
+    expect(valueWidth("short_text", [], 12)).toBe("28ch");
+    expect(valueWidth("select", ["VOLUNTARY", "INVOLUNTARY"])).toBe("23ch");
+    expect(valueWidth("select", ["Better Job Opportunity"])).toBe("34ch");
     expect(
       fieldConfigurationError({ validation: { input_width: 9 } }),
     ).toContain("10 to 80");

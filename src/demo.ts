@@ -793,8 +793,21 @@ export async function demoMutate(op: string, p: any) {
       });
   } else if (op === "group") {
     const g = context.groups.find((g) => g.id === p.id);
-    if (g) Object.assign(g, p, { row_version: g.row_version + 1 });
-    else
+    if (g) {
+      const followsName =
+        !g.tab_name ||
+        (g.tab_name === g.name &&
+          !context.groups.some(
+            (other) => other.id !== g.id && other.tab_name === g.tab_name,
+          ));
+      Object.assign(g, p, {
+        row_version: g.row_version + 1,
+        tab_name: followsName ? p.name : g.tab_name,
+      });
+      for (const field of fields) {
+        if (field.group_id === g.id) field.group_name = g.name;
+      }
+    } else
       context.groups.push({
         ...p,
         id: crypto.randomUUID(),

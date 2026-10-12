@@ -8,6 +8,12 @@ import {
   RotateCcw,
   ListFilter,
   Plus,
+  UserRound,
+  GitBranch,
+  CalendarDays,
+  CircleDot,
+  AlignLeft,
+  Undo2,
 } from "lucide-react";
 import { query } from "../api";
 import { contentWidths, useFontMetrics } from "../tableSizing";
@@ -165,7 +171,11 @@ export function RecordExplorer({
       }
     >
       <button onClick={() => changeSort(key)}>
-        {label}
+        <span className="record-column-label">
+          {key === "type" && <GitBranch size={13} aria-hidden />}
+          {key === "effective_on" && <CalendarDays size={13} aria-hidden />}
+          {label}
+        </span>
         {filter.sort === key &&
           (filter.direction === "asc" ? (
             <ArrowUp size={13} />
@@ -187,14 +197,27 @@ export function RecordExplorer({
   if (kind === "movements") {
     headers = (
       <>
-        <th>Employee</th>
+        <th>
+          <span className="record-column-label">
+            <UserRound size={13} aria-hidden />
+            Employee
+          </span>
+        </th>
         {heading("type", "Transaction")}
         {heading("effective_on", "Effective date")}
-        <th>State</th>
-        <th>Reason</th>
         <th>
-          <span className="sr-only">Actions</span>
+          <span className="record-column-label">
+            <CircleDot size={13} aria-hidden />
+            State
+          </span>
         </th>
+        <th>
+          <span className="record-column-label">
+            <AlignLeft size={13} aria-hidden />
+            Reason
+          </span>
+        </th>
+        <th>Actions</th>
       </>
     );
     columns = 6;
@@ -254,7 +277,7 @@ export function RecordExplorer({
             r.effective_on || "",
             r.state || "",
             r.reason || "—",
-            onCorrect ? "Void / correct" : "",
+            onCorrect ? "Correct" : "",
           ]
         : kind === "audit"
           ? [
@@ -272,13 +295,15 @@ export function RecordExplorer({
               onEdit ? "Edit" : "",
             ],
     ),
-    44,
+    60,
     kind === "movements"
       ? ["", "", "text-date"]
       : kind === "audit"
         ? ["", "", "text-id", "text-date"]
         : ["", "text-id"],
   );
+  // The date heading includes a type icon and sort direction in addition to text.
+  if (kind === "movements") recordWidths[2] = Math.max(recordWidths[2], 160);
   return (
     <section className="panel data-panel record-explorer">
       <div className="record-heading">
@@ -414,6 +439,7 @@ export function RecordExplorer({
         aria-busy={loading}
       >
         <table
+          className="record-table"
           aria-label={title}
           style={{
             width: recordWidths.reduce((sum, width) => sum + width, 0),
@@ -458,8 +484,14 @@ export function RecordExplorer({
                     <td title={r.reason || "—"}>{r.reason || "—"}</td>
                     <td>
                       {onCorrect && r.state !== "Voided" && (
-                        <button onClick={() => onCorrect(r)}>
-                          Void / correct
+                        <button
+                          className="record-correct"
+                          aria-label="Void / correct"
+                          title="Void or correct this transaction"
+                          onClick={() => onCorrect(r)}
+                        >
+                          <Undo2 size={14} aria-hidden />
+                          Correct
                         </button>
                       )}
                     </td>
