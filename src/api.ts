@@ -28,8 +28,9 @@ export async function query<T = any>(
   if (demo) return demoQuery(operation, q) as T;
   if (!supabase)
     throw new Error("Configure this application’s Supabase connection.");
-  const special =
-    operation === "record_page"
+  const special = ["client_settings", "filter_values"].includes(operation)
+    ? operation
+    : operation === "record_page"
       ? "record_page"
       : operation === "effective_permissions"
         ? "permission_preview"
@@ -84,6 +85,7 @@ export async function mutate<T = any>(
     form_layout: "Save employee form tabs",
     save_view: "Save personal view",
     register_settings: "Save register display policy",
+    client_settings: "Save client entry settings",
     scope: "Change access scope",
     policy: "Change access policy",
     profile: "Change user account",
@@ -105,13 +107,15 @@ export async function mutate<T = any>(
       requestId || pendingRequests.get(fingerprint) || crypto.randomUUID();
     pendingRequests.set(fingerprint, id);
     const { data, error } =
-      operation === "register_settings"
-        ? await supabase.rpc("set_register_settings", { p, request_id: id })
-        : await supabase.rpc("tracker_mutate", {
-            operation,
-            p,
-            request_id: id,
-          });
+      operation === "client_settings"
+        ? await supabase.rpc("set_client_settings", { p, request_id: id })
+        : operation === "register_settings"
+          ? await supabase.rpc("set_register_settings", { p, request_id: id })
+          : await supabase.rpc("tracker_mutate", {
+              operation,
+              p,
+              request_id: id,
+            });
     if (error)
       throw new Error(
         error.code === "23505"

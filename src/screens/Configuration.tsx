@@ -580,7 +580,7 @@ export function FieldBuilder({
                   onChange={(e) =>
                     setDraft({
                       ...draft,
-                      options: e.target.value.split("\n").filter(Boolean),
+                      options: e.target.value.split("\n"),
                     })
                   }
                 />
@@ -651,7 +651,12 @@ export function FieldBuilder({
               <label>
                 <input
                   type="checkbox"
-                  checked={draft.required}
+                  disabled={!!draft.validation?.government_id_digits}
+                  checked={
+                    draft.validation?.government_id_digits
+                      ? false
+                      : draft.required
+                  }
                   onChange={(e) =>
                     setDraft({ ...draft, required: e.target.checked })
                   }
@@ -828,10 +833,19 @@ export function FieldBuilder({
               onClick={async () => {
                 setBusy(true);
                 try {
-                  const invalid = fieldConfigurationError(draft);
+                  const configured = {
+                    ...draft,
+                    options:
+                      draft.type === "select"
+                        ? draft.options
+                            .map((v: string) => v.trim())
+                            .filter(Boolean)
+                        : draft.options,
+                  };
+                  const invalid = fieldConfigurationError(configured);
                   if (invalid) throw new Error(invalid);
                   await mutate("field", {
-                    ...draft,
+                    ...configured,
                     targets: targets.map((id) => {
                       const o = options.find((o) => o.id === id)!;
                       return {

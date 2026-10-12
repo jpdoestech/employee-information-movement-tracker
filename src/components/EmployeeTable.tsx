@@ -16,6 +16,7 @@ import {
 import type { Employee, Field, Layout } from "../domain";
 import { contentWidths, useFontMetrics } from "../tableSizing";
 import { displayFieldValue } from "../fieldValues";
+import { fieldTextRole } from "../typography";
 const columnIcons: Record<string, LucideIcon> = {
   employee_number: Hash,
   name: UserRound,
@@ -68,6 +69,7 @@ export function EmployeeTable({
         ),
       ),
       66,
+      columns.map((key) => fieldTextRole(fields.find((f) => f.key === key))),
     );
     return Object.fromEntries(columns.map((key, i) => [key, sized[i]]));
   }, [rows, fields, columns.join("|"), fontReady]);
@@ -236,7 +238,7 @@ export function EmployeeTable({
               {order.map((k, i) => (
                 <td
                   key={k}
-                  className={`${cls(k)} ${k === "name" ? "employee-name" : k === "employee_number" ? "employee-id" : ""}`}
+                  className={`${cls(k)} ${fieldTextRole(fields.find((f) => f.key === k))} ${k === "name" ? "employee-name" : k === "employee_number" ? "employee-id" : ""}`}
                   style={style(k)}
                   title={String(row.values[k] ?? "—")}
                 >

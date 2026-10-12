@@ -1,15 +1,20 @@
 # Read-only design review
 
-Current typography (2026-10-12): Inter 4.1 variable upright is bundled locally at
-`src/assets/fonts/InterVariable.woff2`, using the shared `--font-sans` token for
-pages, tables, forms, pickers and dialogs. UI UX Pro Max's Minimal Swiss guidance
-uses one Inter family with weight-based hierarchy for enterprise dashboards.
-Existing sizes, touch targets and tabular-number styles remain unchanged. One
-critical font preload and `font-display: swap` keep text available while loading;
-Vite emits the same hashed asset for both CSS and preload, including Pages paths.
-Source: https://github.com/rsms/inter/tree/v4.1 (unmodified font from
-`docs/font-files/InterVariable.woff2`). Its SIL Open Font License 1.1 is retained
-in `src/assets/fonts/Inter-LICENSE.txt`. No runtime font CDN request is required.
+Current typography (2026-10-12): match the local coop-sys reference files.
+Main UI uses "Segoe UI Variable", "Aptos", "Segoe UI", system-ui, sans-serif.
+Display roles (brand and dashboard values) use "Segoe UI Variable Display",
+"Aptos Display", "Segoe UI", sans-serif. Fonts resolve locally; no font downloads
+or preload requests are used. Shared tokens are in src/styles.css.
+
+Fixed scale across desktop and mobile: titles/sections/body/form values 14px;
+navigation 13px; tables/names/compact controls/tabs/buttons 12px; labels and
+secondary details 11px; uppercase column headings 10px; dashboard values 30px.
+Weights are 400/500/600/700. Names and titles use 600. Body line height is 1.5,
+compact line height 1.4. Touch hit areas remain 44px regardless of text size.
+IDs/codes/dates/financial amounts use the default monospace stack equivalent;
+counts, display ordinals and generic numeric fields retain the UI stack.
+Table sizing measures authorized displayed content with the same typography.
+
 
 Verified live main on 2026-10-10 (Asia/Manila): coop-sys `54bbf05cc9211a603a011051803e5de44a815319`; hr-management `99a28c937f16c8f582649ea8c89370ff00cb032d`. Snapshots cloned under Codex temporary storage; reference checkouts were never edited. User also permits relevant read-only inspection at `C:/Users/USER/Documents/GitHub/coop-sys` and `C:/Users/USER/Documents/GitHub/hr-management`.
 
@@ -115,14 +120,14 @@ names have readable bounded widths, Suffix stays short, contact controls have th
 own widths and Department/Position stay paired when space permits. Remarks and
 address sections keep the available full width; phones stack the entries.
 
-Government IDs default to required restricted text fields, excluded from table
+Government IDs are optional restricted text fields, excluded from table
 columns by default. Validation is duplicated in the shared editor and PostgreSQL:
 BIR TIN is the 9-digit personal TIN (branch code excluded), SSS has 10 digits, and
 PhilHealth PIN/Pag-IBIG MID have 12. Spaces and hyphens normalize to digits while
 leading zeroes remain intact. These checks validate syntax, not agency issuance.
-New records require all applicable mandatory IDs and explicit field Create grants.
-Existing absent IDs are not fabricated and do not block unrelated profile edits;
-once supplied, a required ID cannot be cleared. Existing explicit policies and
+New records may omit all government IDs; supplied values require explicit field grants.
+Absent IDs are not fabricated and do not block profile edits. Supplied IDs may be
+cleared with the appropriate field permission. Existing explicit policies and
 organization boundaries remain enforced. Profile-required rules are configurable.
 Status Reason and Status Effective Date are profile context, not replacements for
 status movement transactions or their effective dates.

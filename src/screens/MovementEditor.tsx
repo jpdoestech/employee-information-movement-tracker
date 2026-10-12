@@ -1,3 +1,4 @@
+import { separationCategories, separationReasons } from "../profileFields";
 import { FloatingNotification } from "../components/FloatingNotification";
 import { useCallback, useEffect, useState } from "react";
 import { Dialog } from "../components/Dialog";
@@ -36,6 +37,11 @@ export function MovementEditor({
     [preview, setPreview] = useState<any>(),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const [separationCategory, setSeparationCategory] = useState(""),
+    [separationReason, setSeparationReason] = useState(""),
+    [separationDetails, setSeparationDetails] = useState("");
+  const separating =
+    typ === "status" && ["Resigned", "Terminated"].includes(value);
   const [assignments, setAssignments] = useState<any[]>([]),
     [selectedEmployee, setSelectedEmployee] = useState<Option[]>([]),
     [assignmentId, setAssignmentId] = useState(""),
@@ -104,6 +110,13 @@ export function MovementEditor({
     effective_on: date,
     ends_on: end || undefined,
     reason,
+    ...(separating
+      ? {
+          separation_category: separationCategory,
+          separation_reason: separationReason,
+          separation_details: separationDetails,
+        }
+      : {}),
     category,
     assignment_id: assignmentId || undefined,
     values: destinationValues,
@@ -220,6 +233,43 @@ export function MovementEditor({
                 )}
               </>
             )}
+            {separating && (
+              <>
+                <div className="form-control">
+                  <span>Separation Category *</span>
+                  <SearchFilterPicker
+                    mode="single"
+                    label="Separation Category"
+                    options={separationCategories.map((id) => ({
+                      id,
+                      label: id,
+                    }))}
+                    value={separationCategory ? [separationCategory] : []}
+                    onChange={(v) => setSeparationCategory(v[0] ?? "")}
+                  />
+                </div>
+                <div className="form-control">
+                  <span>Reason for Separation *</span>
+                  <SearchFilterPicker
+                    mode="single"
+                    label="Reason for Separation"
+                    options={separationReasons.map((id) => ({ id, label: id }))}
+                    value={separationReason ? [separationReason] : []}
+                    onChange={(v) => setSeparationReason(v[0] ?? "")}
+                  />
+                </div>
+                {separationReason === "Others (specify)" && (
+                  <label>
+                    Specify other separation reason *
+                    <input
+                      value={separationDetails}
+                      maxLength={500}
+                      onChange={(e) => setSeparationDetails(e.target.value)}
+                    />
+                  </label>
+                )}
+              </>
+            )}
             {typ === "return" && (
               <SearchFilterPicker
                 mode="single"
@@ -319,6 +369,14 @@ export function MovementEditor({
                 ? value
                 : o?.label || "Unassigned"}
             </p>
+            {separating && (
+              <p>
+                {separationCategory} � {separationReason}
+                {separationReason === "Others (specify)"
+                  ? `: ${separationDetails}`
+                  : ""}
+              </p>
+            )}
             <p>Reason: {reason}</p>
           </div>
         )}
@@ -339,7 +397,12 @@ export function MovementEditor({
             !reason.trim() ||
             !date ||
             (typ === "status" || typ === "position" ? !value : !dest) ||
-            (typ === "temporary" && !end)
+            (typ === "temporary" && !end) ||
+            (separating &&
+              (!separationCategory ||
+                !separationReason ||
+                (separationReason === "Others (specify)" &&
+                  !separationDetails.trim())))
           }
           onClick={async () => {
             setBusy(true);

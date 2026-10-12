@@ -1,3 +1,5 @@
+import { IdentifierInput } from "./IdentifierInput";
+import { identifierGroups } from "../identifiers";
 import { SearchFilterPicker } from "./SearchFilterPicker";
 import type { Field } from "../domain";
 import { useId, useState } from "react";
@@ -6,6 +8,7 @@ import { displayFieldValue, parseNumberInput } from "../fieldValues";
 import { governmentIdError, normalizeGovernmentId } from "../governmentIds";
 import { valueWidth } from "../controlSizing";
 import { FieldTypeIcon, fieldTypeIcons } from "./FieldTypeIcon";
+import { fieldTextRole } from "../typography";
 
 function NumberInput({
   id,
@@ -71,7 +74,7 @@ export function ValueEditor({
   const showClear = clearable && (blind || (value != null && value !== ""));
   const idError = governmentIdError(f, value);
   return (
-    <div className="field">
+    <div className={`field ${fieldTextRole(f)}`}>
       <label htmlFor={f.type === "select" ? undefined : id}>
         {f.label}
         {f.required ? " *" : ""}
@@ -122,6 +125,13 @@ export function ValueEditor({
             value={String(value ?? "")}
             onChange={(e) => onChange(e.target.value)}
           />
+        ) : identifierGroups(f) ? (
+          <IdentifierInput
+            id={id}
+            field={f}
+            value={value}
+            onChange={onChange}
+          />
         ) : f.type === "decimal" ? (
           <NumberInput id={id} field={f} value={value} onChange={onChange} />
         ) : (
@@ -164,7 +174,7 @@ export function ValueEditor({
             }
           />
         )}
-        {idError && (
+        {idError && !identifierGroups(f) && (
           <small id={`${id}-id-error`} role="alert" className="field-error">
             {idError}
           </small>

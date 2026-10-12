@@ -31,18 +31,18 @@ describe("government IDs", () => {
     expect(normalizeGovernmentId("012 345 678")).toBe("012345678");
     expect(normalizeGovernmentId("012/345/678")).toBe("012/345/678");
   });
-  it("requires new IDs without fabricating missing historical values", () => {
+  it("keeps IDs optional on creation, editing and clearing even with stale required metadata", () => {
     const field = {
       key: "bir_tin",
       required: true,
       validation: { government_id_digits: 9 },
     } as Field;
-    expect(requiredForEdit(field, {}, {}, true)).toBe(true);
+    expect(requiredForEdit(field, {}, {}, true)).toBe(false);
     expect(requiredForEdit(field, {}, {}, false)).toBe(false);
     expect(requiredForEdit(field, { bir_tin: "012345678" }, {}, false)).toBe(
-      true,
+      false,
     );
-    expect(requiredForEdit(field, {}, { bir_tin: null }, false)).toBe(true);
+    expect(requiredForEdit(field, {}, { bir_tin: null }, false)).toBe(false);
     expect(requiredForEdit({ ...field, required: false }, {}, {}, true)).toBe(
       false,
     );

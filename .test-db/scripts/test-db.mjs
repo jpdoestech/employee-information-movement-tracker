@@ -887,6 +887,8 @@ try {
         expected_version: await revision(e3),
         type: "status",
         status: "Resigned",
+        separation_category: "VOLUNTARY",
+        separation_reason: "Career Growth",
         effective_on: date(2),
         reason: "Conflict",
       }),
@@ -897,6 +899,8 @@ try {
       expected_version: await revision(e3),
       type: "status",
       status: "Resigned",
+      separation_category: "VOLUNTARY",
+      separation_reason: "Career Growth",
       effective_on: date(8),
       reason: "Synthetic future separation",
     });
@@ -2478,27 +2482,28 @@ try {
     assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
     assert.equal(results.filter((r) => r.status === "rejected").length, 1);
   });
-  await test("mandatory government IDs validate exact digits, retain zeroes and reject atomic invalid writes", async () => {
+  await test("optional government IDs allow missing and cleared values while rejecting atomic invalid writes", async () => {
     const before = (
       await owner.query(
         "select (select count(*) from public.employees) employees,(select count(*) from public.audit_log) audit,(select count(*) from public.sync_outbox) outbox",
       )
     ).rows[0];
-    await assert.rejects(
-      as(id.sa, (c) =>
-        c.query("select public.tracker_mutate('employee_create',$1,$2)", [
+    const withoutIds = await as(id.sa, (c) =>
+        c.query("select public.tracker_mutate('employee_create',$1,$2) r", [
           { values: { first_name: "Missing", last_name: "IDs" } },
           randomUUID(),
         ]),
-      ),
-      { code: "22023" },
     );
+    const withoutIdsDetail = await q(id.sa, "employee", { id: withoutIds.rows[0].r.id });
+    for (const key of ["bir_tin", "sss_number", "philhealth_pin", "pagibig_mid"])
+      assert.equal(withoutIdsDetail.employee.values[key], null);
     const after = (
       await owner.query(
         "select (select count(*) from public.employees) employees,(select count(*) from public.audit_log) audit,(select count(*) from public.sync_outbox) outbox",
       )
     ).rows[0];
-    assert.deepEqual(after, before);
+    assert.equal(Number(after.employees), Number(before.employees) + 1);
+    assert.ok(Number(after.audit) > Number(before.audit));
     const created = await m(id.sa, "employee_create", {
       values: {
         name: "Synthetic government IDs",
@@ -2519,7 +2524,7 @@ try {
       "philhealth_pin",
       "pagibig_mid",
     ])
-      for (const value of ["123", "01234567890A", 123456789, null])
+      for (const value of ["123", "01234567890A", 123456789])
         await assert.rejects(
           m(id.sa, "employee_update", {
             id: created.id,
@@ -2529,6 +2534,14 @@ try {
           { code: "22023" },
         );
     assert.equal(await revision(created.id), detail.employee.row_version);
+    await m(id.sa, "employee_update", {
+      id: created.id,
+      expected_version: detail.employee.row_version,
+      values: { bir_tin: null, sss_number: null, philhealth_pin: null, pagibig_mid: null },
+    });
+    const cleared = await q(id.sa, "employee", { id: created.id });
+    for (const key of ["bir_tin", "sss_number", "philhealth_pin", "pagibig_mid"])
+      assert.equal(cleared.employee.values[key], null);
     const legacy = (
       await owner.query(
         "insert into public.employees(name) values('Legacy missing IDs') returning id",
@@ -2549,7 +2562,7 @@ try {
     const ids = schema.fields.filter((f) => f.validation?.government_id_digits);
     assert.equal(ids.length, 4);
     for (const f of ids) {
-      assert.equal(f.required, true);
+      assert.equal(f.required, false);
       assert.equal(f.sensitivity, "restricted");
       assert.equal(f.list_eligible, false);
     }

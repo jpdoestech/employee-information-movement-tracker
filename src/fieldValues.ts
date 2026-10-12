@@ -1,3 +1,4 @@
+import { formatIdentifier, identifierGroups } from "./identifiers";
 import type { Field } from "./domain";
 
 const numberFormat = new Intl.NumberFormat("en-US", {
@@ -7,9 +8,15 @@ const numberFormat = new Intl.NumberFormat("en-US", {
 
 // Formatting is presentation only: stored numbers and numeric queries stay intact.
 export function displayFieldValue(
-  field: Pick<Field, "type"> | undefined,
+  field:
+    | (Pick<Field, "type"> & Partial<Pick<Field, "key" | "validation">>)
+    | undefined,
   value: unknown,
 ) {
+  if (value != null && field) {
+    const groups = identifierGroups({ ...field, key: field.key ?? "" });
+    if (groups) return formatIdentifier(value, groups);
+  }
   if (
     field?.type === "decimal" &&
     typeof value === "number" &&
@@ -34,5 +41,9 @@ export function parseNumberInput(text: string): number | string | null {
 }
 
 export function fieldTypeLabel(type: string) {
-  return type === "decimal" ? "Number" : type.replaceAll("_", " ");
+  return type === "phone"
+    ? "Mobile"
+    : type === "decimal"
+      ? "Number"
+      : type.replaceAll("_", " ");
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-// Re-measure after the bundled font settles, including on a slow connection.
+// Re-measure when the browser has resolved the installed font fallback.
 export function useFontMetrics() {
   const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -20,15 +20,22 @@ export function contentWidths(
   labels: string[],
   rows: string[][],
   headerSpace = 44,
+  roles: string[] = [],
 ): number[] {
   const canvas = document.createElement("canvas").getContext("2d");
-  const family = getComputedStyle(document.documentElement).fontFamily;
+  const tokens = getComputedStyle(document.documentElement);
+  const family = tokens.fontFamily;
+  const mono = tokens.getPropertyValue("--font-mono") || "monospace";
   const measure = (text: string) =>
     canvas?.measureText(text).width ?? text.length * 8;
   return labels.map((label, index) => {
-    if (canvas) canvas.font = `600 12px ${family}`;
-    const heading = measure(label) + headerSpace;
-    if (canvas) canvas.font = `600 14px ${family}`;
+    if (canvas) canvas.font = `600 10px ${family}`;
+    const heading =
+      measure(label.toUpperCase()) + headerSpace + label.length * 0.4;
+    if (canvas)
+      canvas.font = roles[index]
+        ? `400 ${roles[index] === "text-id" ? 11 : 12}px ${mono}`
+        : `600 12px ${family}`;
     const data = rows.reduce(
       (width, row) => Math.max(width, measure(row[index] || "—") + 24),
       0,

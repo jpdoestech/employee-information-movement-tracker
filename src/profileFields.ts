@@ -1,5 +1,40 @@
+export const separationCategories = ["VOLUNTARY", "INVOLUNTARY"];
+export const separationReasons = [
+  "Health Concerns",
+  "Better Job Opportunity",
+  "Better Pay",
+  "Going Abroad",
+  "Career Growth",
+  "Further Studies",
+  "Termination",
+  "AWOL",
+  "Store Variance",
+  "Family Reason",
+  "Others (specify)",
+];
 // These are editable metadata defaults, not a separate HR module or authorization path.
 export const profileDefinitions = [
+  {
+    key: "separation_category",
+    label: "Separation Category",
+    type: "select",
+    group: "employment",
+    options: separationCategories,
+  },
+  {
+    key: "separation_reason",
+    label: "Reason for Separation",
+    type: "select",
+    group: "employment",
+    options: separationReasons,
+  },
+  {
+    key: "separation_details",
+    label: "Other Separation Reason",
+    type: "short_text",
+    group: "employment",
+    validation: { max_length: 500 },
+  },
   { key: "birth_date", label: "Birth Date", type: "date", group: "personal" },
   {
     key: "gender",

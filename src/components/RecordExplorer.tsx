@@ -272,6 +272,12 @@ export function RecordExplorer({
               onEdit ? "Edit" : "",
             ],
     ),
+    44,
+    kind === "movements"
+      ? ["", "", "text-date"]
+      : kind === "audit"
+        ? ["", "", "text-id", "text-date"]
+        : ["", "text-id"],
   );
   return (
     <section className="panel data-panel record-explorer">
@@ -437,13 +443,15 @@ export function RecordExplorer({
                           r.employee_number ||
                           "Authorized employee"}
                       </strong>
-                      {r.employee_name && <small>{r.employee_number}</small>}
+                      {r.employee_name && (
+                        <small className="text-id">{r.employee_number}</small>
+                      )}
                     </td>
                     <td>
                       {movementTypes.find((t) => t.id === r.type)?.label ||
                         r.type}
                     </td>
-                    <td>{r.effective_on}</td>
+                    <td className="text-date">{r.effective_on}</td>
                     <td>
                       <span className="badge">{r.state}</span>
                     </td>
@@ -467,14 +475,14 @@ export function RecordExplorer({
                         {r.entity_id?.slice(0, 8) || "—"}
                       </code>
                     </td>
-                    <td>{when(r.created_at)}</td>
+                    <td className="text-date">{when(r.created_at)}</td>
                   </>
                 ) : (
                   <>
                     <td title={r.label}>
                       <strong>{r.label}</strong>
                     </td>
-                    <td>{r.code || "—"}</td>
+                    <td className="text-id">{r.code || "—"}</td>
                     <td>{r.kind?.replaceAll("_", " ")}</td>
                     <td title={r.kind === "client" ? r.context : undefined}>
                       {r.kind === "client" ? r.context : "—"}

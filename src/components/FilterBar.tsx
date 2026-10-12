@@ -1,44 +1,120 @@
-import { useCallback, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   RotateCcw,
   Search,
   Building2,
   BriefcaseBusiness,
   CircleDot,
-  ListFilter,
+  SlidersHorizontal,
 } from "lucide-react";
-import { Popover } from "./Popover";
 import { SearchFilterPicker } from "./SearchFilterPicker";
+import { fieldTypeIcons } from "./FieldTypeIcon";
+import { ClientSettings } from "./ClientSettings";
 import { query } from "../api";
-import { defaultFilter, statuses, type Filter, type Option } from "../domain";
+import {
+  defaultFilter,
+  statuses,
+  type Context,
+  type Field,
+  type Filter,
+  type Option,
+} from "../domain";
+function DirectFilter({
+  field,
+  clientId,
+  filter,
+  setFilter,
+}: {
+  field: Field;
+  clientId?: string;
+  filter: Filter;
+  setFilter: (f: Filter) => void;
+}) {
+  const predicate = filter.predicates.find((p) => p.key === field.key);
+  const values =
+    predicate?.op === "in"
+      ? (predicate.value as unknown[]).map((v) => JSON.stringify(v))
+      : predicate?.op === "eq"
+        ? [JSON.stringify(predicate.value)]
+        : [];
+  return (
+    <SearchFilterPicker
+      mode="multiple"
+      label={field.label}
+      icon={fieldTypeIcons[field.type]}
+      load={(search) =>
+        query<Option[]>("filter_values", {
+          key: field.key,
+          client_id: clientId,
+          search,
+        })
+      }
+      value={values}
+      options={values.map((id) => ({ id, label: String(JSON.parse(id)) }))}
+      onChange={(ids) =>
+        setFilter({
+          ...filter,
+          offset: 0,
+          predicates: [
+            ...filter.predicates.filter((p) => p.key !== field.key),
+            ...(ids.length
+              ? [
+                  {
+                    key: field.key,
+                    op: "in",
+                    value: ids.map((id) => JSON.parse(id)),
+                  },
+                ]
+              : []),
+          ],
+        })
+      }
+    />
+  );
+}
 export function FilterBar({
   filter,
   setFilter,
   options,
   children,
-  filters,
+  context,
+  onSaved,
 }: {
   filter: Filter;
   setFilter: (f: Filter) => void;
   options: Option[];
   children?: ReactNode;
-  filters?: ReactNode;
+  context: Context;
+  onSaved: () => void;
 }) {
-  const count =
-    filter.branches.length +
-    filter.clients.length +
-    filter.statuses.length +
-    (filter.quick ? 1 : 0) +
-    filter.predicates.length;
+  const clientId =
+    filter.clients.length === 1
+      ? filter.clients[0]
+      : filter.quick?.kind === "client"
+        ? filter.quick.id
+        : undefined;
+  const [keys, setKeys] = useState<string[]>(["status"]),
+    [settingsOpen, setSettingsOpen] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setKeys(["status"]);
+    if (clientId)
+      query("client_settings", { client_id: clientId })
+        .then((s) => {
+          if (active) setKeys(s.filter_keys);
+        })
+        .catch(() => {
+          if (active) setKeys([]);
+        });
+    return () => {
+      active = false;
+    };
+  }, [clientId, context.revision]);
   const set = (patch: Partial<Filter>) =>
     setFilter({ ...filter, ...patch, offset: 0 });
-  const load = useCallback(
-    (search: string) => query<Option[]>("options", { search }),
-    [],
-  );
   return (
     <>
-      <div className="filterbar">
+      <div className="filterbar direct-filterbar">
         <label className="search-control">
           <Search size={16} aria-hidden />
           <input
@@ -49,81 +125,80 @@ export function FilterBar({
             onChange={(e) => set({ search: e.target.value })}
           />
         </label>
-        <div className="toolbar-status">
-          <SearchFilterPicker
-            mode="multiple"
-            label="Status"
-            icon={CircleDot}
-            options={statuses}
-            value={filter.statuses}
-            onChange={(statuses) => set({ statuses })}
-          />
-        </div>
+        <SearchFilterPicker
+          mode="multiple"
+          label="Branches"
+          icon={Building2}
+          options={options.filter((o) => o.kind === "branch")}
+          value={filter.branches}
+          onChange={(branches) =>
+            set({
+              branches,
+              clients: filter.clients.filter((id) =>
+                options.some(
+                  (o) =>
+                    o.id === id &&
+                    (!branches.length || branches.includes(o.branch_id!)),
+                ),
+              ),
+              predicates: [],
+            })
+          }
+        />
+        <SearchFilterPicker
+          mode="multiple"
+          label="Clients"
+          icon={BriefcaseBusiness}
+          options={options.filter(
+            (o) =>
+              o.kind === "client" &&
+              (!filter.branches.length ||
+                filter.branches.includes(o.branch_id!)),
+          )}
+          value={filter.clients}
+          onChange={(clients) => set({ clients, predicates: [], quick: null })}
+        />
+        {keys.map((key) => {
+          const field = context.fields.find(
+            (f) =>
+              f.key === key &&
+              f.active &&
+              f.list_eligible &&
+              f.actions.includes("R"),
+          );
+          if (!field) return null;
+          return key === "status" ? (
+            <SearchFilterPicker
+              key={key}
+              mode="multiple"
+              label="Status"
+              icon={CircleDot}
+              options={statuses}
+              value={filter.statuses}
+              onChange={(statuses) => set({ statuses })}
+            />
+          ) : (
+            <DirectFilter
+              key={`${clientId}:${key}`}
+              field={field}
+              clientId={clientId}
+              filter={filter}
+              setFilter={setFilter}
+            />
+          );
+        })}
         <div className="toolbar-views">{children}</div>
-        <Popover label="More filters" icon={ListFilter} count={count}>
-          <div className="scope-editor">
-            <div className="filter-section-heading">Assignment</div>
-            <SearchFilterPicker
-              mode="single"
-              label="Search branch or client"
-              displayLabel="Placement"
-              icon={Search}
-              options={options}
-              load={load}
-              value={filter.quick ? [filter.quick.id] : []}
-              onChange={(v, selected) => {
-                const o = selected?.[0] || options.find((o) => o.id === v[0]);
-                set({ quick: o ? { id: o.id, kind: o.kind! } : null });
-              }}
-            />
-            <SearchFilterPicker
-              mode="multiple"
-              label="Branches"
-              icon={Building2}
-              options={options.filter((o) => o.kind === "branch")}
-              value={filter.branches}
-              onChange={(branches) =>
-                set({
-                  branches,
-                  clients: filter.clients.filter((id) =>
-                    options.some(
-                      (o) =>
-                        o.id === id &&
-                        (!branches.length || branches.includes(o.branch_id!)),
-                    ),
-                  ),
-                })
-              }
-            />
-            <SearchFilterPicker
-              mode="multiple"
-              label="Clients"
-              icon={BriefcaseBusiness}
-              options={options.filter(
-                (o) =>
-                  o.kind === "client" &&
-                  (!filter.branches.length ||
-                    filter.branches.includes(o.branch_id!)),
-              )}
-              value={filter.clients}
-              onChange={(clients) => set({ clients })}
-            />
-            <div className="scope-mobile-status">
-              <SearchFilterPicker
-                mode="multiple"
-                label="Status"
-                icon={CircleDot}
-                options={statuses}
-                value={filter.statuses}
-                onChange={(statuses) => set({ statuses })}
-              />
-            </div>
-            <div className="filter-section-heading filter-rule-heading">
-              Column rules
-            </div>
-            {filters}
-          </div>
-        </Popover>
+        {context.capabilities.includes("schema_manage") && (
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Configure client filters and defaults"
+            title="Client entry settings"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <SlidersHorizontal size={16} aria-hidden />
+          </button>
+        )}
         <button
           className="filter-reset"
           type="button"
@@ -135,6 +210,15 @@ export function FilterBar({
           <span>Reset</span>
         </button>
       </div>
+      {settingsOpen && (
+        <ClientSettings
+          context={context}
+          options={options}
+          initialClient={clientId}
+          onClose={() => setSettingsOpen(false)}
+          onSaved={onSaved}
+        />
+      )}
     </>
   );
 }

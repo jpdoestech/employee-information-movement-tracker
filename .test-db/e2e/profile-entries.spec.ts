@@ -1,13 +1,35 @@
 import { test, expect } from "@playwright/test";
 import { fillGovernmentIds } from "./profile-fixtures";
 
+test("an employee can be saved without any government IDs", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Explore synthetic demo" }).click();
+  await page.goto("/#employees");
+  await page.getByRole("button", { name: "Add employee", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "New employee", exact: true });
+  await editor.getByRole("textbox", { name: "Last Name *", exact: true }).fill("Optional");
+  await editor.getByRole("textbox", { name: "First Name *", exact: true }).fill("Identifiers");
+  await editor.getByRole("button", { name: "Save to Supabase", exact: true }).click();
+  await page.getByRole("dialog", { name: "Create employee", exact: true })
+    .getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await page.getByRole("searchbox", { name: "Search employees", exact: true }).fill("Optional, Identifiers");
+  const row = page.getByLabel("Scrollable employee table").locator("tbody tr").first();
+  await expect(row).toContainText("Optional, Identifiers");
+  await row.locator("td.employee-name").click();
+  const profile = page.getByRole("dialog", { name: "Employee profile", exact: true });
+  await profile.getByRole("tab", { name: "Government ID", exact: true }).click();
+  for (const name of ["BIR TIN", "SSS Number", "PhilHealth PIN", "Pag-IBIG MID"])
+    await expect(profile.getByRole("textbox", { name, exact: true })).toHaveValue("");
+});
+
 for (const [width, height] of [
   [375, 740],
   [768, 1024],
   [1366, 600],
   [812, 375],
 ]) {
-  test(`profile entries and mandatory government IDs save through confirmation at ${width}x${height}`, async ({
+  test(`profile entries and optional government IDs save through confirmation at ${width}x${height}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height });
@@ -28,7 +50,7 @@ for (const [width, height] of [
       "Additional information",
     ]);
     await expect(editor.getByLabel("Email", { exact: true })).toBeVisible();
-    await expect(editor.getByLabel("Phone", { exact: true })).toBeVisible();
+    await expect(editor.getByLabel("Mobile", { exact: true })).toBeVisible();
     await expect(
       editor.getByRole("textbox", { name: "Employee Name", exact: true }),
     ).toHaveCount(0);
@@ -65,14 +87,12 @@ for (const [width, height] of [
     await editor
       .getByRole("button", { name: "Save to Supabase", exact: true })
       .click();
-    await expect(
-      editor.getByRole("tab", { name: "Government ID", exact: true }),
-    ).toHaveAttribute("aria-selected", "true");
-    await expect(
-      page.getByRole("dialog", { name: "Create employee", exact: true }),
-    ).toHaveCount(0);
+    const optionalConfirm = page.getByRole("dialog", { name: "Create employee", exact: true });
+    await expect(optionalConfirm).toBeVisible();
+    await optionalConfirm.getByRole("button", { name: "Cancel", exact: true }).click();
     await fillGovernmentIds(editor);
-    const tin = editor.getByRole("textbox", { name: "BIR TIN *", exact: true });
+    await editor.getByRole("tab", { name: "Government ID", exact: true }).click();
+    const tin = editor.getByRole("textbox", { name: "BIR TIN", exact: true });
     await tin.fill("1234A");
     await expect(tin).toHaveAttribute("aria-invalid", "true");
     await editor
@@ -82,7 +102,7 @@ for (const [width, height] of [
       page.getByRole("dialog", { name: "Create employee", exact: true }),
     ).toHaveCount(0);
     await tin.fill("012-345-678");
-    await expect(tin).toHaveValue("012345678");
+    await expect(tin).toHaveValue("012-345-678");
     await expect(tin).not.toHaveAttribute("aria-invalid", "true");
     await editor
       .getByRole("button", { name: "Save to Supabase", exact: true })
@@ -92,7 +112,7 @@ for (const [width, height] of [
       exact: true,
     });
     await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
-    await expect(tin).toHaveValue("012345678");
+    await expect(tin).toHaveValue("012-345-678");
     expect(
       await editor.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);
@@ -135,10 +155,10 @@ for (const [width, height] of [
       .getByRole("tab", { name: "Government ID", exact: true })
       .click();
     await expect(
-      profile.getByRole("textbox", { name: "BIR TIN *", exact: true }),
-    ).toHaveValue("012345678");
+      profile.getByRole("textbox", { name: "BIR TIN", exact: true }),
+    ).toHaveValue("012-345-678");
     await expect(
-      profile.getByRole("textbox", { name: "SSS Number *", exact: true }),
-    ).toHaveValue("0123456789");
+      profile.getByRole("textbox", { name: "SSS Number", exact: true }),
+    ).toHaveValue("01-2345678-9");
   });
 }

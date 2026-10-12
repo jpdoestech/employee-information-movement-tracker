@@ -1,3 +1,4 @@
+import { mobileError } from "../identifiers";
 import { AddressFields } from "../components/forms/AddressFields";
 import {
   UserRound,
@@ -244,6 +245,23 @@ export function EmployeeEditor({
       if (invalidNumber) {
         revealField(invalidNumber.dataset.numberField!);
         throw new Error("Enter a valid number before saving.");
+      }
+      const invalidMobile = editable.find(
+        (f) =>
+          f.type === "phone" &&
+          Object.hasOwn(changed, f.key) &&
+          mobileError(draft[f.key]),
+      );
+      if (invalidMobile) {
+        revealField(invalidMobile.key);
+        throw new Error(mobileError(draft[invalidMobile.key]));
+      }
+      if (
+        draft.separation_reason === "Others (specify)" &&
+        !String(draft.separation_details ?? "").trim()
+      ) {
+        revealField("separation_details");
+        throw new Error("Specify the other separation reason.");
       }
       const missing = editable.find(
         (f) =>

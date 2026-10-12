@@ -1,3 +1,4 @@
+import { mobileError, normalizeIdentifier } from "./identifiers";
 import { fieldConfigurationError } from "./fieldConfiguration";
 import {
   addressDefinitions,
@@ -7,7 +8,11 @@ import {
 import { addressValidationError } from "./address/addressService";
 import { matchesFilterValue } from "./filterValues";
 import { combinedName, nameKeys, nameLabels } from "./employeeForm";
-import { profileDefinitions } from "./profileFields";
+import {
+  profileDefinitions,
+  separationCategories,
+  separationReasons,
+} from "./profileFields";
 import {
   governmentDefinitions,
   governmentIdError,
@@ -78,13 +83,21 @@ const base = [
   ["branch", "Primary Branch", "system"],
   ["client", "Primary Client", "system"],
   ["email", "Email", "email"],
-  ["phone", "Phone", "phone"],
+  ["phone", "Mobile", "phone"],
   ...Array.from({ length: 10 }, (_, i) => [
     `example_${i + 1}`,
     `Example Field ${i + 1}`,
     "short_text",
   ]),
 ];
+const clientSettings = new Map<
+  string,
+  {
+    row_version: number;
+    filter_keys: string[];
+    default_values: Record<string, unknown>;
+  }
+>();
 const fields: Field[] = base.map(([key, label, type], i) => ({
   id: `field-${key}`,
   key,
@@ -113,7 +126,7 @@ fields.push(
     group_name: "Government IDs",
     type: "short_text",
     active: true,
-    required: true,
+    required: false,
     sensitivity: "restricted",
     list_eligible: false,
     scope_mode: "all",
@@ -172,7 +185,7 @@ let employees: Employee[] = Array.from({ length: 34 }, (_, i) => ({
           : "Example South Branch",
     client: i % 3 === 0 ? null : "Example Client",
     email: `synthetic${i + 1}@example.invalid`,
-    phone: "Example only",
+    phone: "09123456789",
     ...Object.fromEntries(
       Array.from({ length: 10 }, (_, j) => [
         `example_${j + 1}`,
@@ -328,7 +341,48 @@ export async function demoQuery(op: string, q: any = {}) {
       revision: context.revision,
     };
   }
-  if (op === "target_fields") return structuredClone(fields);
+  if (op === "client_settings")
+    return {
+      client_id: q.client_id,
+      row_version: 0,
+      filter_keys: ["status"],
+      default_values: {},
+      ...structuredClone(clientSettings.get(q.client_id)),
+    };
+  if (op === "filter_values") {
+    const rows: any = await demoQuery("employees", {
+      ...defaultFilter,
+      quick: q.client_id ? { kind: "client", id: q.client_id } : null,
+      limit: 10000,
+    });
+    return [
+      ...new Set(
+        rows.items
+          .map((e: Employee) => JSON.stringify(e.values[q.key]))
+          .filter(Boolean),
+      ),
+    ]
+      .filter((v: any) =>
+        String(JSON.parse(v))
+          .toLowerCase()
+          .includes((q.search ?? "").toLowerCase()),
+      )
+      .sort()
+      .slice(0, 100)
+      .map((id: any) => ({ id, label: String(JSON.parse(id)) }));
+  }
+  if (op === "target_fields")
+    return structuredClone(fields).map((f) => ({
+      ...f,
+      default_value:
+        q.target_level === "client" &&
+        Object.hasOwn(
+          clientSettings.get(q.client_id)?.default_values ?? {},
+          f.key,
+        )
+          ? clientSettings.get(q.client_id)!.default_values[f.key]
+          : f.default_value,
+    }));
   if (op === "options")
     return org.filter(
       (o) =>
@@ -473,6 +527,33 @@ export async function demoQuery(op: string, q: any = {}) {
   throw new Error("Unknown demo query");
 }
 export async function demoMutate(op: string, p: any) {
+  if (op === "client_settings") {
+    const prior = clientSettings.get(p.client_id);
+    if ((prior?.row_version ?? 0) !== p.expected_version)
+      throw new Error("Client settings changed; reload before saving");
+    if (p.filter_keys.length > 8)
+      throw new Error("Choose up to eight direct filters");
+    const defaults = p.default_values ?? prior?.default_values ?? {};
+    for (const [key, value] of Object.entries(defaults)) {
+      const f = fields.find(
+        (f) =>
+          f.key === key &&
+          f.type !== "system" &&
+          !f.validation?.government_id_digits,
+      );
+      if (!f) throw new Error("Default field unavailable");
+      const invalid = fieldConfigurationError({ ...f, default_value: value });
+      if (invalid) throw new Error(invalid);
+    }
+    const result = {
+      row_version: (prior?.row_version ?? 0) + 1,
+      filter_keys: p.filter_keys,
+      default_values: defaults,
+    };
+    clientSettings.set(p.client_id, structuredClone(result));
+    context.revision++;
+    return result;
+  }
   if (op === "form_layout") {
     if (context.profile.role !== "superadmin")
       throw new Error("Only a Superadmin may configure form tabs");
@@ -528,7 +609,16 @@ export async function demoMutate(op: string, p: any) {
         )
         .map((f) => [f.key, f.default_value]),
     );
-    p = { ...p, values: { ...defaults, ...p.values } };
+    p = {
+      ...p,
+      values: {
+        ...defaults,
+        ...(p.target_level === "client"
+          ? clientSettings.get(p.client_id)?.default_values
+          : {}),
+        ...p.values,
+      },
+    };
   }
   if (op === "employee_create")
     p = {
@@ -559,14 +649,18 @@ export async function demoMutate(op: string, p: any) {
       )
         throw new Error("Resolve the conflicting scheduled event first");
     }
+    for (const field of fields.filter((f) => f.type === "phone")) {
+      if (Object.hasOwn(p.values ?? {}, field.key)) {
+        const error = mobileError(p.values[field.key]);
+        if (error) throw new Error(error);
+        if (typeof p.values[field.key] === "string")
+          p.values[field.key] = normalizeIdentifier(p.values[field.key]);
+      }
+    }
     for (const field of fields.filter(
       (f) => f.validation?.government_id_digits,
     )) {
-      if (op === "employee_create" && field.required && !p.values?.[field.key])
-        throw new Error(`${field.label} is required.`);
       if (Object.hasOwn(p.values ?? {}, field.key)) {
-        if (field.required && !p.values[field.key])
-          throw new Error(`${field.label} is required.`);
         const error = governmentIdError(field, p.values[field.key]);
         if (error) throw new Error(error);
         if (typeof p.values[field.key] === "string")
@@ -748,6 +842,17 @@ export async function demoMutate(op: string, p: any) {
     else context.views.push({ id: crypto.randomUUID(), ...p });
     localStorage.setItem("eimt-synthetic-views", JSON.stringify(context.views));
   } else if (op === "movement") {
+    if (
+      p.type === "status" &&
+      ["Resigned", "Terminated"].includes(p.status) &&
+      (!separationCategories.includes(p.separation_category) ||
+        !separationReasons.includes(p.separation_reason) ||
+        (p.separation_reason === "Others (specify)" &&
+          !String(p.separation_details ?? "").trim()))
+    )
+      throw new Error(
+        "Choose a separation category and reason; specify other reasons",
+      );
     const e = employees.find((e) => e.id === p.employee_id)!;
     if (!e || e.row_version !== p.expected_version)
       throw new Error("Movement preview is stale");

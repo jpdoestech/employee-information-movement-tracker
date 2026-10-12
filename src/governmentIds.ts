@@ -42,19 +42,13 @@ export function governmentIdError(
     : `${field.label} must contain exactly ${digits} digits.`;
 }
 
-// Missing historical IDs are not fabricated and do not block unrelated edits.
-// Once supplied, the ordinary required rule prevents clearing them.
+// Government IDs are optional on creation and editing, including clearing.
+// Their format is validated separately whenever a value is supplied.
 export function requiredForEdit(
   field: Field,
-  values: Record<string, unknown>,
-  changed: Record<string, unknown>,
-  creating: boolean,
+  _values: Record<string, unknown>,
+  _changed: Record<string, unknown>,
+  _creating: boolean,
 ) {
-  return (
-    field.required &&
-    (creating ||
-      !field.validation?.government_id_digits ||
-      values[field.key] != null ||
-      Object.hasOwn(changed, field.key))
-  );
+  return field.required && !field.validation?.government_id_digits;
 }

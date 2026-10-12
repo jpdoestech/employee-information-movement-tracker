@@ -1,4 +1,3 @@
-import { ColumnFilters } from "./components/ColumnFilters";
 import { RecordExplorer } from "./components/RecordExplorer";
 import { RowsPerPage } from "./components/RowsPerPage";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
@@ -632,14 +631,8 @@ export default function App() {
                 filter={filter}
                 setFilter={setFilter}
                 options={options}
-                filters={
-                  <ColumnFilters
-                    fields={readable}
-                    filter={filter}
-                    onChange={setFilter}
-                    onError={setError}
-                  />
-                }
+                context={ctx}
+                onSaved={refresh}
               >
                 <SearchFilterPicker
                   mode="single"
