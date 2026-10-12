@@ -20,7 +20,7 @@ export function valueWidth(
     return `${Math.max(configuredWidth, type === "date" ? 28 : digits ? digits + 16 : type === "select" ? parseInt(choiceWidth(labels), 10) : 10)}ch`;
   if (["last_name", "first_name", "middle_name"].includes(key ?? ""))
     return "30ch";
-  if (key === "suffix") return "10ch";
+  if (key === "suffix") return "18ch";
   if (key === "department") return "26ch";
   if (key === "position") return "28ch";
   if (digits) return `${Math.max(26, digits + 16)}ch`;

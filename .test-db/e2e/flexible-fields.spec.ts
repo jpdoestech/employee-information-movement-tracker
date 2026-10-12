@@ -19,6 +19,28 @@ for (const [width, height] of [
       name: "Employee profile",
       exact: true,
     });
+    const suffix = profile.getByLabel("Suffix", { exact: true });
+    for (const value of ["VIII", "Ph.D."]) {
+      await suffix.fill(value);
+      await expect(suffix).toHaveValue(value);
+      const room = await suffix.evaluate((e) => {
+        const input = e as HTMLInputElement;
+        const css = getComputedStyle(input);
+        const canvas = document.createElement("canvas").getContext("2d")!;
+        canvas.font = `${css.fontSize} ${css.fontFamily}`;
+        return (
+          input.clientWidth -
+          parseFloat(css.paddingLeft) -
+          parseFloat(css.paddingRight) -
+          canvas.measureText(input.value).width
+        );
+      });
+      expect(room).toBeGreaterThanOrEqual(8);
+      await profile
+        .getByRole("button", { name: "Clear Suffix", exact: true })
+        .click();
+      await expect(suffix).toHaveValue("");
+    }
     for (const [label, selected] of [
       ["Separation Category", "VOLUNTARY"],
       ["Reason for Separation", "Better Job Opportunity"],

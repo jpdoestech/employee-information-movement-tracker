@@ -50,7 +50,7 @@ for (const [width, height] of [
       );
     expect(
       (await editor.getByLabel("Suffix", { exact: true }).boundingBox())!.width,
-    ).toBeLessThan((await name.boundingBox())!.width / 2);
+    ).toBeLessThan((await name.boundingBox())!.width);
     await gender.click();
     await page
       .getByRole("dialog", { name: "Gender options", exact: true })
