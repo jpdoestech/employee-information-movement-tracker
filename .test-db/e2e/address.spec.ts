@@ -1,3 +1,4 @@
+import { fillGovernmentIds } from "./profile-fixtures";
 import { test, expect, type Page } from "@playwright/test";
 async function editor(page: Page) {
   await page.goto("/");
@@ -88,6 +89,7 @@ test("unconfirmed typed text blocks saving and Escape closes only suggestions", 
   await dialog.getByRole("tab", { name: "Profile", exact: true }).click();
   await dialog.getByLabel("First Name", { exact: false }).fill("Address Test");
   await dialog.getByLabel("Last Name", { exact: false }).fill("Test");
+  await fillGovernmentIds(dialog);
   await dialog.getByRole("tab", { name: "Address", exact: true }).click();
   const home = page.getByRole("group", { name: "Home Address", exact: true });
   const input = home.getByRole("combobox", { name: "Province", exact: true });
@@ -148,6 +150,7 @@ test("addresses and emergency contact save through confirmation and edit existin
     .getByLabel("First Name", { exact: false })
     .fill("Address Saved Test");
   await dialog.getByLabel("Last Name", { exact: false }).fill("Test");
+  await fillGovernmentIds(dialog);
   await dialog.getByRole("tab", { name: "Address", exact: true }).click();
   await agdao(page);
   const current = page.getByRole("group", {

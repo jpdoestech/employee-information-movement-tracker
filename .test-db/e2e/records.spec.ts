@@ -1,3 +1,4 @@
+import { fillGovernmentIds } from "./profile-fixtures";
 import { test, expect, type Page } from "@playwright/test";
 
 async function enter(page: Page, route: string) {
@@ -183,6 +184,7 @@ test("client creation prefix produces separate System and Client-based IDs", asy
       .getByLabel("First Name", { exact: false })
       .fill(`Client identity sample ${n}`);
     await employee.getByLabel("Last Name", { exact: false }).fill("Test");
+    await fillGovernmentIds(employee);
     await employee
       .getByRole("button", { name: "Save to Supabase", exact: true })
       .click();

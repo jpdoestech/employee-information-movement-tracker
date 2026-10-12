@@ -68,3 +68,61 @@ The existing searchable picker remains the standard for data filters.
 Employee data rows open the existing secured profile editor on click or Enter/Space.
 Bulk-selection checkboxes and existing interactive cell actions keep their own
 behavior; column previews remain read-only.
+
+Number fields reuse the existing decimal storage type and appear as Number in
+Field Builder; Integer stays separate. Shared editors, table cells, bulk previews
+and record history format Number values with grouping commas and two fractional
+digits. Editors reveal the stored numeric precision on focus; formatting does not
+round stored values or change numeric filtering/export behavior. Malformed numeric
+text is rejected before employee saves, bulk previews and numeric-default saves.
+
+Employee value clearing uses labelled inline X controls rather than a separate
+Clear value action below each input. Existing-record clearing requires the field's
+Delete permission; selectors reuse their clear control. Confirmation and unsaved
+change handling remain shared. Inputs and clear buttons have separate accessible
+labels, with touch controls kept within the input bounds.
+
+Profile defaults are grouped into personal information, contact details and
+employment information. Email/Phone share Profile. Default sections precede custom
+sections: Profile, Government ID, Address, then administrator-added tabs. The
+Additional information group is the default destination for new field definitions.
+The tab-order helper recognizes default entries while retaining authorized group
+membership and configurable tab names; tab grouping never grants field access.
+Employee name entry always uses Last Name, First Name, Middle Name and Suffix.
+Existing unstructured names are displayed as recorded, not inferred or split.
+Initial position is captured only at employee creation; later position/status
+changes retain the existing movement workflow and effective history.
+
+The approved ui-styling direction uses flat form sections, shared thin dividers,
+quiet surfaces and compact labels across the application. Employee forms use a
+section rail on desktop and horizontal tabs on phones. Wide employee/movement
+editors share width/height tokens, with stationary headers and footers and only
+their bodies scrolling; movement entry, preview and Back preserve the same frame.
+Compact confirmations retain their own smaller viewport-bound size.
+
+Department and Position are paired in the employment section. Authorized profile
+position edits save as an effective-today position movement in the same database
+transaction as other changed fields, preserving movement permissions, conflicts,
+versions, audit/outbox and request idempotency. Status still uses Movements.
+
+Shared controls size by purpose: dates, government IDs, numeric values and short
+choices have bounded widths; general text and addresses use their available form
+column. Choice widths use the option names with room for arrows/clear controls,
+bounded by their parent. Long labels wrap, touch heights remain 44px, and toolbar
+pickers retain their compact behavior. Widths do not resize on every keystroke.
+Employee entry groups use wrapping field slots rather than equal-width stretching:
+names have readable bounded widths, Suffix stays short, contact controls have their
+own widths and Department/Position stay paired when space permits. Remarks and
+address sections keep the available full width; phones stack the entries.
+
+Government IDs default to required restricted text fields, excluded from table
+columns by default. Validation is duplicated in the shared editor and PostgreSQL:
+BIR TIN is the 9-digit personal TIN (branch code excluded), SSS has 10 digits, and
+PhilHealth PIN/Pag-IBIG MID have 12. Spaces and hyphens normalize to digits while
+leading zeroes remain intact. These checks validate syntax, not agency issuance.
+New records require all applicable mandatory IDs and explicit field Create grants.
+Existing absent IDs are not fabricated and do not block unrelated profile edits;
+once supplied, a required ID cannot be cleared. Existing explicit policies and
+organization boundaries remain enforced. Profile-required rules are configurable.
+Status Reason and Status Effective Date are profile context, not replacements for
+status movement transactions or their effective dates.

@@ -8,6 +8,7 @@ import { Dialog } from "../components/Dialog";
 import { confirmTransaction } from "../components/TransactionConfirmation";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import { ValueEditor } from "../components/ValueEditor";
+import { fieldTypeLabel, parseNumberInput } from "../fieldValues";
 import type { Context, Field, Option } from "../domain";
 export function Organization({
   options,
@@ -236,7 +237,11 @@ export function FieldBuilder({
             key: "",
             label: "",
             type: "short_text",
-            group_id: groups[0]?.id,
+            group_id:
+              groups.find(
+                (g: { id: string; name: string }) =>
+                  g.name === "Additional information",
+              )?.id ?? groups[0]?.id,
             required: false,
             active: true,
             sensitivity: "normal",
@@ -384,7 +389,7 @@ export function FieldBuilder({
                           <td>
                             <code>{f.key}</code>
                           </td>
-                          <td>{f.type.replaceAll("_", " ")}</td>
+                          <td>{fieldTypeLabel(f.type)}</td>
                           <td>
                             {f.scope_mode === "all"
                               ? "All authorized targets"
@@ -478,7 +483,7 @@ export function FieldBuilder({
                     "select",
                     "email",
                     "phone",
-                  ].map((id) => ({ id, label: id.replace("_", " ") }))}
+                  ].map((id) => ({ id, label: fieldTypeLabel(id) }))}
                   value={[draft.type]}
                   onChange={(v) => setDraft({ ...draft, type: v[0] })}
                 />
@@ -753,6 +758,14 @@ export function FieldBuilder({
               onClick={async () => {
                 setBusy(true);
                 try {
+                  if (
+                    draft.type === "decimal" &&
+                    typeof draft.default_value === "string" &&
+                    typeof parseNumberInput(draft.default_value) === "string"
+                  )
+                    throw new Error(
+                      "Enter a valid numeric default before saving.",
+                    );
                   await mutate("field", {
                     ...draft,
                     targets: targets.map((id) => {

@@ -38,7 +38,7 @@ for (const width of [320, 1366])
   }) => {
     await page.setViewportSize({ width, height: 740 });
     await enter(page);
-    await createField(page, "Workload score", "workload_score", "decimal");
+    await createField(page, "Workload score", "workload_score", "Number");
     await createField(
       page,
       "Work arrangement",

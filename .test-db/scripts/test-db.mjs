@@ -210,6 +210,11 @@ try {
       `insert into public.field_access_policies(user_id,group_id,action,effect,inherit_new) select $1,$2,a,'allow',true from unnest(array['C','R','U','D']) a`,
       [who, id.core],
     );
+  // Explicit C-only ID grants let ordinary security fixtures create complete
+  // profiles without exposing restricted IDs or broadening organization scope.
+  await owner.query(
+    "insert into public.field_access_policies(role,field_id,action,effect) select 'admin',id,'C','allow' from public.field_definitions where validation ? 'government_id_digits'",
+  );
   await owner.query(
     `insert into public.field_access_policies(user_id,group_id,action,effect,inherit_new,scope_type,scope_id,include_descendants) select $1,$2,a,'allow',true,'branch',$3,true from unnest(array['C','R','U']) a`,
     [id.admin, id.contact, id.b1],
@@ -2295,6 +2300,276 @@ try {
       beforePolicies,
     );
     await assert.rejects(m(id.sa, "form_layout", p), { code: "40001" });
+  });
+  await test("profile defaults and initial position use the secured idempotent create transaction", async () => {
+    const schema = await q(id.sa, "schema");
+    for (const key of [
+      "birth_date",
+      "gender",
+      "civil_status",
+      "department",
+      "date_hired",
+      "employment_type",
+      "status_reason",
+      "status_effective_date",
+      "remarks",
+    ])
+      assert.equal(schema.fields.filter((f) => f.key === key).length, 1);
+    const request = randomUUID();
+    const payload = {
+      target_level: "branch",
+      branch_id: id.b1,
+      initial_position: "Initial Analyst",
+      values: {
+        name: "Synthetic profile entries",
+        department: "Operations",
+        date_hired: "2026-10-01",
+        gender: "Female",
+        employment_type: "Regular",
+        remarks: "Synthetic fixture",
+      },
+    };
+    const created = await m(id.sa, "employee_create", payload, request);
+    assert.equal(
+      (await q(id.sa, "employee", { id: created.id })).employee.values.position,
+      "Initial Analyst",
+    );
+    await m(id.sa, "movement", {
+      employee_id: created.id,
+      expected_version: await revision(created.id),
+      type: "position",
+      effective_on: today,
+      position: "Revised Analyst",
+      reason: "Synthetic position revision",
+    });
+    await m(id.sa, "employee_create", payload, request);
+    assert.equal(
+      (await q(id.sa, "employee", { id: created.id })).employee.values.position,
+      "Revised Analyst",
+    );
+    await assert.rejects(
+      m(id.sa, "employee_create", {
+        initial_position: 123,
+        values: { name: "Invalid initial position" },
+      }),
+      { code: "22023" },
+    );
+    const denied = await m(id.sa, "policy", {
+      user_id: id.admin,
+      field_id: schema.fields.find((f) => f.key === "position").id,
+      action: "C",
+      effect: "deny",
+      scope_type: "all",
+      reason: "Synthetic initial position denial",
+    });
+    await assert.rejects(
+      m(id.admin, "employee_create", {
+        target_level: "branch",
+        branch_id: id.b1,
+        initial_position: "Forbidden position",
+        values: { name: "Synthetic forbidden position" },
+      }),
+      { code: "42501" },
+    );
+    await owner.query("delete from public.field_access_policies where id=$1", [
+      denied.id,
+    ]);
+  });
+  await test("profile position edits are atomic, authorized, versioned and idempotent movements", async () => {
+    const created = await m(id.sa, "employee_create", {
+      target_level: "branch",
+      branch_id: id.b1,
+      initial_position: "Analyst",
+      values: { name: "Synthetic position edit", department: "Original" },
+    });
+    const initial = await revision(created.id);
+    await assert.rejects(
+      m(id.sa, "employee_update", {
+        id: created.id,
+        expected_version: initial,
+        values: { department: "Must roll back" },
+        position_change: "",
+      }),
+      { code: "22023" },
+    );
+    assert.equal(
+      (await q(id.sa, "employee", { id: created.id })).employee.values
+        .department,
+      "Original",
+    );
+    assert.equal(await revision(created.id), initial);
+    const request = randomUUID();
+    const payload = {
+      id: created.id,
+      expected_version: initial,
+      values: { department: "Operations" },
+      position_change: "Senior Analyst",
+    };
+    await m(id.sa, "employee_update", payload, request);
+    await m(id.sa, "employee_update", payload, request);
+    const detail = await q(id.sa, "employee", { id: created.id });
+    assert.equal(detail.employee.values.department, "Operations");
+    assert.equal(detail.employee.values.position, "Senior Analyst");
+    assert.equal(
+      detail.movements.filter((x) => x.type === "position").length,
+      1,
+    );
+    const current = await revision(created.id);
+    await assert.rejects(
+      m(id.sa, "employee_update", {
+        id: created.id,
+        expected_version: current,
+        values: { department: "Conflict rollback" },
+        position_change: "Other position",
+      }),
+      { code: "23P01" },
+    );
+    assert.equal(
+      (await q(id.sa, "employee", { id: created.id })).employee.values
+        .department,
+      "Operations",
+    );
+    assert.equal(await revision(created.id), current);
+    await assert.rejects(
+      m(id.sa, "employee_update", {
+        id: created.id,
+        expected_version: current,
+        values: { position: "Bypass" },
+      }),
+      { code: "22023" },
+    );
+    const other = await m(id.sa, "employee_create", {
+      target_level: "branch",
+      branch_id: id.b1,
+      values: { name: "Synthetic position policy" },
+    });
+    const schema = await q(id.sa, "schema");
+    const denied = await m(id.sa, "policy", {
+      user_id: id.admin,
+      field_id: schema.fields.find((f) => f.key === "position").id,
+      action: "U",
+      effect: "deny",
+      scope_type: "all",
+      reason: "Synthetic profile position denial",
+    });
+    await assert.rejects(
+      m(id.admin, "employee_update", {
+        id: other.id,
+        expected_version: await revision(other.id),
+        values: {},
+        position_change: "Forbidden",
+      }),
+      { code: "42501" },
+    );
+    await owner.query("delete from public.field_access_policies where id=$1", [
+      denied.id,
+    ]);
+    const before = await revision(other.id);
+    const results = await Promise.allSettled(
+      ["One", "Two"].map((position) =>
+        m(id.sa, "employee_update", {
+          id: other.id,
+          expected_version: before,
+          values: {},
+          position_change: position,
+        }),
+      ),
+    );
+    assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+    assert.equal(results.filter((r) => r.status === "rejected").length, 1);
+  });
+  await test("mandatory government IDs validate exact digits, retain zeroes and reject atomic invalid writes", async () => {
+    const before = (
+      await owner.query(
+        "select (select count(*) from public.employees) employees,(select count(*) from public.audit_log) audit,(select count(*) from public.sync_outbox) outbox",
+      )
+    ).rows[0];
+    await assert.rejects(
+      as(id.sa, (c) =>
+        c.query("select public.tracker_mutate('employee_create',$1,$2)", [
+          { values: { first_name: "Missing", last_name: "IDs" } },
+          randomUUID(),
+        ]),
+      ),
+      { code: "22023" },
+    );
+    const after = (
+      await owner.query(
+        "select (select count(*) from public.employees) employees,(select count(*) from public.audit_log) audit,(select count(*) from public.sync_outbox) outbox",
+      )
+    ).rows[0];
+    assert.deepEqual(after, before);
+    const created = await m(id.sa, "employee_create", {
+      values: {
+        name: "Synthetic government IDs",
+        bir_tin: "012-345-678",
+        sss_number: "01-2345678-9",
+        philhealth_pin: "01-234567890-1",
+        pagibig_mid: "0123-4567-8901",
+      },
+    });
+    const detail = await q(id.sa, "employee", { id: created.id });
+    assert.equal(detail.employee.values.bir_tin, "012345678");
+    assert.equal(detail.employee.values.sss_number, "0123456789");
+    assert.equal(detail.employee.values.philhealth_pin, "012345678901");
+    assert.equal(detail.employee.values.pagibig_mid, "012345678901");
+    for (const key of [
+      "bir_tin",
+      "sss_number",
+      "philhealth_pin",
+      "pagibig_mid",
+    ])
+      for (const value of ["123", "01234567890A", 123456789, null])
+        await assert.rejects(
+          m(id.sa, "employee_update", {
+            id: created.id,
+            expected_version: detail.employee.row_version,
+            values: { [key]: value },
+          }),
+          { code: "22023" },
+        );
+    assert.equal(await revision(created.id), detail.employee.row_version);
+    const legacy = (
+      await owner.query(
+        "insert into public.employees(name) values('Legacy missing IDs') returning id",
+      )
+    ).rows[0].id;
+    await m(id.sa, "employee_update", {
+      id: legacy,
+      expected_version: 1,
+      values: { remarks: "Preserve existing missing IDs" },
+    });
+    assert.equal(
+      (await q(id.sa, "employee", { id: legacy })).employee.values.bir_tin,
+      null,
+    );
+  });
+  await test("government IDs remain restricted and cannot inherit group read access or leak through search", async () => {
+    const schema = await q(id.sa, "schema");
+    const ids = schema.fields.filter((f) => f.validation?.government_id_digits);
+    assert.equal(ids.length, 4);
+    for (const f of ids) {
+      assert.equal(f.required, true);
+      assert.equal(f.sensitivity, "restricted");
+      assert.equal(f.list_eligible, false);
+    }
+    const created = await m(id.sa, "employee_create", {
+      target_level: "branch",
+      branch_id: id.b1,
+      values: { name: "Synthetic private IDs" },
+    });
+    await owner.query(
+      "insert into public.field_access_policies(user_id,group_id,action,effect,inherit_new) values($1,$2,'R','allow',true)",
+      [id.admin, ids[0].group_id],
+    );
+    const detail = await q(id.admin, "employee", { id: created.id });
+    for (const f of ids) assert(!Object.hasOwn(detail.employee.values, f.key));
+    const result = await q(id.admin, "employees", {
+      search: "012345678901",
+      limit: 25,
+      offset: 0,
+    });
+    assert.equal(result.total, 0);
   });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(

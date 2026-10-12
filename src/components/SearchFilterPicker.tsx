@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { Option } from "../domain";
+import { choiceWidth } from "../controlSizing";
 type Props = {
   mode: "single" | "multiple";
   label: string;
@@ -178,7 +179,17 @@ export function SearchFilterPicker({
       ? `${displayLabel || label} · ${value.length}`
       : displayLabel || label;
   return (
-    <div className="picker">
+    <div
+      className="picker"
+      style={
+        {
+          "--picker-width": choiceWidth([
+            displayLabel || label,
+            ...options.map((o) => o.label),
+          ]),
+        } as CSSProperties
+      }
+    >
       <button
         ref={anchor}
         type="button"

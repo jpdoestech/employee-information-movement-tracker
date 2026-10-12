@@ -29,7 +29,10 @@ for (const width of [375, 1366]) {
       await expect(editor).toBeVisible();
       await expect(
         editor.getByLabel("Employee Name", { exact: true }),
-      ).toHaveValue("Synthetic Employee 01");
+      ).toHaveCount(0);
+      await expect(
+        editor.getByText(/Recorded name: Synthetic Employee 01/),
+      ).toBeVisible();
       await editor
         .getByRole("button", { name: "Close dialog", exact: true })
         .click();
@@ -38,7 +41,7 @@ for (const width of [375, 1366]) {
     await row.focus();
     await row.press("Enter");
     await expect(editor).toBeVisible();
-    await editor.getByRole("tab", { name: "Contact", exact: true }).click();
+    await editor.getByRole("tab", { name: "Profile", exact: true }).click();
     await editor
       .getByLabel("Email", { exact: true })
       .fill("edited-row@example.invalid");
@@ -66,7 +69,7 @@ for (const width of [375, 1366]) {
     await row.focus();
     await row.press("Space");
     await expect(editor).toBeVisible();
-    await editor.getByRole("tab", { name: "Contact", exact: true }).click();
+    await editor.getByRole("tab", { name: "Profile", exact: true }).click();
     await expect(editor.getByLabel("Email", { exact: true })).toHaveValue(
       "edited-row@example.invalid",
     );

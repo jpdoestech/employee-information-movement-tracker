@@ -1,76 +1,179 @@
 import { SearchFilterPicker } from "./SearchFilterPicker";
 import type { Field } from "../domain";
+import { useId, useState } from "react";
+import { X } from "lucide-react";
+import { displayFieldValue, parseNumberInput } from "../fieldValues";
+import { governmentIdError, normalizeGovernmentId } from "../governmentIds";
+import { valueWidth } from "../controlSizing";
+
+function NumberInput({
+  id,
+  field,
+  value,
+  onChange,
+}: {
+  id: string;
+  field: Field;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [text, setText] = useState("");
+  const invalid =
+    typeof value === "string" && typeof parseNumberInput(value) === "string";
+  return (
+    <>
+      <input
+        id={id}
+        type="text"
+        inputMode="decimal"
+        data-number-field={field.key}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? `${id}-error` : undefined}
+        title={value == null ? undefined : String(value)}
+        value={
+          focused ? text : value == null ? "" : displayFieldValue(field, value)
+        }
+        onFocus={() => {
+          setText(value == null ? "" : String(value));
+          setFocused(true);
+        }}
+        onBlur={() => setFocused(false)}
+        onChange={(event) => {
+          setText(event.target.value);
+          onChange(parseNumberInput(event.target.value));
+        }}
+      />
+      {invalid && (
+        <small id={`${id}-error`} role="alert" className="field-error">
+          Enter a valid number, for example 1,000.00.
+        </small>
+      )}
+    </>
+  );
+}
 export function ValueEditor({
   field,
   value,
   onChange,
   blind = false,
+  clearable = true,
 }: {
   field: Field;
   value: unknown;
   onChange: (v: unknown) => void;
   blind?: boolean;
+  clearable?: boolean;
 }) {
   const f = field;
+  const id = useId();
+  const showClear = clearable && (blind || (value != null && value !== ""));
+  const idError = governmentIdError(f, value);
   return (
-    <label className="field">
-      <span>
+    <div className="field">
+      <label htmlFor={f.type === "select" ? undefined : id}>
         {f.label}
         {f.required ? " *" : ""}
-      </span>
+      </label>
       {blind && (
         <small>
           Current value is restricted. Entering a value does not reveal it.
         </small>
       )}
-      {f.type === "checkbox" ? (
-        <input
-          type="checkbox"
-          checked={value === true}
-          onChange={(e) => onChange(e.target.checked)}
-        />
-      ) : f.type === "select" ? (
-        <SearchFilterPicker
-          mode="single"
-          label={f.label}
-          options={(f.options || []).map((id) => ({ id, label: id }))}
-          value={value ? [String(value)] : []}
-          onChange={(v) => onChange(v[0] ?? null)}
-        />
-      ) : f.type === "long_text" ? (
-        <textarea
-          value={String(value ?? "")}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      ) : (
-        <input
-          type={
-            f.type === "integer" || f.type === "decimal"
-              ? "number"
-              : f.type === "date"
-                ? "date"
-                : f.type === "email"
-                  ? "email"
-                  : f.type === "phone"
-                    ? "tel"
-                    : "text"
-          }
-          step={f.type === "decimal" ? "any" : undefined}
-          value={String(value ?? "")}
-          onChange={(e) =>
-            onChange(
-              (f.type === "integer" || f.type === "decimal") &&
-                e.target.value !== ""
-                ? Number(e.target.value)
-                : e.target.value,
-            )
-          }
-          maxLength={
-            f.validation?.max_length ?? (f.type === "long_text" ? 10000 : 500)
-          }
-        />
-      )}
+      <div
+        style={{
+          maxWidth: valueWidth(
+            f.type,
+            f.options,
+            f.validation?.government_id_digits,
+            f.key,
+          ),
+        }}
+        className={`value-control${showClear && f.type !== "select" ? " with-clear" : ""}${f.type === "long_text" ? " multiline" : ""}`}
+      >
+        {f.type === "checkbox" ? (
+          <input
+            id={id}
+            type="checkbox"
+            checked={value === true}
+            onChange={(e) => onChange(e.target.checked)}
+          />
+        ) : f.type === "select" ? (
+          <SearchFilterPicker
+            mode="single"
+            label={f.label}
+            clearable={clearable}
+            options={(f.options || []).map((id) => ({ id, label: id }))}
+            value={value ? [String(value)] : []}
+            onChange={(v) => onChange(v[0] ?? null)}
+          />
+        ) : f.type === "long_text" ? (
+          <textarea
+            id={id}
+            value={String(value ?? "")}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        ) : f.type === "decimal" ? (
+          <NumberInput id={id} field={f} value={value} onChange={onChange} />
+        ) : (
+          <input
+            id={id}
+            type={
+              f.type === "integer" || f.type === "decimal"
+                ? "number"
+                : f.type === "date"
+                  ? "date"
+                  : f.type === "email"
+                    ? "email"
+                    : f.type === "phone"
+                      ? "tel"
+                      : "text"
+            }
+            inputMode={
+              f.validation?.government_id_digits ? "numeric" : undefined
+            }
+            aria-invalid={idError ? true : undefined}
+            aria-describedby={idError ? `${id}-id-error` : undefined}
+            value={String(value ?? "")}
+            onChange={(e) =>
+              onChange(
+                (f.type === "integer" || f.type === "decimal") &&
+                  e.target.value !== ""
+                  ? Number(e.target.value)
+                  : f.validation?.government_id_digits
+                    ? normalizeGovernmentId(e.target.value)
+                    : e.target.value,
+              )
+            }
+            maxLength={
+              f.validation?.government_id_digits
+                ? f.validation.government_id_digits + 8
+                : (f.validation?.max_length ??
+                  (f.type === "long_text" ? 10000 : 500))
+            }
+          />
+        )}
+        {idError && (
+          <small id={`${id}-id-error`} role="alert" className="field-error">
+            {idError}
+          </small>
+        )}
+        {showClear && f.type !== "select" && (
+          <button
+            type="button"
+            className="value-clear"
+            aria-label={`Clear ${f.label}`}
+            title={`Clear ${f.label}`}
+            onClick={(event) => {
+              event.preventDefault();
+              onChange(null);
+            }}
+          >
+            <X size={15} aria-hidden />
+          </button>
+        )}
+      </div>
       <small>{f.help_text}</small>
-    </label>
+    </div>
   );
 }

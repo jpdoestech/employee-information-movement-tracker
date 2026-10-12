@@ -40,7 +40,9 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      className={[wide ? "wide" : "", className].filter(Boolean).join(" ")}
+      className={["app-dialog", wide ? "wide" : "", className]
+        .filter(Boolean)
+        .join(" ")}
       aria-label={title}
       onChangeCapture={() => {
         dirty.current = true;

@@ -1,5 +1,12 @@
 import { AddressFields } from "../components/forms/AddressFields";
 import {
+  UserRound,
+  ShieldCheck,
+  MapPin,
+  SlidersHorizontal,
+  History,
+} from "lucide-react";
+import {
   addressKeys,
   addressValue,
   addressAccess,
@@ -7,8 +14,11 @@ import {
 } from "../address/addressFields";
 import { addressValidationError } from "../address/addressService";
 import { FloatingNotification } from "../components/FloatingNotification";
-import { useEffect, useId, useRef, useState } from "react";
-import { employeeTabs, nameKeys } from "../employeeForm";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { valueWidth } from "../controlSizing";
+import { employeeTabs, nameKeys, defaultEntryPriority } from "../employeeForm";
+import { displayFieldValue } from "../fieldValues";
+import { governmentIdError, requiredForEdit } from "../governmentIds";
 import { Dialog } from "../components/Dialog";
 import { ValueEditor } from "../components/ValueEditor";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
@@ -30,6 +40,15 @@ export function EmployeeEditor({
   const tabId = useId();
   const body = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState("");
+  const [verticalTabs, setVerticalTabs] = useState(
+    () => window.matchMedia("(min-width: 761px)").matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 761px)");
+    const update = () => setVerticalTabs(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   const [values, setValues] = useState<Record<string, unknown>>({}),
     [changed, setChanged] = useState<Record<string, unknown>>({}),
     [detail, setDetail] = useState<any>(),
@@ -81,7 +100,9 @@ export function EmployeeEditor({
       f.active &&
       (f.key === "name" ||
         nameKeys.includes(f.key as (typeof nameKeys)[number]) ||
-        f.type !== "system") &&
+        f.type !== "system" ||
+        (f.key === "position" &&
+          (!row || context.capabilities.includes("movement_create")))) &&
       f.actions.includes(row ? "U" : "C"),
   );
   const addressFieldKeys = new Set(
@@ -90,18 +111,52 @@ export function EmployeeEditor({
     ),
   );
   const draft = { ...values, ...changed };
-  const structured =
-    !row ||
-    nameKeys.some(
-      (key) =>
-        values[key] != null ||
-        !fields.find((f) => f.key === key)?.actions.includes("R"),
-    );
-  const regular = editable.filter(
-    (f) => !addressFieldKeys.has(f.key) && !(structured && f.key === "name"),
+  const department = fields.find(
+    (f) =>
+      f.key === "department" &&
+      f.active &&
+      context.groups.some((g) => g.id === f.group_id && g.active),
   );
+  const formFields = fields.map((f) =>
+    f.key === "position" && department
+      ? {
+          ...f,
+          group_id: department.group_id,
+          group_name: department.group_name,
+        }
+      : f,
+  );
+  const regular = editable
+    .filter((f) => !addressFieldKeys.has(f.key) && f.key !== "name")
+    .map((f) =>
+      f.key === "position" && department
+        ? {
+            ...f,
+            group_id: department.group_id,
+            group_name: department.group_name,
+          }
+        : f,
+    )
+    .sort(
+      (a, b) =>
+        defaultEntryPriority(a.key) - defaultEntryPriority(b.key) ||
+        Number(!nameKeys.includes(a.key as (typeof nameKeys)[number])) -
+          Number(!nameKeys.includes(b.key as (typeof nameKeys)[number])) ||
+        (context.groups.find((g) => g.id === a.group_id)?.display_order ?? 0) -
+          (context.groups.find((g) => g.id === b.group_id)?.display_order ??
+            0) ||
+        (a.key === "department"
+          ? -1
+          : b.key === "department"
+            ? 1
+            : a.key === "position"
+              ? -1
+              : b.key === "position"
+                ? 1
+                : 0),
+    );
   const groups = [...new Set(regular.map((f) => f.group_name))];
-  const tabs = employeeTabs(context.groups, fields);
+  const tabs = employeeTabs(context.groups, formFields);
   const tabNames = [
     ...tabs.map((t) => t.name),
     ...(row ? ["Record history"] : []),
@@ -112,7 +167,7 @@ export function EmployeeEditor({
     body.current?.scrollTo({ top: 0 });
   }
   function revealField(key: string) {
-    const field = fields.find((f) => f.key === key);
+    const field = formFields.find((f) => f.key === key);
     const tab = tabs.find((t) => t.groups.includes(field?.group_id ?? ""));
     if (tab) selectTab(tab.name);
   }
@@ -129,7 +184,7 @@ export function EmployeeEditor({
           "Confirm locations from the official lists before saving.",
         );
       }
-      if (structured || nameKeys.some((key) => Object.hasOwn(changed, key))) {
+      if (!row || nameKeys.some((key) => Object.hasOwn(changed, key))) {
         for (const key of ["last_name", "first_name"]) {
           // Blind updates may retain a server value unavailable to this operator.
           if (
@@ -170,25 +225,59 @@ export function EmployeeEditor({
         revealField(Object.keys(problems)[0] + "barangay");
         throw new Error("Correct the highlighted address before saving.");
       }
+      const invalidNumber = body.current?.querySelector<HTMLInputElement>(
+        '[data-number-field][aria-invalid="true"]',
+      );
+      if (invalidNumber) {
+        revealField(invalidNumber.dataset.numberField!);
+        throw new Error("Enter a valid number before saving.");
+      }
       const missing = editable.find(
-        (f) => f.required && (draft[f.key] == null || draft[f.key] === ""),
+        (f) =>
+          requiredForEdit(f, values, changed, !row) &&
+          (draft[f.key] == null || draft[f.key] === ""),
       );
       if (missing) {
         revealField(missing.key);
         throw new Error(`${missing.label} is required.`);
       }
+      const invalidId = editable.find((f) =>
+        governmentIdError(f, draft[f.key]),
+      );
+      if (invalidId) {
+        revealField(invalidId.key);
+        throw new Error(governmentIdError(invalidId, draft[invalidId.key]));
+      }
+      if (
+        Object.hasOwn(changed, "position") &&
+        (typeof changed.position !== "string" ||
+          !changed.position.trim() ||
+          changed.position.trim().length > 200)
+      ) {
+        revealField("position");
+        throw new Error("Enter a position of 1-200 characters.");
+      }
       const o = options.find((o) => o.id === target);
+      const createValues = { ...changed };
+      delete createValues.position;
       const p = row
         ? {
             id: row.id,
             expected_version: detail?.employee.row_version ?? row.row_version,
-            values: changed,
+            values: createValues,
+            ...(Object.hasOwn(changed, "position")
+              ? { position_change: changed.position }
+              : {}),
           }
         : {
             target_level: o?.kind || "unassigned",
             branch_id: o?.kind === "branch" ? o.id : o?.branch_id,
             client_id: o?.kind === "client" ? o.id : undefined,
-            values: changed,
+            values: createValues,
+            initial_position:
+              typeof changed.position === "string" && changed.position.trim()
+                ? changed.position.trim()
+                : undefined,
           };
       await mutate(row ? "employee_update" : "employee_create", p);
       onSaved();
@@ -204,14 +293,34 @@ export function EmployeeEditor({
       title={row ? "Employee profile" : "New employee"}
       onClose={onClose}
       wide
-      className="employee-dialog"
+      className="employee-dialog employee-edit-dialog"
     >
       <div className="employee-editor-summary">
+        {row && (
+          <div className="employee-identity-strip">
+            <span className="employee-identity-avatar" aria-hidden="true">
+              <UserRound size={22} />
+            </span>
+            <strong>
+              {typeof values.name === "string"
+                ? values.name
+                : "Employee record"}
+            </strong>
+          </div>
+        )}
         <p className="muted">
           {row
             ? `${row.values.employee_number || "Authorized record"} · Revision ${detail?.employee.row_version ?? row.row_version}`
             : "One permanent profile. System ID is allocated by the database."}
         </p>
+        {row &&
+          typeof values.name === "string" &&
+          !nameKeys.some((key) => values[key] != null) && (
+            <p className="muted">
+              Recorded name: {values.name}. Enter the separate name parts to
+              revise it.
+            </p>
+          )}
         {!row && (
           <SearchFilterPicker
             mode="single"
@@ -226,6 +335,7 @@ export function EmployeeEditor({
         className="employee-form-tabs"
         role="tablist"
         aria-label="Employee sections"
+        aria-orientation={verticalTabs ? "vertical" : "horizontal"}
       >
         {tabNames.map((name, index) => (
           <button
@@ -243,9 +353,11 @@ export function EmployeeEditor({
                   ? 0
                   : event.key === "End"
                     ? tabNames.length - 1
-                    : event.key === "ArrowRight"
+                    : event.key === "ArrowRight" ||
+                        (verticalTabs && event.key === "ArrowDown")
                       ? (index + 1) % tabNames.length
-                      : event.key === "ArrowLeft"
+                      : event.key === "ArrowLeft" ||
+                          (verticalTabs && event.key === "ArrowUp")
                         ? (index + tabNames.length - 1) % tabNames.length
                         : undefined;
               if (next !== undefined) {
@@ -255,6 +367,20 @@ export function EmployeeEditor({
               }
             }}
           >
+            {row &&
+              (() => {
+                const Icon =
+                  name === "Profile"
+                    ? UserRound
+                    : name === "Government ID"
+                      ? ShieldCheck
+                      : name === "Address"
+                        ? MapPin
+                        : name === "Record history"
+                          ? History
+                          : SlidersHorizontal;
+                return <Icon size={16} aria-hidden="true" />;
+              })()}
             {name}
           </button>
         ))}
@@ -268,6 +394,48 @@ export function EmployeeEditor({
             aria-labelledby={`${tabId}-tab-${index}`}
             hidden={selectedTab !== tab.name}
           >
+            {fields.some(
+              (f) =>
+                tab.groups.includes(f.group_id) &&
+                [
+                  "status",
+                  ...(!editable.some((f) => f.key === "position")
+                    ? ["position"]
+                    : []),
+                ].includes(f.key) &&
+                f.actions.includes(row ? "R" : "C"),
+            ) && (
+              <div
+                className="employment-context"
+                role="group"
+                aria-label="Current employment"
+              >
+                {fields
+                  .filter(
+                    (f) =>
+                      tab.groups.includes(f.group_id) &&
+                      [
+                        "status",
+                        ...(!editable.some((f) => f.key === "position")
+                          ? ["position"]
+                          : []),
+                      ].includes(f.key) &&
+                      f.actions.includes(row ? "R" : "C"),
+                  )
+                  .map((f) => (
+                    <div className="employment-context-item" key={f.key}>
+                      <span>{f.label}</span>
+                      <output
+                        aria-label={f.label}
+                        className={f.key === "status" ? "badge" : undefined}
+                      >
+                        {String(row ? (values[f.key] ?? "—") : "Active") || "—"}
+                      </output>
+                    </div>
+                  ))}
+                <small className="muted">Changes use Movements.</small>
+              </div>
+            )}
             {groups
               .filter((g) =>
                 regular.some(
@@ -287,13 +455,25 @@ export function EmployeeEditor({
                       ? "Emergency contact"
                       : g}
                   </legend>
-                  <div
-                    className={`form-grid${regular.filter((f) => f.group_name === g).every((f) => f.key === "name" || nameKeys.includes(f.key as (typeof nameKeys)[number])) ? " employee-name-grid" : ""}`}
-                  >
+                  <div className="form-grid field-entry-grid">
                     {regular
                       .filter((f) => f.group_name === g)
                       .map((f) => (
-                        <div key={f.key}>
+                        <div
+                          key={f.key}
+                          className="field-slot"
+                          data-field={f.key}
+                          style={
+                            {
+                              "--field-width": valueWidth(
+                                f.type,
+                                f.options,
+                                f.validation?.government_id_digits,
+                                f.key,
+                              ),
+                            } as CSSProperties
+                          }
+                        >
                           <ValueEditor
                             field={
                               [
@@ -322,7 +502,24 @@ export function EmployeeEditor({
                                           f.key,
                                         ),
                                     }
-                                  : f
+                                  : f.key === "position"
+                                    ? {
+                                        ...f,
+                                        type: "short_text",
+                                        help_text: row
+                                          ? "Changes are recorded as a position movement effective today."
+                                          : "",
+                                        validation: { max_length: 200 },
+                                      }
+                                    : {
+                                        ...f,
+                                        required: requiredForEdit(
+                                          f,
+                                          values,
+                                          changed,
+                                          !row,
+                                        ),
+                                      }
                             }
                             value={
                               Object.hasOwn(changed, f.key)
@@ -330,21 +527,14 @@ export function EmployeeEditor({
                                 : values[f.key]
                             }
                             blind={!!row && !f.actions.includes("R")}
+                            clearable={
+                              f.key !== "position" &&
+                              (!row || f.actions.includes("D"))
+                            }
                             onChange={(value) =>
                               setChanged((v) => ({ ...v, [f.key]: value }))
                             }
                           />
-                          {row && f.actions.includes("D") && (
-                            <button
-                              type="button"
-                              className="text-link"
-                              onClick={() =>
-                                setChanged((v) => ({ ...v, [f.key]: null }))
-                              }
-                            >
-                              Clear value
-                            </button>
-                          )}
                         </div>
                       ))}
                   </div>
@@ -422,7 +612,12 @@ export function EmployeeEditor({
               {Object.entries(values).map(([k, v]) => (
                 <div key={k}>
                   <dt>{fields.find((f) => f.key === k)?.label || k}</dt>
-                  <dd>{String(v ?? "—")}</dd>
+                  <dd>
+                    {displayFieldValue(
+                      fields.find((f) => f.key === k),
+                      v,
+                    )}
+                  </dd>
                 </div>
               ))}
             </dl>

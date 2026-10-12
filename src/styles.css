@@ -18,7 +18,7 @@
   --primary-hover: #18375f;
   --ink: #18263b;
   --muted: #56647a;
-  --paper: #f3f6f8;
+  --paper: #f6f7f9;
   --line: #e1e6eb;
   --control-line: #ccd4dd;
   --tint: #eaf0f8;
@@ -35,6 +35,75 @@
   --shadow: 0 1px 3px #14243d08;
   --sidebar-text: #56647a;
   --row-selected: #e8effa;
+  --section-surface: #f8fafc;
+  --dialog-wide-width: 1060px;
+  --dialog-editor-height: 720px;
+}
+/* Shared ui-styling primitives: forms, editors, administration and record pages. */
+.panel,
+.data-panel,
+.register,
+.record-explorer,
+.stat {
+  box-shadow: none;
+  border-radius: var(--radius);
+  border-color: var(--line);
+}
+.panel > h3,
+.dialog-body h3 {
+  font-size: 14px;
+  letter-spacing: -0.015em;
+}
+.panel > p,
+.dialog-body > p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.form-grid > label,
+.dialog-body > label,
+.form-control {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.dialog-body input:not([type="checkbox"]),
+.dialog-body textarea,
+.dialog-body .picker-trigger {
+  border-radius: var(--radius);
+  color: var(--ink);
+  background: var(--surface);
+}
+.dialog-body input:not([type="checkbox"]):focus,
+.dialog-body textarea:focus {
+  background: var(--input-focus-bg);
+}
+.dialog-body fieldset > p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 0;
+}
+.admin-tabs button[aria-current],
+.section-navigation a[aria-current] {
+  font-weight: 600;
+}
+.definition-list .definition-group th {
+  background: var(--section-surface);
+}
+.record-heading,
+.register > .section-heading {
+  background: var(--surface);
+}
+.record-explorer thead th,
+.table-region thead th {
+  background: var(--section-surface);
+}
+.picker-panel,
+.popover-panel {
+  border-radius: 8px;
+}
+.security-workspace .panel {
+  border-radius: var(--radius);
 }
 * {
   box-sizing: border-box;
@@ -116,6 +185,63 @@ input[type="checkbox"] {
 textarea {
   min-height: 90px;
   resize: vertical;
+}
+.value-control {
+  position: relative;
+  width: 100%;
+}
+.employment-context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 0 0 12px;
+}
+.employment-context-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+}
+.employment-context-item > span {
+  color: var(--muted);
+}
+.employment-context-item > output {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+.value-control.with-clear > input:not([type="checkbox"]),
+.value-control.with-clear > textarea {
+  padding-right: 42px;
+}
+.value-clear {
+  position: absolute;
+  right: 3px;
+  top: 18px;
+  transform: translateY(-50%);
+  width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.field-error {
+  color: var(--danger);
+  margin-top: 4px;
+}
+@media (max-width: 760px), (pointer: coarse) {
+  .value-control.with-clear > input:not([type="checkbox"]),
+  .value-control.with-clear > textarea {
+    padding-right: 48px;
+  }
+  .value-clear {
+    top: 22px;
+    width: 44px;
+    min-height: 44px;
+    right: 0;
+  }
 }
 label {
   display: flex;
@@ -1274,19 +1400,21 @@ td {
   overflow-wrap: anywhere;
 }
 fieldset {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 16px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 0 0 16px;
   margin: 18px 0;
 }
 legend {
-  padding: 0 8px;
+  padding: 0;
+  margin-bottom: 12px;
   font-weight: 600;
   font-size: 14px;
 }
 dialog {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 0;
   width: min(620px, calc(100vw - 32px));
   max-width: 100%;
@@ -1296,7 +1424,7 @@ dialog {
   overflow: auto;
 }
 dialog.wide {
-  width: min(1000px, calc(100vw - 32px));
+  width: min(var(--dialog-wide-width), calc(100vw - 32px));
 }
 dialog::backdrop {
   background: #101d32bb;
@@ -3307,10 +3435,78 @@ textarea:focus {
   gap: 3px;
 }
 /* Employee entry: stationary tab navigation and actions, scrolling section only. */
+dialog.app-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.app-dialog > header,
+.app-dialog > footer {
+  flex: none;
+}
+.app-dialog > .dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+dialog.transaction-editor[open] {
+  height: min(var(--dialog-editor-height), calc(100dvh - 32px));
+}
+.transaction-editor > .dialog-body {
+  padding: 20px 24px;
+}
+.transaction-editor .dialog-body > .picker {
+  width: min(100%, 520px);
+}
+.transaction-editor .dialog-body > label {
+  max-width: 700px;
+}
+.transaction-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  align-items: start;
+}
+.transaction-form > .picker {
+  width: min(100%, var(--picker-width, 28ch));
+}
+.transaction-form > .form-grid,
+.transaction-form > fieldset,
+.transaction-form > label:has(textarea) {
+  grid-column: 1 / -1;
+}
+.transaction-form > label {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.transaction-review {
+  max-width: 720px;
+}
+.transaction-review > p {
+  margin: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .transaction-editor > .dialog-body {
+    padding: 16px;
+  }
+}
+@media (max-width: 600px) {
+  .transaction-form {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+}
 dialog.employee-dialog[open] {
   display: flex;
   flex-direction: column;
-  height: min(720px, calc(100dvh - 32px));
+  height: min(var(--dialog-editor-height), calc(100dvh - 32px));
   overflow: hidden;
 }
 .employee-dialog > header,
@@ -3368,11 +3564,231 @@ dialog.employee-dialog[open] {
   margin: 0;
   gap: 4px;
 }
+.dialog-body .value-control > .picker,
+.dialog-body .value-control > .picker > .picker-trigger {
+  width: 100%;
+}
+.form-grid > .picker,
+.form-control > .picker,
+.dialog-body > .picker,
+.security-workspace .form-grid > .picker,
+.transaction-editor .dialog-body > .picker {
+  width: min(100%, var(--picker-width, 28ch));
+}
+.form-grid > label > input[type="date"],
+.dialog-body > label > input[type="date"],
+.security-workspace label > input[type="date"] {
+  max-width: 20ch;
+}
+.form-grid > label > input[type="number"],
+.dialog-body > label > input[type="number"] {
+  max-width: 24ch;
+}
+.address-postal > input {
+  max-width: 20ch;
+}
+.dialog-body .form-grid > div:has(textarea) {
+  grid-column: 1 / -1;
+}
 .employee-tab-body .field > small:empty {
   display: none;
 }
 .employee-name-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+/* ui-styling comparison: employee edits use a quiet section rail and flat form sections. */
+dialog.employee-edit-dialog[open] {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  width: min(var(--dialog-wide-width), calc(100vw - 32px));
+}
+.employee-edit-dialog > header,
+.employee-edit-dialog > footer,
+.employee-edit-dialog > .employee-editor-summary {
+  grid-column: 1 / -1;
+}
+.employee-edit-dialog > header {
+  padding: 12px 20px;
+}
+.employee-edit-dialog > .employee-editor-summary {
+  padding: 12px 20px;
+  background: var(--surface);
+}
+.employee-identity-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+  min-width: 0;
+}
+.employee-identity-strip strong {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.employee-identity-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  color: var(--primary);
+  background: var(--tint);
+  border-radius: 8px;
+}
+.employee-edit-dialog
+  .employee-editor-summary:has(.employee-identity-strip)
+  > p {
+  margin: 0 0 0 48px;
+  font-size: 12px;
+}
+.employee-edit-dialog > .employee-form-tabs {
+  grid-column: 1;
+  grid-row: 3;
+  flex-direction: column;
+  padding: 12px 10px;
+  gap: 4px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  min-height: 0;
+  background: var(--paper);
+}
+.employee-edit-dialog .employee-form-tabs [role="tab"] {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 9px 10px;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.employee-edit-dialog .employee-form-tabs [role="tab"] svg {
+  flex-shrink: 0;
+}
+.employee-edit-dialog .employee-form-tabs [aria-selected="true"] {
+  background: var(--surface);
+  color: var(--primary);
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+}
+.employee-edit-dialog > .employee-tab-body {
+  grid-column: 2;
+  grid-row: 3;
+  padding: 20px 24px;
+}
+.employee-edit-dialog .employee-tab-body fieldset {
+  border: 0;
+  border-radius: 0;
+  padding: 0 0 20px;
+  margin: 0 0 20px;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.employee-edit-dialog .employee-tab-body fieldset:last-child {
+  border-bottom: 0;
+  margin-bottom: 0;
+}
+.employee-edit-dialog .employee-tab-body legend {
+  padding: 0;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.employee-edit-dialog .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+.employee-edit-dialog .field-entry-grid {
+  display: flex;
+  font-size: 14px;
+  flex-wrap: wrap;
+  align-items: start;
+}
+.field-entry-grid > .field-slot {
+  flex: 0 1 var(--field-width, 32ch);
+  width: min(100%, var(--field-width, 32ch));
+  min-width: 0;
+  max-width: 100%;
+}
+.field-entry-grid > .field-slot:has(textarea) {
+  flex-basis: 100%;
+  width: 100%;
+}
+.field-entry-grid > .field-slot[data-field="department"],
+.field-entry-grid > .field-slot[data-field="position"] {
+  flex-basis: min(var(--field-width), calc((100% - 20px) / 2));
+  width: min(var(--field-width), calc((100% - 20px) / 2));
+}
+.employee-edit-dialog .field > label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.employee-edit-dialog .employment-context {
+  padding: 0 0 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.employee-edit-dialog > footer {
+  padding: 12px 20px;
+  background: var(--surface);
+}
+.employee-edit-dialog > footer > .danger {
+  margin-right: auto;
+}
+@media (max-width: 760px) {
+  dialog.employee-edit-dialog[open] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  }
+  .employee-edit-dialog > .employee-form-tabs {
+    grid-column: 1;
+    grid-row: 3;
+    flex-direction: row;
+    padding: 4px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+  .employee-edit-dialog .employee-form-tabs [role="tab"] {
+    white-space: nowrap;
+    padding: 8px 12px;
+    min-height: 44px;
+  }
+  .employee-edit-dialog > .employee-tab-body {
+    grid-column: 1;
+    grid-row: 4;
+    padding: 16px;
+  }
+  .employee-edit-dialog .form-grid {
+    gap: 14px;
+  }
+}
+@media (max-width: 480px) {
+  .employee-edit-dialog .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .field-entry-grid > .field-slot {
+    flex-basis: 100%;
+  }
+  .field-entry-grid > .field-slot[data-field="department"],
+  .field-entry-grid > .field-slot[data-field="position"] {
+    flex-basis: 100%;
+    width: min(100%, var(--field-width));
+  }
+  .employee-edit-dialog > header,
+  .employee-edit-dialog > footer,
+  .employee-edit-dialog > .employee-editor-summary {
+    padding-inline: 16px;
+  }
+  .employee-edit-dialog .employee-form-tabs [role="tab"] {
+    gap: 7px;
+  }
 }
 @media (max-width: 960px) {
   .employee-name-grid {

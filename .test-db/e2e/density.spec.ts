@@ -151,11 +151,12 @@ test("slow transaction feedback floats inside the active editor and clears on se
         }),
     );
   });
-  await expect(editor.getByRole("status")).toContainText("Saving employee");
+  const progress = editor.locator('.floating-notification[role="status"]');
+  await expect(progress).toContainText("Saving employee");
   expect(await editor.boundingBox()).toEqual(before);
-  await expect(editor.getByRole("status")).toContainText("Still processing", {
+  await expect(progress).toContainText("Still processing", {
     timeout: 10000,
   });
   await page.evaluate(() => (window as any).finishSlowTransaction());
-  await expect(editor.getByRole("status")).toHaveCount(0);
+  await expect(progress).toHaveCount(0);
 });

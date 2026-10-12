@@ -585,7 +585,7 @@ export function AddressFields({
         />
       )}
       {rights.postal_code.visible && (
-        <label>
+        <label className="address-postal">
           Postal code{rights.postal_code.required ? " *" : ""}
           <input
             disabled={disabled || !rights.postal_code.write}

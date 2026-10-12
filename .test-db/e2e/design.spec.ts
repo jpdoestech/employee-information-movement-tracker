@@ -453,9 +453,14 @@ for (const width of [375, 1440]) {
       name: "Employee profile",
       exact: true,
     });
-    const name = editor.getByRole("textbox", { name: /Employee Name/ });
-    await expect(name).toHaveValue("Synthetic Employee 01");
-    await name.fill("Reviewed employee");
+    const name = editor.getByRole("textbox", { name: /^First Name$/ });
+    const last = editor.getByRole("textbox", { name: /^Last Name$/ });
+    await expect(name).toHaveValue("");
+    await expect(
+      editor.getByRole("textbox", { name: "Employee Name", exact: true }),
+    ).toHaveCount(0);
+    await last.fill("Reviewed");
+    await name.fill("employee");
     await editor
       .getByRole("button", { name: "Save to Supabase", exact: true })
       .click();
@@ -471,7 +476,7 @@ for (const width of [375, 1440]) {
     await confirmation
       .getByRole("button", { name: "Cancel", exact: true })
       .click();
-    await expect(name).toHaveValue("Reviewed employee");
+    await expect(name).toHaveValue("employee");
     await expect(
       page
         .getByLabel("Scrollable employee table")
@@ -487,7 +492,7 @@ for (const width of [375, 1440]) {
     await discard
       .getByRole("button", { name: "Continue editing", exact: true })
       .click();
-    await expect(name).toHaveValue("Reviewed employee");
+    await expect(name).toHaveValue("employee");
     await editor
       .getByRole("button", { name: "Save to Supabase", exact: true })
       .click();
@@ -498,7 +503,7 @@ for (const width of [375, 1440]) {
     await expect(
       page
         .getByLabel("Scrollable employee table")
-        .getByText("Reviewed employee", { exact: true }),
+        .getByText("Reviewed, employee", { exact: true }),
     ).toBeVisible();
     await page
       .getByRole("button", { name: "EMP-0000001", exact: true })
@@ -512,7 +517,7 @@ for (const width of [375, 1440]) {
     await expect(
       page
         .getByLabel("Scrollable employee table")
-        .getByText("Reviewed employee", { exact: true }),
+        .getByText("Reviewed, employee", { exact: true }),
     ).toBeVisible();
   });
 }

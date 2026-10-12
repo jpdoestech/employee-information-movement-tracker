@@ -94,3 +94,47 @@ drafts and confirmed saves at phone/laptop widths. Two address no-results assert
 now target the Barangay suggestion list rather than counting unrelated pagination
 options; retry, concurrent loading and stale-response assertions remain intact.
 No database migration, permission or transaction changes were required.
+
+## Profile defaults, government IDs and inline values (2026-10-12)
+
+Production build, 58 unit tests, 52 native PostgreSQL checks and all 87 Chromium E2E
+tests passed. The three new migrations applied to a fresh disposable database.
+Phone, tablet, laptop and short-landscape profile flows verify field entry,
+mandatory ID validation, inline clear bounds, saved data, retained drafts,
+confirmation cancellation and viewport bounds. Default tab order and Profile
+contact controls are asserted; custom tab merging remains configurable.
+
+Government ID checks cover missing values, exact lengths, non-digit/numeric/null
+payloads, formatted-input normalization, leading zeroes, restricted projections,
+hidden-field searches and complete rollback. Existing missing IDs remain absent
+on unrelated updates. Initial-position checks cover authorized creation,
+idempotent replay after a later position movement, invalid payloads and denied
+Create permissions. Existing security and 20-user concurrency checks pass.
+
+Number fields retain Integer as a separate type, display comma grouping and two
+fractional digits, and retain stored precision on edit. Invalid numeric text cannot
+reach employee writes or bulk previews. Shared inline X controls preserve Delete
+permissions and transaction confirmations. All verification sources/evidence live
+under `.test-db`; only synthetic identifiers appear in fixtures and screenshots.
+No hosted database, deployment, commit or push was performed in this change.
+
+## Shared ui-styling and editable profile position (2026-10-12)
+
+Production build, all 58 unit tests, 53 native PostgreSQL checks and the complete
+95-test Chromium E2E suite passed. The new profile-position migration applied to
+the disposable database; no hosted migration, deployment, commit or push ran.
+
+Shared dialogs preserve stationary headers/footers with internally scrolling
+bodies. Movement entry, preview and Back keep identical frame bounds at phone,
+tablet, laptop and short-landscape sizes. Employee forms use a section rail on
+desktop, horizontal mobile tabs, flat groups and wrapping field slots. Tests
+verify bounded dates/choices, a shorter Suffix input, readable long selected
+labels, paired Department/Position and saved data after cancelled confirmation.
+Screenshots are in `.test-db/reports/verification`.
+
+Position saves retain the existing movement authorization path and effective-day
+conflicts. Database tests verify atomic Department/Position rollback, unchanged
+versions on failure, idempotent replay, field denial, rejection of direct system
+field patches, and one winner for concurrent same-version position edits.
+Untouched Position is omitted from profile payloads, including synthetic demo
+saves; existing name/contact/number edit regression tests pass unchanged.

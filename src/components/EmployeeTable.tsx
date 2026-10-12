@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { Employee, Field, Layout } from "../domain";
 import { contentWidths, useFontMetrics } from "../tableSizing";
+import { displayFieldValue } from "../fieldValues";
 const columnIcons: Record<string, LucideIcon> = {
   employee_number: Hash,
   name: UserRound,
@@ -56,7 +57,14 @@ export function EmployeeTable({
   const widths = useMemo(() => {
     const sized = contentWidths(
       columns.map((key) => fields.find((f) => f.key === key)?.label || key),
-      rows.map((row) => columns.map((key) => String(row.values[key] ?? "—"))),
+      rows.map((row) =>
+        columns.map((key) =>
+          displayFieldValue(
+            fields.find((f) => f.key === key),
+            row.values[key],
+          ),
+        ),
+      ),
       66,
     );
     return Object.fromEntries(columns.map((key, i) => [key, sized[i]]));
@@ -233,17 +241,26 @@ export function EmployeeTable({
                       type="button"
                       onClick={() => onOpen(row)}
                     >
-                      {String(row.values[k] ?? "—")}
+                      {displayFieldValue(
+                        fields.find((f) => f.key === k),
+                        row.values[k],
+                      )}
                     </button>
                   ) : k === "status" ? (
                     <span
                       className={`badge ${row.values[k] === "Active" ? "success" : ""}`}
                     >
-                      {String(row.values[k] ?? "—")}
+                      {displayFieldValue(
+                        fields.find((f) => f.key === k),
+                        row.values[k],
+                      )}
                     </span>
                   ) : (
                     <span className="cell-value">
-                      {String(row.values[k] ?? "—")}
+                      {displayFieldValue(
+                        fields.find((f) => f.key === k),
+                        row.values[k],
+                      )}
                     </span>
                   )}
                 </td>

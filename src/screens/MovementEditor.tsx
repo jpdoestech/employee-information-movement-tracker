@@ -111,14 +111,19 @@ export function MovementEditor({
     position: typ === "position" ? value : undefined,
   });
   return (
-    <Dialog title="New movement transaction" onClose={onClose}>
+    <Dialog
+      title="New movement transaction"
+      onClose={onClose}
+      wide
+      className="transaction-editor"
+    >
       <div className="dialog-body">
         <p>
           Effective dates use Asia/Manila. Assignment intervals include the
           start and exclude the end.
         </p>
         {!preview ? (
-          <>
+          <div className="transaction-form">
             <SearchFilterPicker
               mode="single"
               label="Employee"
@@ -289,9 +294,9 @@ export function MovementEditor({
                 required
               />
             </label>
-          </>
+          </div>
         ) : (
-          <>
+          <div className="transaction-review">
             <h3>Confirm transaction</h3>
             <p>
               {String(
@@ -314,11 +319,8 @@ export function MovementEditor({
                 ? value
                 : o?.label || "Unassigned"}
             </p>
-            <p>
-              The server rechecks origin/destination permissions, required data,
-              schedules and employee revision atomically.
-            </p>
-          </>
+            <p>Reason: {reason}</p>
+          </div>
         )}
         {error && (
           <FloatingNotification onDismiss={() => setError("")}>

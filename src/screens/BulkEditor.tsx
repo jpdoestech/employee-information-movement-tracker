@@ -5,6 +5,8 @@ import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import { ValueEditor } from "../components/ValueEditor";
 import { mutate, preview as validatePreview } from "../api";
 import { nameKeys } from "../employeeForm";
+import { displayFieldValue, parseNumberInput } from "../fieldValues";
+import { governmentIdError } from "../governmentIds";
 import type { Employee, Field } from "../domain";
 export function BulkEditor({
   rows,
@@ -69,6 +71,9 @@ export function BulkEditor({
                       : allowed.find((f) => f.key === k)!
                   }
                   value={patch[k]}
+                  clearable={allowed
+                    .find((f) => f.key === k)!
+                    .actions.includes("D")}
                   blind={
                     !allowed.find((f) => f.key === k)!.actions.includes("R")
                   }
@@ -106,9 +111,20 @@ export function BulkEditor({
                       {keys.map((k) => (
                         <td key={k}>
                           {k in r.values
-                            ? String(r.values[k] ?? "Empty")
+                            ? r.values[k] == null
+                              ? "Empty"
+                              : displayFieldValue(
+                                  allowed.find((f) => f.key === k),
+                                  r.values[k],
+                                )
                             : "Restricted"}{" "}
-                          → {String(patch[k] ?? "Clear")}
+                          →{" "}
+                          {patch[k] == null
+                            ? "Clear"
+                            : displayFieldValue(
+                                allowed.find((f) => f.key === k),
+                                patch[k],
+                              )}
                         </td>
                       ))}
                     </tr>
@@ -136,6 +152,24 @@ export function BulkEditor({
           onClick={async () => {
             setBusy(true);
             try {
+              const invalidId = allowed.find((f) =>
+                governmentIdError(f, patch[f.key]),
+              );
+              if (invalidId)
+                throw new Error(
+                  governmentIdError(invalidId, patch[invalidId.key]),
+                );
+              if (
+                keys.some(
+                  (k) =>
+                    allowed.find((f) => f.key === k)?.type === "decimal" &&
+                    typeof patch[k] === "string" &&
+                    typeof parseNumberInput(patch[k] as string) === "string",
+                )
+              )
+                throw new Error(
+                  "Enter a valid number before previewing changes.",
+                );
               if (!preview) {
                 await validatePreview("bulk_update", {
                   rows: rows.map((r) => ({

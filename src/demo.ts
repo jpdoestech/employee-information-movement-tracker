@@ -6,6 +6,12 @@ import {
 import { addressValidationError } from "./address/addressService";
 import { matchesFilterValue } from "./filterValues";
 import { combinedName, nameKeys, nameLabels } from "./employeeForm";
+import { profileDefinitions } from "./profileFields";
+import {
+  governmentDefinitions,
+  governmentIdError,
+  normalizeGovernmentId,
+} from "./governmentIds";
 import {
   defaultFilter,
   localToday,
@@ -83,8 +89,13 @@ const fields: Field[] = base.map(([key, label, type], i) => ({
   key,
   label,
   type,
-  group_id: i < 7 ? "core" : "contact",
-  group_name: i < 7 ? "Core identity" : "Contact information",
+  group_id: i < 7 ? "core" : i < 9 ? "contact" : "additional",
+  group_name:
+    i < 7
+      ? "Core identity"
+      : i < 9
+        ? "Contact information"
+        : "Additional information",
   active: true,
   required: false,
   sensitivity: "normal",
@@ -94,6 +105,35 @@ const fields: Field[] = base.map(([key, label, type], i) => ({
   actions: ["C", "R", "U", "D"],
 }));
 fields.push(
+  ...governmentDefinitions.map(({ digits, ...f }) => ({
+    ...f,
+    id: `field-${f.key}`,
+    group_id: "government",
+    group_name: "Government IDs",
+    type: "short_text",
+    active: true,
+    required: true,
+    sensitivity: "restricted",
+    list_eligible: false,
+    scope_mode: "all",
+    row_version: 1,
+    validation: { government_id_digits: digits, max_length: digits },
+    actions: ["C", "R", "U", "D"],
+  })),
+  ...profileDefinitions.map(({ group, ...f }, i) => ({
+    ...f,
+    id: `field-${f.key}`,
+    group_id: group,
+    group_name:
+      group === "personal" ? "Personal information" : "Employment information",
+    active: true,
+    required: false,
+    sensitivity: "normal",
+    list_eligible: true,
+    scope_mode: "all",
+    row_version: 1,
+    actions: ["C", "R", "U", "D"],
+  })),
   ...nameKeys.map((key, i) => ({
     ...fields.find((f) => f.key === "name")!,
     id: `field-${key}`,
@@ -176,6 +216,42 @@ const context: Context = {
   fields,
   groups: [
     {
+      id: "additional",
+      name: "Additional information",
+      active: true,
+      row_version: 1,
+      display_order: 40,
+      tab_name: "Additional information",
+      tab_order: 30,
+    },
+    {
+      id: "government",
+      name: "Government IDs",
+      active: true,
+      row_version: 1,
+      display_order: 30,
+      tab_name: "Government ID",
+      tab_order: 10,
+    },
+    {
+      id: "personal",
+      name: "Personal information",
+      active: true,
+      row_version: 1,
+      display_order: 10,
+      tab_name: "Profile",
+      tab_order: 0,
+    },
+    {
+      id: "employment",
+      name: "Employment information",
+      active: true,
+      row_version: 1,
+      display_order: 20,
+      tab_name: "Profile",
+      tab_order: 0,
+    },
+    {
       id: "address",
       name: "Address",
       active: true,
@@ -194,8 +270,8 @@ const context: Context = {
     {
       id: "contact",
       name: "Contact information",
-      tab_name: "Contact",
-      tab_order: 10,
+      tab_name: "Profile",
+      tab_order: 0,
       active: true,
       row_version: 1,
     },
@@ -450,6 +526,38 @@ export async function demoMutate(op: string, p: any) {
   )
     throw new Error("Identity fields are system-managed");
   if (op.startsWith("employee_") || op === "bulk_update") {
+    if (op === "employee_update" && Object.hasOwn(p, "position_change")) {
+      if (
+        typeof p.position_change !== "string" ||
+        !p.position_change.trim() ||
+        p.position_change.trim().length > 200
+      )
+        throw new Error("Enter a position of 1-200 characters");
+      if (
+        history.some(
+          (m: any) =>
+            m.employee_id === p.id &&
+            m.type === "position" &&
+            m.effective_on >= context.today &&
+            m.state !== "Voided",
+        )
+      )
+        throw new Error("Resolve the conflicting scheduled event first");
+    }
+    for (const field of fields.filter(
+      (f) => f.validation?.government_id_digits,
+    )) {
+      if (op === "employee_create" && field.required && !p.values?.[field.key])
+        throw new Error(`${field.label} is required.`);
+      if (Object.hasOwn(p.values ?? {}, field.key)) {
+        if (field.required && !p.values[field.key])
+          throw new Error(`${field.label} is required.`);
+        const error = governmentIdError(field, p.values[field.key]);
+        if (error) throw new Error(error);
+        if (typeof p.values[field.key] === "string")
+          p.values[field.key] = normalizeGovernmentId(p.values[field.key]);
+      }
+    }
     if (op === "employee_create") {
       for (const prefix of ["", "current_"]) {
         const problem = await addressValidationError(
@@ -464,6 +572,7 @@ export async function demoMutate(op: string, p: any) {
         values: {
           employee_number: `EMP-${String(employees.length + 1).padStart(7, "0")}`,
           status: "Active",
+          position: p.initial_position ?? "",
           branch:
             org.find((o) => o.id === p.branch_id || o.id === p.target_level)
               ?.label || "Unassigned",
@@ -530,6 +639,20 @@ export async function demoMutate(op: string, p: any) {
         if (nameKeys.some((key) => Object.hasOwn(p.values ?? {}, key)))
           e.values.name = structuredValues(e.values);
         e.row_version++;
+        if (op === "employee_update" && Object.hasOwn(p, "position_change")) {
+          e.values.position = p.position_change.trim();
+          history.unshift({
+            id: crypto.randomUUID(),
+            employee_id: e.id,
+            type: "position",
+            position: e.values.position,
+            effective_on: context.today,
+            reason: "Position updated from employee profile",
+            state: "Effective",
+            employee_name: e.values.name,
+            employee_number: e.values.employee_number,
+          });
+        }
       }
     }
   } else if (op === "field") {
