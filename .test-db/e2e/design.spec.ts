@@ -537,19 +537,23 @@ for (const width of [375, 1440]) {
       name: "Customize Columns",
       exact: true,
     });
+    await dialog
+      .getByRole("tab", { name: "View settings", exact: true })
+      .click();
     await expect(
       dialog.getByLabel("Saved view name", { exact: true }),
     ).toBeVisible();
+    await dialog
+      .getByRole("tab", { name: "Column order", exact: true })
+      .click();
     await expect(
       dialog.getByRole("heading", { name: "Live preview", exact: true }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     expect(
       await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);
     const order = (await dialog.locator(".column-order").boundingBox())!;
-    const preview = (await dialog.locator(".column-preview").boundingBox())!;
-    if (width > 900) expect(preview.x).toBeGreaterThan(order.x + order.width);
-    else expect(preview.y).toBeGreaterThan(order.y + order.height);
+    expect(order.width).toBeGreaterThan(200);
     await expect(
       dialog.getByRole("button", {
         name: "Move employee_number up",
@@ -563,14 +567,14 @@ for (const width of [375, 1440]) {
       "Employee Name",
     );
     await expect(
-      dialog.getByRole("table").locator("thead th:not(.row-ordinal)").first(),
-    ).toContainText("System ID");
+      dialog.getByRole("button", { name: "Pin employee_number", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
     await dialog
       .getByRole("button", { name: "Pin employee_number", exact: true })
       .click();
     await expect(
-      dialog.getByRole("table").locator("thead th:not(.row-ordinal)").first(),
-    ).toContainText("Employee Name");
+      dialog.getByRole("button", { name: "Pin employee_number", exact: true }),
+    ).toHaveAttribute("aria-pressed", "false");
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     await page
       .getByRole("dialog", { name: "Discard unsaved changes?", exact: true })

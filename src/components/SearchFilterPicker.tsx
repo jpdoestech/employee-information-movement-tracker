@@ -31,6 +31,7 @@ type Props = {
   clearable?: boolean;
   displayLabel?: string;
   compactLabel?: string;
+  selectionSummary?: boolean;
 };
 export function SearchFilterPicker({
   mode,
@@ -44,6 +45,7 @@ export function SearchFilterPicker({
   clearable = true,
   displayLabel,
   compactLabel,
+  selectionSummary = false,
 }: Props) {
   const surface = useContext(PickerSurface);
   const id = useId(),
@@ -174,11 +176,14 @@ export function SearchFilterPicker({
     setHighlight(0);
   }, [search]);
   const selected = options.filter((o) => value.includes(o.id));
-  const selectionText = selected.length
-    ? selected.map((o) => o.label).join(", ")
-    : value.length
+  const selectionText =
+    selectionSummary && value.length
       ? `${displayLabel || label} · ${value.length}`
-      : displayLabel || label;
+      : selected.length
+        ? selected.map((o) => o.label).join(", ")
+        : value.length
+          ? `${displayLabel || label} · ${value.length}`
+          : displayLabel || label;
   return (
     <div
       className="picker"

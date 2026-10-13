@@ -11,9 +11,15 @@ import {
   Activity,
   Fingerprint,
   Columns3,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import type { Employee, Field, Layout } from "../domain";
+import {
+  reconcileLayout,
+  type Employee,
+  type Field,
+  type Layout,
+} from "../domain";
 import { contentWidths, useFontMetrics } from "../tableSizing";
 import { displayFieldValue } from "../fieldValues";
 import { fieldTextRole } from "../typography";
@@ -25,6 +31,10 @@ const columnIcons: Record<string, LucideIcon> = {
   position: BriefcaseBusiness,
   branch: Building2,
   client: BriefcaseBusiness,
+  bir_tin: ShieldCheck,
+  sss_number: ShieldCheck,
+  philhealth_pin: ShieldCheck,
+  pagibig_mid: ShieldCheck,
 };
 const columnIcon = (key: string, type: string) =>
   columnIcons[key] || fieldTypeIcons[type] || Columns3;
@@ -51,10 +61,7 @@ export function EmployeeTable({
 }) {
   const numbered = rowNumbersAllowed && layout.showRowNumbers !== false;
   const leadingWidth = (numbered ? 48 : 0) + (onSelect ? 44 : 0);
-  const columns = layout.columns.filter((k) =>
-    fields.some((f) => f.key === k && f.actions.includes("R")),
-  );
-  const pinned = layout.pinned.filter((k) => columns.includes(k));
+  const { columns, pinned } = reconcileLayout(layout, fields);
   const order = [...pinned, ...columns.filter((k) => !pinned.includes(k))];
   const fontReady = useFontMetrics();
   const widths = useMemo(() => {
@@ -172,7 +179,14 @@ export function EmployeeTable({
                     )}
                   </button>
                 ) : (
-                  <span className="table-header-label">
+                  <span className="table-header-label column-heading">
+                    {(() => {
+                      const Icon = columnIcon(
+                        k,
+                        fields.find((f) => f.key === k)?.type ?? "system",
+                      );
+                      return <Icon size={14} aria-hidden />;
+                    })()}
                     {fields.find((f) => f.key === k)?.label}
                   </span>
                 )}
@@ -240,7 +254,10 @@ export function EmployeeTable({
                   key={k}
                   className={`${cls(k)} ${fieldTextRole(fields.find((f) => f.key === k))} ${k === "name" ? "employee-name" : k === "employee_number" ? "employee-id" : ""}`}
                   style={style(k)}
-                  title={String(row.values[k] ?? "—")}
+                  title={displayFieldValue(
+                    fields.find((f) => f.key === k),
+                    row.values[k],
+                  )}
                 >
                   {i === 0 && onOpen ? (
                     <button

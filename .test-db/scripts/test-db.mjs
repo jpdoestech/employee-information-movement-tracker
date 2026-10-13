@@ -2708,7 +2708,7 @@ try {
     for (const f of ids) {
       assert.equal(f.required, false);
       assert.equal(f.sensitivity, "restricted");
-      assert.equal(f.list_eligible, false);
+      assert.equal(f.list_eligible, true);
     }
     const created = await m(id.sa, "employee_create", {
       target_level: "branch",
@@ -2727,6 +2727,18 @@ try {
       offset: 0,
     });
     assert.equal(result.total, 0);
+    // Eligibility permits personal layouts, never grants access to the value.
+    const tin = ids.find((f) => f.key === "bir_tin");
+    const grant = await m(id.sa, "policy", { user_id: id.admin, field_id: tin.id, action: "R", effect: "allow", scope_type: "all", reason: "Synthetic explicit ID read" });
+    const authorized = await q(id.admin, "employee", { id: created.id });
+    assert.equal(authorized.employee.values.bir_tin, "012345678");
+    for (const f of ids.filter((f) => f.key !== "bir_tin")) assert(!Object.hasOwn(authorized.employee.values, f.key));
+    const columns = (await q(id.admin, "context")).fields;
+    assert.ok(columns.find((f) => f.key === "bir_tin").actions.includes("R"));
+    const deny = await m(id.sa, "policy", { id: grant.id, user_id: id.admin, field_id: tin.id, action: "R", effect: "deny", scope_type: "all", reason: "Synthetic ID read revocation" });
+    assert(!Object.hasOwn((await q(id.admin, "employee", { id: created.id })).employee.values, "bir_tin"));
+    assert.equal((await q(id.admin, "employees", { search: "012345678", limit: 25, offset: 0 })).total, 0);
+    await owner.query("delete from public.field_access_policies where id=any($1::uuid[])", [[grant.id, deny.id]]);
   });
   await test("field configuration bounds, typed defaults and superadmin ownership", async () => {
     for (const validation of [
@@ -2799,6 +2811,44 @@ try {
       }),
       { code: "22023" },
     );
+  });
+  await test("audit From/To retains actual changes and enforces field, scope, capability and rollback boundaries", async () => {
+    const created = await m(id.sa, "employee_create", {target_level: "branch", branch_id: id.b1, initial_position: "Analyst", values: {last_name: "TEST", first_name: "JUAN"}});
+    const v = await revision(created.id), request = randomUUID();
+    const patch = {id: created.id, expected_version: v, values: {first_name: "JUANA", phone: "09123456789"}};
+    await m(id.sa, "employee_update", patch, request); await m(id.sa, "employee_update", patch, request);
+    const changed = (await records(id.sa, {kind: "audit", search: "JUANA"})).items.filter(a => a.entity_id === created.id && a.operation === "update");
+    assert.equal(changed.length, 1); assert.ok(changed[0].from_value.includes("JUAN")); assert.ok(!changed[0].from_value.includes("JUANA")); assert.ok(changed[0].to_value.includes("JUANA"));
+    const immutable = (await owner.query("select before_values,after_values from app_private.audit_value_changes where audit_id=$1 order by id", [changed[0].id])).rows;
+    await assert.rejects(as(id.admin, c => c.query("select * from app_private.audit_value_changes")), {code: "42501"});
+    await assert.rejects(records(id.viewer, {kind: "audit"}), {code: "42501"});
+    await m(id.sa, "capability", {user_id: id.admin, capability: "audit_read", reason: "Synthetic audit capability"});
+    assert.ok((await records(id.admin, {kind: "audit", search: "JUANA"})).items.some(a => a.id === changed[0].id));
+    const firstName = (await q(id.sa, "schema")).fields.find(f => f.key === "first_name");
+    const deny = await m(id.sa, "policy", {user_id: id.admin, field_id: firstName.id, action: "R", effect: "deny", scope_type: "all", reason: "Synthetic audit name denial"});
+    assert.equal((await records(id.admin, {kind: "audit", search: "JUANA"})).total, 0);
+    const privateRow = (await records(id.admin, {kind: "audit", search: "09123456789"})).items.find(a => a.id === changed[0].id);
+    assert.ok(privateRow); assert.ok(!privateRow.from_value.includes("JUAN")); assert.ok(!privateRow.to_value.includes("JUANA"));
+    const beforeCount = (await owner.query("select count(*)::int n from app_private.audit_value_changes")).rows[0].n;
+    await assert.rejects(m(id.sa, "employee_update", {id: created.id, expected_version: await revision(created.id), values: {first_name: "INVALID_AUDIT_VALUE", phone: "bad"}}), {code: "22023"});
+    assert.equal((await owner.query("select count(*)::int n from app_private.audit_value_changes")).rows[0].n, beforeCount);
+    await m(id.sa, "employee_update", {id: created.id, expected_version: await revision(created.id), values: {}, employment: {change_kind: "correction", position: "Senior Analyst"}});
+    const position = (await records(id.sa, {kind: "audit", search: "Senior Analyst"})).items.find(a => a.entity_id === created.id && a.operation === "typo_correction");
+    assert.equal(position.from_value, "Position: Analyst"); assert.equal(position.to_value, "Position: Senior Analyst");
+    assert.deepEqual((await owner.query("select before_values,after_values from app_private.audit_value_changes where audit_id=$1 order by id", [changed[0].id])).rows, immutable);
+    await owner.query("delete from public.field_access_policies where id=$1", [deny.id]);
+    const grants = (await owner.query("update public.user_scope_grants set active=false where user_id=$1 and active returning id", [id.admin])).rows.map(r => r.id);
+    assert.equal((await records(id.admin, {kind: "audit", search: "JUANA"})).total, 0);
+    await owner.query("update public.user_scope_grants set active=true where id=any($1::uuid[])", [grants]);
+    const currentVersion = await revision(created.id);
+    const races = await concurrent("employee_update", ["JUANA I", "JUANA II"].map(first_name => ({id: created.id, expected_version: currentVersion, values: {first_name}})));
+    assert.equal(races.filter(r => r.ok).length, 1);
+    const latest = (await records(id.sa, {kind: "audit", search: "JUANA"})).items.filter(a => a.entity_id === created.id && a.operation === "update");
+    assert.equal(latest.length, 2);
+    const winner = latest.find(a => a.id !== changed[0].id);
+    assert.ok(winner.from_value.includes("First Name: JUANA"));
+    const winningName = (await q(id.sa, "employee", {id: created.id})).employee.values.first_name;
+    assert.equal((await owner.query("select after_values->>'first_name' value from app_private.audit_value_changes where audit_id=$1 and after_values ? 'first_name'", [winner.id])).rows[0].value, winningName);
   });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(

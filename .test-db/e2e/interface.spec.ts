@@ -114,7 +114,7 @@ test("multi-select Apply commits, reset clears, dependent clients remain scoped"
     .getByRole("button", { name: "Reset filters", exact: true })
     .click();
 });
-test("column preview is draft-only; Apply saves personal view", async ({
+test("column selection is draft-only; Apply saves personal view", async ({
   page,
 }) => {
   await enter(page);
@@ -147,7 +147,7 @@ test("column preview is draft-only; Apply saves personal view", async ({
   await p.getByRole("option", { name: /Email/ }).click();
   await p.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(
-    dialog.getByRole("table").getByRole("columnheader", { name: /Email/ }),
+    dialog.locator('[data-column-key="email"]'),
   ).toBeVisible();
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await page

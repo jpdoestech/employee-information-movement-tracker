@@ -129,7 +129,7 @@ fields.push(
     active: true,
     required: false,
     sensitivity: "restricted",
-    list_eligible: false,
+    list_eligible: true,
     scope_mode: "all",
     row_version: 1,
     validation: { government_id_digits: digits, max_length: digits },
@@ -464,6 +464,8 @@ export async function demoQuery(op: string, q: any = {}) {
             r.label,
             r.context,
             r.code,
+            r.from_value,
+            r.to_value,
           ]
             .join(" ")
             .toLowerCase()
@@ -528,6 +530,25 @@ export async function demoQuery(op: string, q: any = {}) {
   throw new Error("Unknown demo query");
 }
 export async function demoMutate(op: string, p: any) {
+  const beforeEmployees = new Map(
+    employees.map((e) => [e.id, { ...e.values }]),
+  );
+  function auditChanges(
+    before: Record<string, unknown>,
+    after: Record<string, unknown>,
+  ) {
+    const keys = [
+      ...new Set([...Object.keys(before), ...Object.keys(after)]),
+    ].filter((key) => before[key] !== after[key]);
+    const endpoint = (values: Record<string, unknown>) =>
+      keys
+        .map(
+          (key) =>
+            `${fields.find((f) => f.key === key)?.label || key}: ${values[key] ?? "—"}`,
+        )
+        .join(" · ");
+    return { from_value: endpoint(before), to_value: endpoint(after) };
+  }
   if (op === "client_settings") {
     const prior = clientSettings.get(p.client_id);
     if ((prior?.row_version ?? 0) !== p.expected_version)
@@ -719,6 +740,7 @@ export async function demoMutate(op: string, p: any) {
         operation: op,
         entity: "employee",
         entity_id: id,
+        ...auditChanges({}, created.values),
         created_at: new Date().toISOString(),
       });
       context.revision++;
@@ -1003,12 +1025,42 @@ export async function demoMutate(op: string, p: any) {
     /* synthetic presentation only */
   } else throw new Error("Unknown demo mutation");
   context.revision++;
+  if (op === "bulk_update") {
+    for (const target of p.rows) {
+      const employee = employees.find((e) => e.id === target.id);
+      if (employee)
+        audit.unshift({
+          id: audit.length + 1,
+          operation: op,
+          entity: "employee",
+          entity_id: employee.id,
+          ...auditChanges(
+            beforeEmployees.get(employee.id) ?? {},
+            employee.values,
+          ),
+          created_at: new Date().toISOString(),
+        });
+    }
+    return { saved: true };
+  }
+  const changedEmployee = employees.find(
+    (e) => e.id === (p.employee_id || p.id),
+  );
   audit.unshift({
     id: audit.length + 1,
     operation:
       p.employment?.change_kind === "correction" ? "typo_correction" : op,
     entity: op.startsWith("employee") || op === "movement" ? "employee" : op,
     entity_id: p.employee_id || p.id,
+    ...(changedEmployee
+      ? auditChanges(
+          beforeEmployees.get(changedEmployee.id) ?? {},
+          changedEmployee.values,
+        )
+      : {}),
+    ...(op === "movement" && history[0]?.employee_id === p.employee_id
+      ? { from_value: history[0].from_value, to_value: history[0].to_value }
+      : {}),
     created_at: new Date().toISOString(),
   });
   return { saved: true };

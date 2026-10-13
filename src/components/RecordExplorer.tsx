@@ -241,10 +241,22 @@ export function RecordExplorer({
         {heading("operation", "Operation")}
         {heading("entity", "Entity")}
         <th>Record reference</th>
+        <th>
+          <span className="record-column-label">
+            <ArrowLeft size={13} aria-hidden />
+            From
+          </span>
+        </th>
+        <th>
+          <span className="record-column-label">
+            <ArrowRight size={13} aria-hidden />
+            To
+          </span>
+        </th>
         {heading("created_at", "Recorded (Manila)")}
       </>
     );
-    columns = 4;
+    columns = 6;
   } else {
     headers = (
       <>
@@ -273,7 +285,14 @@ export function RecordExplorer({
           "Actions",
         ]
       : kind === "audit"
-        ? ["Operation", "Entity", "Record reference", "Recorded (Manila)"]
+        ? [
+            "Operation",
+            "Entity",
+            "Record reference",
+            "From",
+            "To",
+            "Recorded (Manila)",
+          ]
         : [
             "Organization",
             "Code",
@@ -302,6 +321,8 @@ export function RecordExplorer({
               r.operation?.replaceAll("_", " ") || "",
               r.entity || "",
               r.entity_id?.slice(0, 8) || "",
+              r.from_value || "—",
+              r.to_value || "—",
               when(r.created_at),
             ]
           : [
@@ -317,7 +338,7 @@ export function RecordExplorer({
     kind === "movements"
       ? ["", "", "", "", "text-date"]
       : kind === "audit"
-        ? ["", "", "text-id", "text-date"]
+        ? ["", "", "text-id", "", "", "text-date"]
         : ["", "text-id"],
   );
   // The date heading includes a type icon and sort direction in addition to text.
@@ -527,6 +548,8 @@ export function RecordExplorer({
                         {r.entity_id?.slice(0, 8) || "—"}
                       </code>
                     </td>
+                    <td title={r.from_value || "—"}>{r.from_value || "—"}</td>
+                    <td title={r.to_value || "—"}>{r.to_value || "—"}</td>
                     <td className="text-date">{when(r.created_at)}</td>
                   </>
                 ) : (

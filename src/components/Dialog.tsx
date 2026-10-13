@@ -7,12 +7,14 @@ export function Dialog({
   children,
   wide = false,
   className = "",
+  isDirty,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
   className?: string;
+  isDirty?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const dirty = useRef(false),
@@ -21,7 +23,7 @@ export function Dialog({
     if (closing.current) return;
     closing.current = true;
     if (
-      !dirty.current ||
+      !(isDirty ?? dirty.current) ||
       (await confirmTransaction(
         "Discard unsaved changes?",
         "Your changes have not been saved. Discard them to leave, or continue editing.",

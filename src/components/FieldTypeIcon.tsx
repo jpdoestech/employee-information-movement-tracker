@@ -9,6 +9,7 @@ import {
   Mail,
   Phone,
   Settings2,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ export const fieldTypeIcons: Record<string, LucideIcon> = {
   email: Mail,
   phone: Phone,
   system: Settings2,
+  government_id: ShieldCheck,
 };
 export function FieldTypeIcon({
   type,

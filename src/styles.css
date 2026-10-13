@@ -1477,12 +1477,62 @@ dialog > footer {
   z-index: 5;
 }
 /* Column configuration shares the same compact data surfaces as the register. */
+.app-dialog.column-designer-dialog > .column-designer {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 8px;
+}
+.column-designer-dialog .column-designer > :not(.column-tab-panel) { flex-shrink: 0; }
+.column-designer-dialog .column-designer-toolbar { grid-template-columns: minmax(0, 420px); }
+.column-view-settings > label { display: block; max-width: 480px; }
+.column-view-settings > .row-number-preference { display: flex; margin-top: 16px; }
+.column-designer-dialog .column-designer-toolbar { margin-bottom: 0; }
+.column-designer-dialog .row-number-preference { margin: 0; }
+.column-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex: none; overflow-x: auto; }
+.column-tabs [role="tab"] { display: inline-flex; align-items: center; gap: 6px; border-color: transparent; white-space: nowrap; }
+.column-tabs [aria-selected="true"] { background: var(--tint); color: var(--primary); }
+.column-tab-short-label { display: none; }
+.column-tab-panel { min-height: 0; min-width: 0; }
+.column-tab-panel[hidden] { display: none; }
+.column-designer-dialog .column-order:not([hidden]) { display: flex; flex-direction: column; flex: 1; gap: 8px; }
+.column-designer-dialog .column-order h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; font-size: 14px; }
+.column-designer-dialog .column-order-hint { margin: 0; }
+.column-designer-dialog .column-list { flex: 1; min-height: 0; max-height: none; overscroll-behavior: contain; }
+.column-designer-dialog .column-list > li { display: flex; }
+.column-selection-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.column-selection-toolbar label { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; }
+.column-selection-toolbar > div { display: flex; align-items: center; gap: 4px; }
+.column-designer-dialog .column-list .column-drag-handle { touch-action: none; cursor: grab; min-height: 32px; min-width: 28px; padding: 4px; border-color: transparent; }
+.column-designer-dialog .column-list .column-drag-handle:active { cursor: grabbing; }
+.column-selected { background: var(--tint); }
+.column-dragging { opacity: .55; }
+.column-drop-before { box-shadow: inset 0 2px 0 var(--primary); }
+.column-drop-after { box-shadow: inset 0 -2px 0 var(--primary); }
+.column-designer-dialog .government-column-settings { margin: 0; }
+.column-designer-dialog .column-tab-panel:not(.column-order) { overflow: auto; }
+@media (max-width: 760px) {
+  .column-designer-dialog .column-list > li { display: grid; grid-template-columns: 20px 44px 18px minmax(0, 1fr); gap: 6px; }
+  .column-designer-dialog .column-list > li > .column-label { grid-column: 4; }
+  .column-designer-dialog .column-number { display: none; }
+  .column-designer-dialog .column-row-actions { grid-column: 2 / -1; }
+  .column-designer-dialog .column-list .column-drag-handle { min-width: 44px; min-height: 44px; }
+  .column-tabs [role="tab"] { min-height: 44px; }
+  .column-tabs svg, .column-tab-full-label { display: none; }
+  .column-tab-short-label { display: inline; }
+}
+@media (max-height: 480px) {
+  .app-dialog.column-designer-dialog > .column-designer { padding: 8px 16px; gap: 4px; }
+  .column-designer-dialog .column-order h3,
+  .column-designer-dialog .column-order-hint { display: none; }
+  .column-designer-dialog .column-order:not([hidden]) { gap: 4px; }
+}
 .column-designer-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 12px;
   align-items: end;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 .column-designer-toolbar label {
   margin: 0;
@@ -1499,15 +1549,15 @@ dialog > footer {
 }
 .column-designer-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 16px;
   align-items: start;
 }
 .column-designer-grid section {
   min-width: 0;
 }
 .column-designer-grid h3 {
-  font-size: 13px;
+  font-size: 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1551,6 +1601,81 @@ dialog > footer {
 }
 .column-label small {
   font-size: 11px;
+  display: block;
+  color: var(--muted);
+}
+.column-order-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin: -4px 0 8px;
+}
+.column-restricted-icon {
+  color: var(--muted);
+}
+.government-column-settings {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 12px;
+  margin: 12px 0 16px;
+}
+.government-column-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.government-column-heading h3,
+.government-column-heading > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.government-column-heading h3 {
+  font-size: 14px;
+}
+.government-column-heading > span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.government-column-choices {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.government-column-choices label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 12px;
+  min-width: 0;
+  cursor: pointer;
+}
+.government-column-choices label:has(:checked) {
+  background: var(--tint);
+}
+.government-column-choices label:focus-within {
+  background: var(--tint);
+}
+.government-column-choices small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+.column-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
 }
 .column-row-actions {
   display: flex;
@@ -1580,6 +1705,21 @@ dialog > footer {
   }
 }
 @media (max-width: 760px) {
+  .government-column-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .government-column-choices label {
+    min-height: 44px;
+  }
+  .column-list > li {
+    display: grid;
+    grid-template-columns: 18px 15px minmax(0, 1fr);
+  }
+  .column-row-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-end;
+    align-items: center;
+  }
   .column-designer-toolbar {
     grid-template-columns: 1fr;
     gap: 12px;

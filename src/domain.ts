@@ -110,11 +110,13 @@ export function reconcileLayout(layout: Layout, fields: Field[]): Layout {
       .filter((f) => f.active && f.list_eligible && f.actions.includes("R"))
       .map((f) => f.key),
   );
-  const columns = layout.columns.filter((k) => known.has(k));
+  const columns = [...new Set(layout.columns)].filter((k) => known.has(k));
   return {
     ...layout,
     columns,
-    pinned: layout.pinned.filter((k) => columns.includes(k)).slice(0, 2),
+    pinned: [...new Set(layout.pinned)]
+      .filter((k) => columns.includes(k))
+      .slice(0, 2),
   };
 }
 export function moveColumn(columns: string[], key: string, delta: number) {
@@ -124,6 +126,21 @@ export function moveColumn(columns: string[], key: string, delta: number) {
   if (i >= 0 && j >= 0 && j < copy.length)
     [copy[i], copy[j]] = [copy[j], copy[i]];
   return copy;
+}
+// Move a non-contiguous selection as one block, preserving its relative order.
+export function moveColumnGroup(
+  columns: string[],
+  selected: string[],
+  target: string,
+  after = false,
+) {
+  const keys = new Set(selected);
+  if (keys.has(target) || !columns.includes(target)) return [...columns];
+  const moving = columns.filter((key) => keys.has(key));
+  if (!moving.length) return [...columns];
+  const remaining = columns.filter((key) => !keys.has(key));
+  const index = remaining.indexOf(target) + (after ? 1 : 0);
+  return [...remaining.slice(0, index), ...moving, ...remaining.slice(index)];
 }
 export function literal(value: unknown): string {
   const s = value == null ? "" : String(value);

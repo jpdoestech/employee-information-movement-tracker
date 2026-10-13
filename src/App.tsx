@@ -859,7 +859,6 @@ export default function App() {
           layout={tableLayout}
           rowNumbersAllowed={ctx.register_settings.row_numbers_allowed}
           fields={fields}
-          rows={rows}
           onClose={() => setDialog(null)}
           onApply={async (draft, name) => {
             await mutate("save_view", { name, config: draft });

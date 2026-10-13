@@ -96,6 +96,7 @@ test("long saved-view names wrap within their control instead of clipping", asyn
     exact: true,
   });
   const name = "North branch employee register and client placements";
+  await editor.getByRole("tab", { name: "View settings", exact: true }).click();
   await editor.getByLabel("Saved view name", { exact: true }).fill(name);
   await editor
     .getByRole("button", { name: "Apply & Save", exact: true })
