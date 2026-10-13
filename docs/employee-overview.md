@@ -36,3 +36,17 @@ Government IDs appear once in the summary and reveal in place with Unmask
 Government IDs. Identifiers start masked again when returning from editing or
 reopening a record. Masking is presentation only; server authorization controls
 access. Derived age/service and address summaries use readable fields only.
+
+Employment details use one shared sequence: System ID, Client-based ID, Primary
+Branch, Primary Client, Department, Position, Date Hired, derived Length of
+Service, Employment Type and Employment Status. Non-active records append
+Effective Date, Separation Category and Reason for Separation. Others (specify)
+retains its text entry. Remarks remain available for active and non-active records.
+Readonly identifiers/placement values stay readonly in the editor.
+
+Length of Service is a calendar difference (years, months, days): Date Hired to
+the business date for Active, or Date Hired to Effective Date for Inactive or
+Separated. Legacy Resigned/Terminated statuses are displayed as Separated.
+Missing, invalid, reversed or future cutoff dates show an em dash. Derived
+service requires Read access to its source fields on existing employees and does
+not expose a denied effective date or status through the calculation.

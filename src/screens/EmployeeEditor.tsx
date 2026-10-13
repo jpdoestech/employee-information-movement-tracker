@@ -1,8 +1,12 @@
+import { lengthOfService } from "../employeeOverview";
+import { FieldTypeIcon } from "../components/FieldTypeIcon";
+import { fieldTextRole } from "../typography";
 import { mobileError } from "../identifiers";
 import { confirmTransaction } from "../components/TransactionConfirmation";
 import { EmployeeOverview } from "../components/EmployeeOverview";
 import {
   employmentOrder,
+  employmentDisplayOrder,
   employmentStatus,
   employmentError,
   inactiveEmploymentRequired,
@@ -211,11 +215,40 @@ export function EmployeeEditor({
                   ? 1
                   : 0),
     );
+  const displayFields = [
+    ...regular,
+    ...formFields.filter(
+      (f) =>
+        f.active &&
+        f.actions.includes("R") &&
+        employmentDisplayOrder.includes(f.key) &&
+        !regular.some((entry) => entry.id === f.id) &&
+        (![
+          "status_effective_date",
+          "separation_category",
+          "separation_reason",
+          "separation_details",
+        ].includes(f.key) ||
+          inactive) &&
+        (f.key !== "separation_details" ||
+          draft.separation_reason === "Others (specify)"),
+    ),
+  ];
+  const canReadService = [
+    "date_hired",
+    "status",
+    ...(inactive ? ["status_effective_date"] : []),
+  ].every((key) =>
+    fields.some(
+      (f) => f.key === key && f.active && f.actions.includes(row ? "R" : "C"),
+    ),
+  );
+  const service = canReadService ? lengthOfService(draft, context.today) : "—";
   const groups = context.groups
     .filter(
       (g) =>
         g.active &&
-        (regular.some((f) => f.group_id === g.id) ||
+        (displayFields.some((f) => f.group_id === g.id) ||
           formFields.some(
             (f) =>
               f.group_id === g.id &&
@@ -629,59 +662,6 @@ export function EmployeeEditor({
               <div hidden={!!row && tab.name === "Overview"}>
                 {!(row && tab.name === "Overview") && (
                   <>
-                    {formFields.some(
-                      (f) =>
-                        tab.groups.includes(f.group_id) &&
-                        [
-                          ...(!editable.some((f) => f.key === "status")
-                            ? ["status"]
-                            : []),
-                          ...(!editable.some((f) => f.key === "position")
-                            ? ["position"]
-                            : []),
-                        ].includes(f.key) &&
-                        f.actions.includes(row ? "R" : "C"),
-                    ) && (
-                      <div
-                        className="employment-context"
-                        role="group"
-                        aria-label="Current employment"
-                      >
-                        {formFields
-                          .filter(
-                            (f) =>
-                              tab.groups.includes(f.group_id) &&
-                              [
-                                ...(!editable.some((f) => f.key === "status")
-                                  ? ["status"]
-                                  : []),
-                                ...(!editable.some((f) => f.key === "position")
-                                  ? ["position"]
-                                  : []),
-                              ].includes(f.key) &&
-                              f.actions.includes(row ? "R" : "C"),
-                          )
-                          .map((f) => (
-                            <div
-                              className="employment-context-item"
-                              key={f.key}
-                            >
-                              <span>{f.label}</span>
-                              <output
-                                aria-label={f.label}
-                                className={
-                                  f.key === "status" ? "badge" : undefined
-                                }
-                              >
-                                {String(
-                                  row ? (values[f.key] ?? "—") : "Active",
-                                ) || "—"}
-                              </output>
-                            </div>
-                          ))}
-                        <small className="muted">Changes use Movements.</small>
-                      </div>
-                    )}
                     {groups
                       .filter((g) => tab.groups.includes(g.id))
                       .map((g) => (
@@ -693,115 +673,180 @@ export function EmployeeEditor({
                                 : g.name}
                             </legend>
                             <div className="form-grid field-entry-grid">
-                              {regular
+                              {displayFields
                                 .filter((f) => f.group_id === g.id)
+                                .sort((a, b) => {
+                                  if (
+                                    !employmentDisplayOrder.includes(a.key) &&
+                                    !employmentDisplayOrder.includes(b.key)
+                                  )
+                                    return 0;
+                                  const rank = (key: string) =>
+                                    employmentDisplayOrder.indexOf(key) < 0
+                                      ? 999
+                                      : employmentDisplayOrder.indexOf(key);
+                                  return rank(a.key) - rank(b.key);
+                                })
                                 .map((f) => (
-                                  <div
-                                    key={f.key}
-                                    className="field-slot"
-                                    data-field={f.key}
-                                    style={
-                                      {
-                                        "--field-width": valueWidth(
-                                          f.type,
-                                          f.options,
-                                          f.validation?.government_id_digits,
-                                          f.key,
-                                          f.validation?.input_width,
-                                        ),
-                                      } as CSSProperties
-                                    }
-                                  >
-                                    <ValueEditor
-                                      field={
-                                        [
-                                          "emergency_contact_relationship",
-                                          "emergency_relationship",
-                                        ].includes(f.key)
-                                          ? {
-                                              ...f,
-                                              type: "select",
-                                              options: [
-                                                ...new Set([
-                                                  ...relationshipOptions,
-                                                  ...(f.options ?? []),
-                                                ]),
-                                              ],
-                                            }
-                                          : nameKeys.includes(
-                                                f.key as (typeof nameKeys)[number],
-                                              )
-                                            ? {
-                                                ...f,
-                                                type: "short_text",
-                                                required:
-                                                  !row &&
-                                                  [
-                                                    "last_name",
-                                                    "first_name",
-                                                  ].includes(f.key),
-                                              }
-                                            : f.key === "position"
+                                  <Fragment key={f.key}>
+                                    <div
+                                      key={f.key}
+                                      className="field-slot"
+                                      data-field={f.key}
+                                      style={
+                                        {
+                                          "--field-width": valueWidth(
+                                            f.type,
+                                            f.options,
+                                            f.validation?.government_id_digits,
+                                            f.key,
+                                            f.validation?.input_width,
+                                          ),
+                                        } as CSSProperties
+                                      }
+                                    >
+                                      {!editable.some(
+                                        (entry) => entry.id === f.id,
+                                      ) ? (
+                                        <div className="field">
+                                          <label
+                                            htmlFor={`${tabId}-reference-${f.key}`}
+                                          >
+                                            {f.label}
+                                          </label>
+                                          <div className="read-only-control">
+                                            <FieldTypeIcon type={f.type} />
+                                            <output
+                                              id={`${tabId}-reference-${f.key}`}
+                                              className={fieldTextRole(f)}
+                                            >
+                                              {f.key === "status"
+                                                ? employmentStatus(draft.status)
+                                                : displayFieldValue(
+                                                    f,
+                                                    draft[f.key],
+                                                  )}
+                                            </output>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <ValueEditor
+                                          field={
+                                            [
+                                              "emergency_contact_relationship",
+                                              "emergency_relationship",
+                                            ].includes(f.key)
                                               ? {
                                                   ...f,
-                                                  type: "short_text",
-                                                  required: inactive,
-                                                  help_text: "",
-                                                  validation: {
-                                                    max_length: 200,
-                                                  },
+                                                  type: "select",
+                                                  options: [
+                                                    ...new Set([
+                                                      ...relationshipOptions,
+                                                      ...(f.options ?? []),
+                                                    ]),
+                                                  ],
                                                 }
-                                              : f.key === "status"
+                                              : nameKeys.includes(
+                                                    f.key as (typeof nameKeys)[number],
+                                                  )
                                                 ? {
                                                     ...f,
-                                                    type: "select",
-                                                    options: [
-                                                      "Active",
-                                                      "Inactive",
-                                                      "Separated",
-                                                    ],
-                                                    required: true,
-                                                  }
-                                                : {
-                                                    ...f,
+                                                    type: "short_text",
                                                     required:
-                                                      (inactive &&
-                                                        inactiveEmploymentRequired.includes(
-                                                          f.key,
-                                                        )) ||
-                                                      (inactive &&
-                                                        f.key ===
-                                                          "separation_details") ||
-                                                      requiredForEdit(
-                                                        f,
-                                                        values,
-                                                        changed,
-                                                        !row,
-                                                      ),
+                                                      !row &&
+                                                      [
+                                                        "last_name",
+                                                        "first_name",
+                                                      ].includes(f.key),
                                                   }
-                                      }
-                                      value={
-                                        Object.hasOwn(changed, f.key)
-                                          ? changed[f.key]
-                                          : f.key === "status"
-                                            ? employmentStatus(draft.status)
-                                            : draft[f.key]
-                                      }
-                                      blind={!!row && !f.actions.includes("R")}
-                                      clearable={
-                                        !["position", "status"].includes(
-                                          f.key,
-                                        ) &&
-                                        (!row || f.actions.includes("D"))
-                                      }
-                                      onChange={(value) =>
-                                        setChanged((v) => ({
-                                          ...v,
-                                          [f.key]: value,
-                                        }))
-                                      }
-                                    />
-                                  </div>
+                                                : f.key === "position"
+                                                  ? {
+                                                      ...f,
+                                                      type: "short_text",
+                                                      required: inactive,
+                                                      help_text: "",
+                                                      validation: {
+                                                        max_length: 200,
+                                                      },
+                                                    }
+                                                  : f.key === "status"
+                                                    ? {
+                                                        ...f,
+                                                        type: "select",
+                                                        options: [
+                                                          "Active",
+                                                          "Inactive",
+                                                          "Separated",
+                                                        ],
+                                                        required: true,
+                                                      }
+                                                    : {
+                                                        ...f,
+                                                        required:
+                                                          (inactive &&
+                                                            inactiveEmploymentRequired.includes(
+                                                              f.key,
+                                                            )) ||
+                                                          (inactive &&
+                                                            f.key ===
+                                                              "separation_details") ||
+                                                          requiredForEdit(
+                                                            f,
+                                                            values,
+                                                            changed,
+                                                            !row,
+                                                          ),
+                                                      }
+                                          }
+                                          value={
+                                            Object.hasOwn(changed, f.key)
+                                              ? changed[f.key]
+                                              : f.key === "status"
+                                                ? employmentStatus(draft.status)
+                                                : draft[f.key]
+                                          }
+                                          blind={
+                                            !!row && !f.actions.includes("R")
+                                          }
+                                          clearable={
+                                            !["position", "status"].includes(
+                                              f.key,
+                                            ) &&
+                                            (!row || f.actions.includes("D"))
+                                          }
+                                          onChange={(value) =>
+                                            setChanged((v) => ({
+                                              ...v,
+                                              [f.key]: value,
+                                            }))
+                                          }
+                                        />
+                                      )}
+                                    </div>
+                                    {f.key === "date_hired" && (
+                                      <div
+                                        className="field-slot"
+                                        data-field="date_hired-duration"
+                                        style={
+                                          {
+                                            "--field-width": "34ch",
+                                          } as CSSProperties
+                                        }
+                                      >
+                                        <div className="field">
+                                          <label htmlFor={`${tabId}-service`}>
+                                            Length of Service
+                                          </label>
+                                          <div className="read-only-control">
+                                            <FieldTypeIcon type="date" />
+                                            <output id={`${tabId}-service`}>
+                                              {service}
+                                            </output>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </Fragment>
                                 ))}
                             </div>
                           </fieldset>

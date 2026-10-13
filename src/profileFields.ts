@@ -1,4 +1,21 @@
 export const separationCategories = ["VOLUNTARY", "INVOLUNTARY"];
+export const employmentDisplayOrder = [
+  "employee_number",
+  "client_employee_number",
+  "branch",
+  "client",
+  "department",
+  "position",
+  "date_hired",
+  "date_hired-duration",
+  "employment_type",
+  "status",
+  "status_effective_date",
+  "separation_category",
+  "separation_reason",
+  "separation_details",
+  "remarks",
+];
 export const employmentOrder = [
   "department",
   "position",

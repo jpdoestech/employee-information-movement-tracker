@@ -3,7 +3,13 @@ import { Eye, EyeOff, Pencil } from "lucide-react";
 import type { Context, Field } from "../domain";
 import { displayFieldValue } from "../fieldValues";
 import { fieldTextRole } from "../typography";
-import { fullYears, maskedIdentifier, overviewDate } from "../employeeOverview";
+import { employmentDisplayOrder, employmentStatus } from "../profileFields";
+import {
+  fullYears,
+  lengthOfService,
+  maskedIdentifier,
+  overviewDate,
+} from "../employeeOverview";
 type Entry = {
   key: string;
   label: string;
@@ -78,11 +84,30 @@ export function EmployeeOverview({
   }
   for (const f of readable) {
     if (used.has(f.key)) continue;
+    if (
+      [
+        "status_effective_date",
+        "separation_category",
+        "separation_reason",
+        "separation_details",
+      ].includes(f.key) &&
+      (!readable.some((field) => field.key === "status") ||
+        employmentStatus(values.status) === "Active")
+    )
+      continue;
+    if (
+      f.key === "separation_details" &&
+      (!readable.some((field) => field.key === "separation_reason") ||
+        values.separation_reason !== "Others (specify)")
+    )
+      continue;
     const section = f.form_group_id || f.group_id;
     const value =
       f.type === "date"
         ? overviewDate(values[f.key])
-        : displayFieldValue(f, values[f.key]);
+        : f.key === "status"
+          ? employmentStatus(values[f.key])
+          : displayFieldValue(f, values[f.key]);
     add(section, {
       key: f.key,
       label: f.label,
@@ -94,6 +119,10 @@ export function EmployeeOverview({
     });
     if (["birth_date", "date_hired"].includes(f.key)) {
       const years = fullYears(values[f.key], today);
+      const canReadService =
+        readable.some((field) => field.key === "status") &&
+        (employmentStatus(values.status) === "Active" ||
+          readable.some((field) => field.key === "status_effective_date"));
       add(section, {
         key: f.key + "-duration",
         label: f.key === "birth_date" ? "Age" : "Length of Service",
@@ -102,9 +131,9 @@ export function EmployeeOverview({
             ? "—"
             : f.key === "birth_date"
               ? `${years} ${years === 1 ? "year" : "years"} old`
-              : years === 0
-                ? "Less than 1 year"
-                : `${years} ${years === 1 ? "year" : "years"}`,
+              : canReadService
+                ? lengthOfService(values, today)
+                : "—",
       });
     }
   }
@@ -155,6 +184,14 @@ export function EmployeeOverview({
         );
       });
     }
+    if (compact.some((item) => employmentDisplayOrder.includes(item.key)))
+      compact.sort((a, b) => {
+        const rank = (key: string) =>
+          employmentDisplayOrder.indexOf(key) < 0
+            ? 999
+            : employmentDisplayOrder.indexOf(key);
+        return rank(a.key) - rank(b.key);
+      });
     const render = (item: Entry) => (
       <div key={item.key}>
         <dt>{item.label}</dt>
