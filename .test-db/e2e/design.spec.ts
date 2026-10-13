@@ -453,6 +453,9 @@ for (const width of [375, 1440]) {
       name: "Employee profile",
       exact: true,
     });
+    await editor
+      .getByRole("button", { name: "Edit details", exact: true })
+      .click();
     const name = editor.getByRole("textbox", { name: /^First Name$/ });
     const last = editor.getByRole("textbox", { name: /^Last Name$/ });
     await expect(name).toHaveValue("");
@@ -508,6 +511,7 @@ for (const width of [375, 1440]) {
     await page
       .getByRole("button", { name: "EMP-0000001", exact: true })
       .click();
+    await editor.getByRole("button", { name: "Edit details", exact: true }).click();
     await name.fill("Discard this draft");
     await editor.getByRole("button", { name: "Cancel", exact: true }).click();
     await discard
@@ -554,14 +558,17 @@ for (const width of [375, 1440]) {
     ).toBe(true);
     const order = (await dialog.locator(".column-order").boundingBox())!;
     expect(order.width).toBeGreaterThan(200);
+    await dialog
+      .getByRole("checkbox", { name: "Select System ID to move", exact: true })
+      .check();
     await expect(
       dialog.getByRole("button", {
-        name: "Move employee_number up",
+        name: "Move selected columns up",
         exact: true,
       }),
     ).toBeDisabled();
     await dialog
-      .getByRole("button", { name: "Move employee_number down", exact: true })
+      .getByRole("button", { name: "Move selected columns down", exact: true })
       .click();
     await expect(dialog.locator(".column-list li").first()).toContainText(
       "Employee Name",

@@ -30,9 +30,13 @@ test("separate name fields require first and last, preserve tab drafts, and save
   await editor.getByLabel("Middle Name", { exact: true }).fill("Maria");
   await editor.getByLabel("Suffix", { exact: true }).fill("Jr.");
   await fillGovernmentIds(editor);
-  await editor.getByRole("tab", { name: "Profile", exact: true }).click();
+  await editor
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   await editor.getByLabel("Email", { exact: true }).fill("ana@example.invalid");
-  await editor.getByRole("tab", { name: "Profile", exact: true }).click();
+  await editor
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   await expect(
     editor.getByRole("textbox", { name: /^Last Name(?: \*)?$/ }),
   ).toHaveValue("Cruz");
@@ -58,13 +62,16 @@ test("separate name fields require first and last, preserve tab drafts, and save
     name: "Employee profile",
     exact: true,
   });
+  await profile
+    .getByRole("button", { name: "Edit details", exact: true })
+    .click();
   await expect(
     profile.getByRole("textbox", { name: /^First Name(?: \*)?$/ }),
   ).toHaveValue("Ana");
-  await profile.getByRole("tab", { name: "Profile", exact: true }).click();
-  await expect(profile.getByLabel("Email", { exact: true })).toHaveValue(
-    "ana@example.invalid",
-  );
+  await profile.getByRole("tab", { name: "Overview", exact: true }).click();
+  await expect(
+    profile.getByRole("region", { name: "Personal Information", exact: true }),
+  ).toContainText("ana@example.invalid");
 });
 test("unresolved address entries remain invalid across tab changes until confirmed", async ({
   page,
@@ -76,27 +83,35 @@ test("unresolved address entries remain invalid across tab changes until confirm
   await editor
     .getByRole("textbox", { name: /^First Name(?: \*)?$/ })
     .fill("Test");
-  await editor.getByRole("tab", { name: "Address", exact: true }).click();
+  await editor
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   const province = editor
     .getByRole("group", { name: "Home Address", exact: true })
     .getByRole("combobox", { name: "Province", exact: true });
   await province.fill("Unconfirmed province");
   await province.press("Tab");
-  await editor.getByRole("tab", { name: "Profile", exact: true }).click();
+  await editor
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   await expect(
     editor.getByRole("button", { name: "Save to Supabase" }),
   ).toBeDisabled();
-  await editor.getByRole("tab", { name: "Address", exact: true }).click();
+  await editor
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   await expect(province).toHaveValue("Unconfirmed province");
   await province.fill("Davao del Sur");
   await province.press("Enter");
-  await editor.getByRole("tab", { name: "Profile", exact: true }).click();
+  await editor
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   await expect(
     editor.getByRole("button", { name: "Save to Supabase" }),
   ).toBeEnabled();
 });
 
-test("Superadmin merges field groups into an ordered tab after confirmation", async ({
+test("Superadmin configures standalone tabs while child tabs follow their parent", async ({
   page,
 }) => {
   await page.goto("/");
@@ -107,22 +122,18 @@ test("Superadmin merges field groups into an ordered tab after confirmation", as
     name: "Employee form tabs",
     exact: true,
   });
-  await dialog
-    .getByLabel("Tab name for Core identity", { exact: true })
-    .fill("Personal details");
-  await dialog
-    .getByLabel("Tab name for Contact information", { exact: true })
-    .fill("Personal details");
-  await dialog
-    .getByLabel("Tab order for Core identity", { exact: true })
-    .fill("1");
   await expect(
-    dialog.getByLabel("Tab order for Contact information", { exact: true }),
-  ).toHaveValue("1");
-  for (const group of ["Personal information", "Employment information"])
-    await dialog
-      .getByLabel(`Tab name for ${group}`, { exact: true })
-      .fill("Personal details");
+    dialog.getByLabel("Tab name for Contact information", { exact: true }),
+  ).toHaveAttribute("readonly", "");
+  await expect(
+    dialog.getByLabel("Tab name for Personal Information", { exact: true }),
+  ).toHaveValue("Personal Information");
+  await dialog
+    .getByLabel("Tab name for Additional information", { exact: true })
+    .fill("Client notes");
+  await dialog
+    .getByLabel("Tab order for Additional information", { exact: true })
+    .fill("31");
   await dialog.getByRole("button", { name: "Save tabs", exact: true }).click();
   const confirm = page.getByRole("dialog", {
     name: "Save employee form tabs",
@@ -130,26 +141,27 @@ test("Superadmin merges field groups into an ordered tab after confirmation", as
   });
   await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(
-    dialog.getByLabel("Tab name for Core identity", { exact: true }),
-  ).toHaveValue("Personal details");
+    dialog.getByLabel("Tab name for Additional information", { exact: true }),
+  ).toHaveValue("Client notes");
   await dialog.getByRole("button", { name: "Save tabs", exact: true }).click();
   await confirm.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(dialog).toHaveCount(0);
   await page.goto("/#employees");
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
   const editor = page.getByRole("dialog", {
     name: "New employee",
     exact: true,
   });
-  await expect(editor.getByRole("tab")).toHaveCount(4);
+  await expect(editor.getByRole("tab")).toHaveText([
+    "Personal Information",
+    "Employment Details",
+    "Client notes",
+  ]);
+  await editor.getByRole("tab", { name: "Client notes", exact: true }).click();
   await expect(
-    editor.getByRole("tab", { name: "Personal details", exact: true }),
-  ).toHaveAttribute("aria-selected", "true");
-  await expect(
-    editor.getByRole("textbox", { name: /^First Name(?: \*)?$/ }),
+    editor.getByLabel("Example Field 1", { exact: true }),
   ).toBeVisible();
-  await expect(editor.getByLabel("Email", { exact: true })).toBeVisible();
 });
+
 for (const [width, height] of [
   [320, 740],
   [768, 1024],
@@ -171,12 +183,14 @@ for (const [width, height] of [
       .getByRole("textbox", { name: /^Last Name(?: \*)?$/ })
       .fill("Sample");
     await editor
-      .getByRole("tab", { name: "Profile", exact: true })
+      .getByRole("tab", { name: "Personal Information", exact: true })
       .press("ArrowRight");
     await expect(
-      editor.getByRole("tab", { name: "Government ID", exact: true }),
+      editor.getByRole("tab", { name: "Employment Details", exact: true }),
     ).toBeFocused();
-    await editor.getByRole("tab", { name: "Address", exact: true }).click();
+    await editor
+      .getByRole("tab", { name: "Personal Information", exact: true })
+      .click();
     await editor
       .getByRole("group", { name: "Home Address", exact: true })
       .getByLabel("Street / building")
@@ -189,7 +203,9 @@ for (const [width, height] of [
     expect(
       await editor.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);
-    await editor.getByRole("tab", { name: "Profile", exact: true }).click();
+    await editor
+      .getByRole("tab", { name: "Personal Information", exact: true })
+      .click();
     await expect(
       editor.getByRole("textbox", { name: /^Last Name(?: \*)?$/ }),
     ).toHaveValue("Sample");

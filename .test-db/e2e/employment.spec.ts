@@ -15,8 +15,11 @@ for (const width of [375, 1366]) {
       name: "New employee",
       exact: true,
     });
+    await editor
+      .getByRole("tab", { name: "Employment Details", exact: true })
+      .click();
     const employment = editor.getByRole("group", {
-      name: "Employment information",
+      name: "Employment Details",
       exact: true,
     });
     expect(
@@ -36,8 +39,14 @@ for (const width of [375, 1366]) {
     await expect(
       editor.getByLabel("Effective Date", { exact: true }),
     ).toHaveCount(0);
+    await editor
+      .getByRole("tab", { name: "Personal Information", exact: true })
+      .click();
     await editor.getByLabel("Last Name *", { exact: true }).fill("Employment");
     await editor.getByLabel("First Name *", { exact: true }).fill("Example");
+    await editor
+      .getByRole("tab", { name: "Employment Details", exact: true })
+      .click();
     async function choose(label: string, option: string) {
       await editor.getByRole("button", { name: label, exact: true }).click();
       await page
@@ -107,6 +116,9 @@ test("typo correction keeps the draft on cancellation and creates no movement", 
     name: "Employee profile",
     exact: true,
   });
+  await editor
+    .getByRole("button", { name: "Edit details", exact: true })
+    .click();
   await editor.getByLabel("Position", { exact: true }).fill("Team Leader");
   await editor
     .getByRole("button", { name: "Save to Supabase", exact: true })
@@ -131,6 +143,9 @@ test("typo correction keeps the draft on cancellation and creates no movement", 
     .click();
   await expect(editor).toHaveCount(0);
   await page.getByRole("button", { name: "EMP-0000002", exact: true }).click();
+  await editor
+    .getByRole("button", { name: "Edit details", exact: true })
+    .click();
   await expect(editor.getByLabel("Position", { exact: true })).toHaveValue(
     "Team Leader",
   );

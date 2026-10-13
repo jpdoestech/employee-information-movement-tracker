@@ -5,7 +5,9 @@ async function editor(page: Page) {
   await page.getByRole("button", { name: "Explore synthetic demo" }).click();
   await page.goto("/#employees");
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  await page.getByRole("tab", { name: "Address", exact: true }).click();
+  await page
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   return page.getByRole("dialog", { name: "New employee", exact: true });
 }
 async function agdao(page: Page) {
@@ -86,11 +88,15 @@ test("unconfirmed typed text blocks saving and Escape closes only suggestions", 
   page,
 }) => {
   const dialog = await editor(page);
-  await dialog.getByRole("tab", { name: "Profile", exact: true }).click();
+  await dialog
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   await dialog.getByLabel("First Name", { exact: false }).fill("Address Test");
   await dialog.getByLabel("Last Name", { exact: false }).fill("Test");
   await fillGovernmentIds(dialog);
-  await dialog.getByRole("tab", { name: "Address", exact: true }).click();
+  await dialog
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   const home = page.getByRole("group", { name: "Home Address", exact: true });
   const input = home.getByRole("combobox", { name: "Province", exact: true });
   await input.fill("Imaginary");
@@ -145,13 +151,17 @@ test("addresses and emergency contact save through confirmation and edit existin
   page,
 }) => {
   const dialog = await editor(page);
-  await dialog.getByRole("tab", { name: "Profile", exact: true }).click();
+  await dialog
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   await dialog
     .getByLabel("First Name", { exact: false })
     .fill("Address Saved Test");
   await dialog.getByLabel("Last Name", { exact: false }).fill("Test");
   await fillGovernmentIds(dialog);
-  await dialog.getByRole("tab", { name: "Address", exact: true }).click();
+  await dialog
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   await agdao(page);
   const current = page.getByRole("group", {
     name: "Current Address",
@@ -192,7 +202,9 @@ test("addresses and emergency contact save through confirmation and edit existin
     name: "Employee profile",
     exact: true,
   });
-  await profile.getByRole("tab", { name: "Address", exact: true }).click();
+  await profile
+    .getByRole("button", { name: "Edit details", exact: true })
+    .click();
   await expect(
     profile
       .getByRole("group", { name: "Home Address", exact: true })

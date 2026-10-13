@@ -7,7 +7,7 @@ import {
   ShieldCheck,
   LockKeyhole,
   Columns3,
-  X,
+  EyeOff,
   GripVertical,
 } from "lucide-react";
 import { FieldTypeIcon } from "./FieldTypeIcon";
@@ -15,7 +15,6 @@ import { Dialog } from "./Dialog";
 import { SearchFilterPicker } from "./SearchFilterPicker";
 import {
   defaultColumns,
-  moveColumn,
   moveColumnGroup,
   reconcileLayout,
   type Field,
@@ -337,15 +336,6 @@ export function ColumnDesigner({
           aria-labelledby={`${tabId}-order-tab`}
           hidden={tab !== "order"}
         >
-          <h3>
-            Column order{" "}
-            <small>
-              {draft.columns.length} visible / {draft.pinned.length} pinned
-            </small>
-          </h3>
-          <p className="column-order-hint">
-            Pinned columns appear first. Up to two can be pinned.
-          </p>
           <div className="column-selection-toolbar">
             <label>
               <input
@@ -365,9 +355,7 @@ export function ColumnDesigner({
                   setSelected(event.target.checked ? draft.columns : [])
                 }
               />
-              {selection.length
-                ? `${selection.length} selected`
-                : "Select columns to move"}
+              {selection.length ? `${selection.length} selected` : "Select all"}
             </label>
             {selection.length > 0 && (
               <div>
@@ -420,17 +408,47 @@ export function ColumnDesigner({
                 <button type="button" onClick={() => setSelected([])}>
                   Deselect
                 </button>
+                <button
+                  type="button"
+                  aria-label="Hide selected columns"
+                  onClick={() => {
+                    const columns = draft.columns.filter(
+                      (key) => !selection.includes(key),
+                    );
+                    setDraft({
+                      ...draft,
+                      columns,
+                      pinned: draft.pinned.filter((key) =>
+                        columns.includes(key),
+                      ),
+                    });
+                    setSelected([]);
+                  }}
+                >
+                  <EyeOff size={15} aria-hidden="true" />
+                  Hide
+                </button>
               </div>
             )}
+            {!selection.length && (
+              <small className="column-summary">
+                {draft.columns.length} columns · {draft.pinned.length} pinned
+              </small>
+            )}
           </div>
-          <p className="column-order-hint">
+          <p className="sr-only" id={`${tabId}-drag-help`}>
             Select several columns, then drag any selected handle to move them
             together.
           </p>
           <p className="sr-only" role="status" aria-live="polite">
             {announcement}
           </p>
-          <ol ref={list} className="column-list" aria-label="Column order">
+          <ol
+            ref={list}
+            className="column-list"
+            aria-label="Column order"
+            aria-describedby={`${tabId}-drag-help`}
+          >
             {draft.columns.map((k, index) => (
               <li
                 key={k}
@@ -515,9 +533,17 @@ export function ColumnDesigner({
                 <FieldTypeIcon
                   type={options.find((o) => o.id === k)?.field_type || "system"}
                 />
-                <div className="column-label">
+                <div
+                  className="column-label"
+                  title={options.find((o) => o.id === k)?.label}
+                >
                   <strong>{options.find((o) => o.id === k)?.label}</strong>
-                  <small>{options.find((o) => o.id === k)?.context}</small>
+                  <small
+                    className="column-group-label"
+                    title={options.find((o) => o.id === k)?.context}
+                  >
+                    {options.find((o) => o.id === k)?.context}
+                  </small>
                 </div>
                 <div className="column-row-actions">
                   {fields.find((f) => f.key === k)?.sensitivity ===
@@ -529,24 +555,9 @@ export function ColumnDesigner({
                     />
                   )}
                   <button
-                    disabled={index === 0}
-                    aria-label={`Move ${k} up`}
-                    type="button"
-                    onClick={() => reorder(moveColumn(draft.columns, k, -1))}
-                  >
-                    <ArrowUp size={16} />
-                  </button>
-                  <button
-                    disabled={index === draft.columns.length - 1}
-                    aria-label={`Move ${k} down`}
-                    type="button"
-                    onClick={() => reorder(moveColumn(draft.columns, k, 1))}
-                  >
-                    <ArrowDown size={16} />
-                  </button>
-                  <button
                     aria-pressed={draft.pinned.includes(k)}
                     aria-label={`Pin ${k}`}
+                    title={`${draft.pinned.includes(k) ? "Unpin" : "Pin"} ${options.find((o) => o.id === k)?.label || k} (maximum two pinned)`}
                     type="button"
                     onClick={() =>
                       setDraft({
@@ -558,13 +569,6 @@ export function ColumnDesigner({
                     }
                   >
                     <Pin size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Hide ${k}`}
-                    onClick={() => toggleColumn(k)}
-                  >
-                    <X size={15} />
                   </button>
                 </div>
               </li>

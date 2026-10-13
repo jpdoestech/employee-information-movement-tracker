@@ -14,6 +14,7 @@ export type Field = {
   key: string;
   label: string;
   group_id: string;
+  form_group_id?: string | null;
   group_name: string;
   type: string;
   active: boolean;
@@ -64,6 +65,7 @@ export type Context = {
     row_version: number;
     description?: string;
     display_order?: number;
+    parent_group_id?: string | null;
     tab_name?: string;
     tab_order?: number;
   }[];

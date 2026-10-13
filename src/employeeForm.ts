@@ -51,7 +51,9 @@ export function combinedName(values: Record<string, unknown>) {
 }
 export function employeeTabs(groups: Context["groups"], fields: Field[]) {
   const allowed = new Set(
-    fields.filter((f) => f.active && f.actions.length).map((f) => f.group_id),
+    fields
+      .filter((f) => f.active && f.actions.length)
+      .map((f) => f.form_group_id || f.group_id),
   );
   const tabs = new Map<
     string,
@@ -63,10 +65,18 @@ export function employeeTabs(groups: Context["groups"], fields: Field[]) {
       a.id.localeCompare(b.id),
   )) {
     if (!group.active || !allowed.has(group.id)) continue;
-    const name = group.tab_name || group.name;
+    const parent = groups.find(
+      (candidate) => candidate.id === group.parent_group_id,
+    );
+    if (parent && !parent.active) continue;
+    const root = parent || group;
+    const hierarchical =
+      !!parent ||
+      groups.some((candidate) => candidate.parent_group_id === group.id);
+    const name = hierarchical ? root.name : root.tab_name || root.name;
     const tab = tabs.get(name) ?? {
       name,
-      order: group.tab_order ?? 0,
+      order: root.tab_order ?? 0,
       groups: [],
     };
     tab.groups.push(group.id);
@@ -86,7 +96,9 @@ export function employeeTabs(groups: Context["groups"], fields: Field[]) {
       ...fields
         .filter(
           (f) =>
-            f.active && f.actions.length && tab.groups.includes(f.group_id),
+            f.active &&
+            f.actions.length &&
+            tab.groups.includes(f.form_group_id || f.group_id),
         )
         .map((f) => defaultEntryPriority(f.key)),
     );

@@ -22,11 +22,11 @@ for (const [width, height] of [
       name: "Employee profile",
       exact: true,
     });
+    await editor
+      .getByRole("button", { name: "Edit details", exact: true })
+      .click();
     const tabs = editor.getByRole("tablist");
-    await expect(tabs).toHaveAttribute(
-      "aria-orientation",
-      width > 760 ? "vertical" : "horizontal",
-    );
+    await expect(tabs).toHaveAttribute("aria-orientation", "horizontal");
     const department = editor.getByLabel("Department", { exact: true });
     const position = editor.getByLabel("Position", { exact: true });
     const birth = editor.getByLabel("Birth Date", { exact: true });
@@ -108,6 +108,9 @@ for (const [width, height] of [
       .click();
     await expect(editor).toHaveCount(0);
     await row.locator("td.employee-name").click();
+    await editor
+      .getByRole("button", { name: "Edit details", exact: true })
+      .click();
     await expect(editor.getByLabel("Department", { exact: true })).toHaveValue(
       "Operations",
     );

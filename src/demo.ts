@@ -304,6 +304,76 @@ const context: Context = {
   ],
   views: JSON.parse(localStorage.getItem("eimt-synthetic-views") || "[]"),
 };
+
+// Form placement is independent of access-group membership.
+const personalRoot = context.groups.find((g) => g.id === "core")!;
+personalRoot.name = "Personal Information";
+personalRoot.tab_name = personalRoot.name;
+const employmentRoot = context.groups.find((g) => g.id === "employment")!;
+employmentRoot.name = "Employment Details";
+employmentRoot.tab_name = employmentRoot.name;
+employmentRoot.tab_order = 10;
+for (const g of context.groups) {
+  if (["personal", "contact", "government", "address"].includes(g.id))
+    g.parent_group_id = "core";
+  if (g.id === "personal") g.name = "Personal details";
+}
+context.groups.push(
+  {
+    id: "emergency",
+    name: "Emergency Information",
+    parent_group_id: "core",
+    active: true,
+    row_version: 1,
+    display_order: 40,
+  },
+  {
+    id: "compensation",
+    name: "Compensation",
+    parent_group_id: "employment",
+    active: true,
+    row_version: 1,
+    display_order: 50,
+  },
+  {
+    id: "allowances",
+    name: "Allowances",
+    parent_group_id: "employment",
+    active: true,
+    row_version: 1,
+    display_order: 60,
+  },
+);
+for (const f of fields) {
+  if (
+    [
+      "last_name",
+      "first_name",
+      "middle_name",
+      "suffix",
+      "email",
+      "phone",
+      "birth_date",
+      "gender",
+      "civil_status",
+    ].includes(f.key)
+  )
+    f.form_group_id = "core";
+  if (
+    [
+      "employee_number",
+      "client_employee_number",
+      "status",
+      "position",
+      "branch",
+      "client",
+    ].includes(f.key)
+  )
+    f.form_group_id = "employment";
+  if (f.key.startsWith("emergency_contact_")) f.form_group_id = "emergency";
+  f.group_name =
+    context.groups.find((g) => g.id === f.group_id)?.name || f.group_name;
+}
 export async function demoQuery(op: string, q: any = {}) {
   await new Promise((r) => setTimeout(r, 40));
   if (op === "context") return structuredClone(context);
@@ -887,6 +957,26 @@ export async function demoMutate(op: string, p: any) {
         actions: ["C", "R", "U", "D"],
       });
   } else if (op === "group") {
+    const parent = context.groups.find((g) => g.id === p.parent_group_id);
+    if (
+      p.parent_group_id &&
+      (!parent ||
+        parent.parent_group_id ||
+        parent.id === p.id ||
+        context.groups.some((g) => g.parent_group_id === p.id))
+    )
+      throw new Error(
+        "Choose a top-level parent group. Sub-groups cannot contain other sub-groups.",
+      );
+    if (
+      context.groups.some(
+        (g) =>
+          g.id !== p.id &&
+          g.name.trim().toLowerCase() === p.name.trim().toLowerCase(),
+      )
+    )
+      throw new Error("This group name already exists.");
+
     const g = context.groups.find((g) => g.id === p.id);
     if (g) {
       const followsName =

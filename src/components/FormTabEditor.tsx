@@ -14,14 +14,22 @@ export function FormTabEditor({
   onSaved: () => void;
 }) {
   const [draft, setDraft] = useState(
-    groups.map((g) => ({
-      id: g.id,
-      name: g.name,
-      active: g.active,
-      expected_version: g.row_version,
-      tab_name: g.tab_name || g.name,
-      tab_order: g.tab_order ?? 0,
-    })),
+    groups.map((g) => {
+      const root =
+        groups.find((parent) => parent.id === g.parent_group_id) || g;
+      const fixed =
+        !!g.parent_group_id ||
+        groups.some((child) => child.parent_group_id === g.id);
+      return {
+        id: g.id,
+        name: g.name,
+        active: g.active,
+        expected_version: g.row_version,
+        tab_name: fixed ? root.name : g.tab_name || g.name,
+        tab_order: root.tab_order ?? 0,
+        fixed,
+      };
+    }),
   );
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -29,9 +37,10 @@ export function FormTabEditor({
     <Dialog title="Employee form tabs" onClose={onClose} wide>
       <div className="dialog-body">
         <p className="muted">
-          Assign groups to the same tab name to merge their entry sections.
-          Lower orders appear first. Field permissions remain attached to each
-          group.
+          Parent groups name their entry tabs; sub-groups inherit the parent
+          tab. Rename a parent in Field Definitions to change it. Standalone
+          groups may share a custom tab. Lower orders appear first. Permissions
+          remain unchanged.
         </p>
         <div className="form-tab-settings">
           {draft.map((group) => (
@@ -45,6 +54,7 @@ export function FormTabEditor({
                 <input
                   aria-label={`Tab name for ${group.name}`}
                   maxLength={60}
+                  readOnly={group.fixed}
                   value={group.tab_name}
                   onChange={(e) =>
                     setDraft((old) =>

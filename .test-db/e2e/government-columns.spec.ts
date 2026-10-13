@@ -22,7 +22,7 @@ for (const [width, height] of [
       exact: true,
     });
     await editor
-      .getByRole("tab", { name: "Government ID", exact: true })
+      .getByRole("button", { name: "Edit Government IDs", exact: true })
       .click();
     const values = {
       "BIR TIN": "012345678",
@@ -62,7 +62,10 @@ for (const [width, height] of [
       .getByRole("tab", { name: "Column order", exact: true })
       .click();
     await dialog
-      .getByRole("button", { name: "Hide bir_tin", exact: true })
+      .getByRole("checkbox", { name: "Select BIR TIN to move", exact: true })
+      .check();
+    await dialog
+      .getByRole("button", { name: "Hide selected columns", exact: true })
       .click();
     await expect(dialog.locator('[data-column-key="bir_tin"]')).toHaveCount(0);
     await dialog

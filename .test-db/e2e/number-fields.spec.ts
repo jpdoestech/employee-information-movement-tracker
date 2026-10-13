@@ -21,7 +21,7 @@ for (const width of [375, 1366]) {
       .click();
     await page
       .getByRole("dialog", { name: "Field group options", exact: true })
-      .getByRole("option", { name: "Core identity", exact: true })
+      .getByRole("option", { name: "Personal Information", exact: true })
       .click();
     await definition
       .getByRole("button", { name: "Field type", exact: true })
@@ -108,6 +108,9 @@ for (const width of [375, 1366]) {
       name: "Employee profile",
       exact: true,
     });
+    await profile
+      .getByRole("button", { name: "Edit details", exact: true })
+      .click();
     const existing = profile.getByLabel("Capacity", { exact: true });
     await expect(existing).toHaveValue("1,000.13");
     await existing.focus();
@@ -141,6 +144,9 @@ for (const width of [375, 1366]) {
       .click();
     await expect(profile).toHaveCount(0);
     await row.locator("td.employee-name").click();
+    await profile
+      .getByRole("button", { name: "Edit details", exact: true })
+      .click();
     await expect(profile.getByLabel("Capacity", { exact: true })).toHaveValue(
       "",
     );

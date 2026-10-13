@@ -138,6 +138,9 @@ for (const width of [375, 1366]) {
       name: "Employee profile",
       exact: true,
     });
+    await editor
+      .getByRole("button", { name: "Edit details", exact: true })
+      .click();
     await editor.getByLabel("Last Name", { exact: true }).fill("TEST");
     await editor.getByLabel("First Name", { exact: true }).fill("JUAN");
     await editor
@@ -150,6 +153,9 @@ for (const width of [375, 1366]) {
     await expect(editor).toHaveCount(0);
     await page
       .getByRole("button", { name: "EMP-0000002", exact: true })
+      .click();
+    await editor
+      .getByRole("button", { name: "Edit details", exact: true })
       .click();
     await editor.getByLabel("First Name", { exact: true }).fill("JUANA");
     await editor

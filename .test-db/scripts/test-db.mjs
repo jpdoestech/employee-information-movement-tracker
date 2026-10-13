@@ -2850,6 +2850,31 @@ try {
     const winningName = (await q(id.sa, "employee", {id: created.id})).employee.values.first_name;
     assert.equal((await owner.query("select after_values->>'first_name' value from app_private.audit_value_changes where audit_id=$1 and after_values ? 'first_name'", [winner.id])).rows[0].value, winningName);
   });
+  await test("form hierarchy is two-level, versioned, concurrent-safe and does not alter field permissions", async () => {
+    const parent = (await m(id.sa, "group", {name:"Hierarchy parent"})).id;
+    const child = (await m(id.sa, "group", {name:"Hierarchy child",parent_group_id:parent})).id;
+    assert.equal((await owner.query("select parent_group_id from public.field_groups where id=$1",[child])).rows[0].parent_group_id,parent);
+    await assert.rejects(m(id.viewer,"group",{name:"Unauthorized hierarchy",parent_group_id:parent}),error=>error.code==='42501');
+    await assert.rejects(m(id.sa,"group",{name:"Third level",parent_group_id:child}),/top-level parent/);
+    await assert.rejects(m(id.sa,"group",{id:parent,name:"Hierarchy parent",parent_group_id:child,expected_version:1}),/top-level parent/);
+    await assert.rejects(m(id.sa,"group",{id:child,name:"Hierarchy child",parent_group_id:child,expected_version:1}),/top-level parent/);
+    await assert.rejects(m(id.sa,"group",{id:child,name:"Hierarchy child",parent_group_id:null,expected_version:99}),/Revision conflict/);
+    const races = await concurrent("group",[{id:child,name:"Hierarchy child",parent_group_id:null,expected_version:1},{id:child,name:"Hierarchy child",parent_group_id:parent,expected_version:1}]);
+    assert.equal(races.filter(r=>r.ok).length,1);
+    const before = await owner.query("select group_id from public.field_definitions where key='birth_date'");
+    const schema = await q(id.sa,"schema");
+    const f = schema.fields.find(f=>f.key==='birth_date');
+    const decisions = await as(id.sa,c=>c.query("select public.permission_preview($1) r",[{user_id:id.viewer,target_level:'branch',branch_id:id.b1}]).then(r=>r.rows[0].r));
+    await m(id.sa,'field',{...f,form_group_id:child,expected_version:f.row_version,targets:[]});
+    const after=await owner.query("select group_id,form_group_id from public.field_definitions where key='birth_date'");
+    assert.equal(after.rows[0].group_id,before.rows[0].group_id);
+    assert.equal(after.rows[0].form_group_id,child);
+    const afterDecisions = await as(id.sa,c=>c.query("select public.permission_preview($1) r",[{user_id:id.viewer,target_level:'branch',branch_id:id.b1}]).then(r=>r.rows[0].r));
+    assert.deepEqual(afterDecisions.find(v=>v.key==='birth_date').actions,decisions.find(v=>v.key==='birth_date').actions);
+    const version=(await owner.query("select row_version from public.field_definitions where id=$1",[f.id])).rows[0].row_version;
+    await assert.rejects(m(id.sa,'field',{...f,form_group_id:randomUUID(),expected_version:version,targets:[]}),/foreign key/);
+  });
+
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
     ".test-db/reports/verification/database.json",

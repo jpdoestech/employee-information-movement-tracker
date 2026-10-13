@@ -40,7 +40,7 @@ test("an employee can be saved without any government IDs", async ({
     exact: true,
   });
   await profile
-    .getByRole("tab", { name: "Government ID", exact: true })
+    .getByRole("button", { name: "Edit Government IDs", exact: true })
     .click();
   for (const name of [
     "BIR TIN",
@@ -74,9 +74,8 @@ for (const [width, height] of [
       exact: true,
     });
     await expect(editor.getByRole("tab")).toHaveText([
-      "Profile",
-      "Government ID",
-      "Address",
+      "Personal Information",
+      "Employment Details",
       "Additional information",
     ]);
     await expect(editor.getByLabel("Email", { exact: true })).toBeVisible();
@@ -91,16 +90,31 @@ for (const [width, height] of [
       .getByRole("textbox", { name: "First Name *", exact: true })
       .fill("Sample");
     await editor
+      .getByRole("tab", { name: "Employment Details", exact: true })
+      .click();
+    await editor
       .getByRole("textbox", { name: "Position", exact: true })
       .fill("Analyst");
     await editor.getByLabel("Department", { exact: true }).fill("Operations");
     await editor.getByLabel("Date Hired", { exact: true }).fill("2026-10-01");
+    await editor
+      .getByRole("tab", { name: "Personal Information", exact: true })
+      .click();
     await editor.getByLabel("Birth Date", { exact: true }).fill("1990-01-02");
     for (const [label, option] of [
       ["Gender", "Female"],
       ["Civil Status", "Single"],
       ["Employment Type", "Regular"],
     ]) {
+      await editor
+        .getByRole("tab", {
+          name:
+            label === "Employment Type"
+              ? "Employment Details"
+              : "Personal Information",
+          exact: true,
+        })
+        .click();
       await editor.getByRole("button", { name: label, exact: true }).click();
       await page
         .getByRole("dialog", { name: `${label} options`, exact: true })
@@ -129,7 +143,7 @@ for (const [width, height] of [
       .click();
     await fillGovernmentIds(editor);
     await editor
-      .getByRole("tab", { name: "Government ID", exact: true })
+      .getByRole("tab", { name: "Personal Information", exact: true })
       .click();
     const tin = editor.getByRole("textbox", { name: "BIR TIN", exact: true });
     await tin.fill("1234A");
@@ -178,6 +192,9 @@ for (const [width, height] of [
       name: "Employee profile",
       exact: true,
     });
+    await profile
+      .getByRole("button", { name: "Edit details", exact: true })
+      .click();
     await expect(profile.getByLabel("Position", { exact: true })).toHaveValue(
       "Analyst",
     );
@@ -191,7 +208,7 @@ for (const [width, height] of [
       "1990-01-02",
     );
     await profile
-      .getByRole("tab", { name: "Government ID", exact: true })
+      .getByRole("tab", { name: "Edit details", exact: true })
       .click();
     await expect(
       profile.getByRole("textbox", { name: "BIR TIN", exact: true }),

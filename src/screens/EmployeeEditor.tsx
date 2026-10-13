@@ -1,4 +1,6 @@
 import { mobileError } from "../identifiers";
+import { confirmTransaction } from "../components/TransactionConfirmation";
+import { EmployeeOverview } from "../components/EmployeeOverview";
 import {
   employmentOrder,
   employmentStatus,
@@ -11,6 +13,7 @@ import {
   ShieldCheck,
   MapPin,
   SlidersHorizontal,
+  Pencil,
   History,
 } from "lucide-react";
 import {
@@ -21,7 +24,14 @@ import {
 } from "../address/addressFields";
 import { addressValidationError } from "../address/addressService";
 import { FloatingNotification } from "../components/FloatingNotification";
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import {
+  Fragment,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { valueWidth } from "../controlSizing";
 import { employeeTabs, nameKeys, defaultEntryPriority } from "../employeeForm";
 import { displayFieldValue } from "../fieldValues";
@@ -48,15 +58,10 @@ export function EmployeeEditor({
   const body = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState("");
   const [changeChoice, setChangeChoice] = useState(false);
-  const [verticalTabs, setVerticalTabs] = useState(
-    () => window.matchMedia("(min-width: 761px)").matches,
-  );
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 761px)");
-    const update = () => setVerticalTabs(media.matches);
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
+  const [editingOverview, setEditingOverview] = useState(false);
+  const [editScope, setEditScope] = useState<string | null>(null);
+  const [editorMounted, setEditorMounted] = useState(false);
+  const verticalTabs = false;
   const [values, setValues] = useState<Record<string, unknown>>({}),
     [changed, setChanged] = useState<Record<string, unknown>>({}),
     [detail, setDetail] = useState<any>(),
@@ -143,16 +148,26 @@ export function EmployeeEditor({
       f.active &&
       context.groups.some((g) => g.id === f.group_id && g.active),
   );
-  const formFields = fields.map((f) =>
-    ["position", "status"].includes(f.key) && department
+  const formFields = fields.map((f) => {
+    const section = context.groups.find(
+      (g) => g.id === (f.form_group_id || f.group_id),
+    );
+    return f.form_group_id
       ? {
           ...f,
-          group_id: department.group_id,
-          group_name: department.group_name,
+          group_id: f.form_group_id,
+          group_name: section?.name || f.group_name,
         }
-      : f,
-  );
+      : ["position", "status"].includes(f.key) && department
+        ? {
+            ...f,
+            group_id: department.group_id,
+            group_name: department.group_name,
+          }
+        : { ...f, group_name: section?.name || f.group_name };
+  });
   const regular = editable
+    .map((f) => formFields.find((shown) => shown.id === f.id) || f)
     .filter(
       (f) =>
         !addressFieldKeys.has(f.key) &&
@@ -196,31 +211,118 @@ export function EmployeeEditor({
                   ? 1
                   : 0),
     );
-  const groups = [...new Set(regular.map((f) => f.group_name))];
-  const tabs = employeeTabs(context.groups, formFields);
+  const groups = context.groups
+    .filter(
+      (g) =>
+        g.active &&
+        (regular.some((f) => f.group_id === g.id) ||
+          formFields.some(
+            (f) =>
+              f.group_id === g.id &&
+              addressFieldKeys.has(f.key) &&
+              f.actions.length,
+          )),
+    )
+    .sort((a, b) => {
+      const rootA = context.groups.find((g) => g.id === a.parent_group_id) || a,
+        rootB = context.groups.find((g) => g.id === b.parent_group_id) || b;
+      return (
+        (rootA.tab_order ?? 0) - (rootB.tab_order ?? 0) ||
+        rootA.name.localeCompare(rootB.name) ||
+        Number(!!a.parent_group_id) - Number(!!b.parent_group_id) ||
+        (a.display_order ?? 0) - (b.display_order ?? 0)
+      );
+    });
+  const configuredTabs = employeeTabs(context.groups, formFields);
+  const scopeGroups = editScope
+    ? [
+        editScope,
+        ...context.groups
+          .filter((g) => g.parent_group_id === editScope)
+          .map((g) => g.id),
+      ]
+    : configuredTabs.flatMap((tab) => tab.groups);
+  const editTitle = editScope
+    ? `Edit ${context.groups.find((g) => g.id === editScope)?.name || "details"}`
+    : "Edit details";
+  const tabs = row
+    ? [
+        { name: "Overview", order: -1, groups: [] },
+        ...(editorMounted
+          ? [{ name: editTitle, order: 0, groups: scopeGroups }]
+          : []),
+      ]
+    : configuredTabs;
+  async function startEdit(groupId?: string) {
+    const nextScope = groupId || null;
+    if (
+      (Object.keys(changed).length > 0 ||
+        Object.values(addressValid).includes(false)) &&
+      nextScope !== null &&
+      nextScope !== editScope
+    ) {
+      const discard = await confirmTransaction(
+        "Discard unsaved changes?",
+        "Your changes have not been saved. Discard them to edit a different group, or continue editing.",
+        "Discard changes",
+        "Continue editing",
+      );
+      if (!discard) {
+        setEditingOverview(true);
+        selectTab(editTitle);
+        return;
+      }
+      setChanged({});
+      setAddressErrors({});
+      setAddressValid({});
+    }
+    setEditorMounted(true);
+    setEditScope(nextScope);
+    setEditingOverview(true);
+    setActiveTab(
+      nextScope
+        ? `Edit ${context.groups.find((g) => g.id === nextScope)?.name || "details"}`
+        : "Edit details",
+    );
+    body.current?.scrollTo({ top: 0 });
+  }
   const tabNames = [
     ...tabs.map((t) => t.name),
     ...(row ? ["Record history"] : []),
   ];
   const selectedTab = tabNames.includes(activeTab) ? activeTab : tabNames[0];
   function selectTab(name: string) {
+    if (row && name === "Overview") {
+      setEditingOverview(false);
+      document.getElementById(`${tabId}-tab-0`)?.focus();
+    }
     setActiveTab(name);
     body.current?.scrollTo({ top: 0 });
   }
   function revealField(key: string) {
     const field = formFields.find((f) => f.key === key);
-    const tab = tabs.find((t) => t.groups.includes(field?.group_id ?? ""));
-    if (tab) selectTab(tab.name);
+    if (row) {
+      setEditScope(null);
+      setEditorMounted(true);
+      setEditingOverview(true);
+      setActiveTab("Edit details");
+    } else {
+      const tab = configuredTabs.find((t) =>
+        t.groups.includes(field?.group_id ?? ""),
+      );
+      if (tab) selectTab(tab.name);
+    }
   }
   async function save(changeKind?: "official" | "correction") {
     setError("");
     setBusy(true);
     try {
       if (Object.values(addressValid).includes(false)) {
-        const invalidSection =
-          Object.keys(addressValid).find((p) => addressValid[p] === false) ??
-          "[]";
-        selectTab(JSON.parse(invalidSection)[0]);
+        const invalidPrefix =
+          Object.keys(addressValid).find(
+            (prefix) => addressValid[prefix] === false,
+          ) ?? "";
+        revealField(invalidPrefix + "address");
         throw new Error(
           "Confirm locations from the official lists before saving.",
         );
@@ -377,6 +479,12 @@ export function EmployeeEditor({
         title={row ? "Employee profile" : "New employee"}
         onClose={onClose}
         wide
+        isDirty={
+          row
+            ? Object.keys(changed).length > 0 ||
+              Object.values(addressValid).includes(false)
+            : undefined
+        }
         className="employee-dialog employee-edit-dialog"
       >
         <div className="employee-editor-summary">
@@ -398,6 +506,7 @@ export function EmployeeEditor({
               : "One permanent profile. System ID is allocated by the database."}
           </p>
           {row &&
+            editingOverview &&
             typeof values.name === "string" &&
             !nameKeys.some((key) => values[key] != null) && (
               <p className="muted">
@@ -405,6 +514,14 @@ export function EmployeeEditor({
                 revise it.
               </p>
             )}
+          {row && detail && editable.length > 0 && (
+            <div className="employee-profile-controls">
+              <button type="button" onClick={() => startEdit()}>
+                <Pencil size={14} aria-hidden="true" />
+                Edit details
+              </button>
+            </div>
+          )}
           {!row && (
             <SearchFilterPicker
               mode="single"
@@ -426,23 +543,30 @@ export function EmployeeEditor({
               type="button"
               key={name}
               role="tab"
+              hidden={!!row && name === editTitle && !editingOverview}
               id={`${tabId}-tab-${index}`}
               aria-controls={`${tabId}-panel-${index}`}
               aria-selected={selectedTab === name}
               tabIndex={selectedTab === name ? 0 : -1}
               onClick={() => selectTab(name)}
               onKeyDown={(event) => {
+                const visible = tabNames
+                  .map((_, i) => i)
+                  .filter(
+                    (i) => !row || editingOverview || tabNames[i] !== editTitle,
+                  );
+                const position = visible.indexOf(index);
                 const next =
                   event.key === "Home"
-                    ? 0
+                    ? visible[0]
                     : event.key === "End"
-                      ? tabNames.length - 1
-                      : event.key === "ArrowRight" ||
-                          (verticalTabs && event.key === "ArrowDown")
-                        ? (index + 1) % tabNames.length
-                        : event.key === "ArrowLeft" ||
-                            (verticalTabs && event.key === "ArrowUp")
-                          ? (index + tabNames.length - 1) % tabNames.length
+                      ? visible[visible.length - 1]
+                      : event.key === "ArrowRight"
+                        ? visible[(position + 1) % visible.length]
+                        : event.key === "ArrowLeft"
+                          ? visible[
+                              (position + visible.length - 1) % visible.length
+                            ]
                           : undefined;
                 if (next !== undefined) {
                   event.preventDefault();
@@ -453,16 +577,15 @@ export function EmployeeEditor({
             >
               {row &&
                 (() => {
-                  const Icon =
-                    name === "Profile"
-                      ? UserRound
-                      : name === "Government ID"
-                        ? ShieldCheck
-                        : name === "Address"
-                          ? MapPin
-                          : name === "Record history"
-                            ? History
-                            : SlidersHorizontal;
+                  const Icon = ["Profile", "Overview"].includes(name)
+                    ? UserRound
+                    : name === "Government ID"
+                      ? ShieldCheck
+                      : name === "Address"
+                        ? MapPin
+                        : name === "Record history"
+                          ? History
+                          : SlidersHorizontal;
                   return <Icon size={16} aria-hidden="true" />;
                 })()}
               {name}
@@ -470,34 +593,43 @@ export function EmployeeEditor({
           ))}
         </div>
         <div className="dialog-body employee-tab-body" ref={body}>
+          {row && editingOverview && (
+            <div className="overview-actions">
+              <button type="button" onClick={() => selectTab("Overview")}>
+                Back to overview
+              </button>
+            </div>
+          )}
+
           {tabs.map((tab, index) => (
             <div
-              key={tab.name}
+              key={row && tab.name !== "Overview" ? "entry-editor" : tab.name}
               role="tabpanel"
               id={`${tabId}-panel-${index}`}
               aria-labelledby={`${tabId}-tab-${index}`}
               hidden={selectedTab !== tab.name}
             >
-              {fields.some(
-                (f) =>
-                  tab.groups.includes(f.group_id) &&
-                  [
-                    ...(!editable.some((f) => f.key === "status")
-                      ? ["status"]
-                      : []),
-                    ...(!editable.some((f) => f.key === "position")
-                      ? ["position"]
-                      : []),
-                  ].includes(f.key) &&
-                  f.actions.includes(row ? "R" : "C"),
-              ) && (
-                <div
-                  className="employment-context"
-                  role="group"
-                  aria-label="Current employment"
-                >
-                  {fields
-                    .filter(
+              {row && tab.name === "Overview" && detail && (
+                <EmployeeOverview
+                  key={`${row.id}:${editingOverview}`}
+                  values={draft}
+                  fields={fields}
+                  groups={context.groups}
+                  today={context.today}
+                  employeeId={row.id}
+                  canEdit={false}
+                  onEdit={startEdit}
+                />
+              )}
+              {row && tab.name === "Overview" && !detail && !error && (
+                <FloatingNotification kind="loading">
+                  Loading employee information…
+                </FloatingNotification>
+              )}
+              <div hidden={!!row && tab.name === "Overview"}>
+                {!(row && tab.name === "Overview") && (
+                  <>
+                    {formFields.some(
                       (f) =>
                         tab.groups.includes(f.group_id) &&
                         [
@@ -509,210 +641,243 @@ export function EmployeeEditor({
                             : []),
                         ].includes(f.key) &&
                         f.actions.includes(row ? "R" : "C"),
-                    )
-                    .map((f) => (
-                      <div className="employment-context-item" key={f.key}>
-                        <span>{f.label}</span>
-                        <output
-                          aria-label={f.label}
-                          className={f.key === "status" ? "badge" : undefined}
-                        >
-                          {String(row ? (values[f.key] ?? "—") : "Active") ||
-                            "—"}
-                        </output>
+                    ) && (
+                      <div
+                        className="employment-context"
+                        role="group"
+                        aria-label="Current employment"
+                      >
+                        {formFields
+                          .filter(
+                            (f) =>
+                              tab.groups.includes(f.group_id) &&
+                              [
+                                ...(!editable.some((f) => f.key === "status")
+                                  ? ["status"]
+                                  : []),
+                                ...(!editable.some((f) => f.key === "position")
+                                  ? ["position"]
+                                  : []),
+                              ].includes(f.key) &&
+                              f.actions.includes(row ? "R" : "C"),
+                          )
+                          .map((f) => (
+                            <div
+                              className="employment-context-item"
+                              key={f.key}
+                            >
+                              <span>{f.label}</span>
+                              <output
+                                aria-label={f.label}
+                                className={
+                                  f.key === "status" ? "badge" : undefined
+                                }
+                              >
+                                {String(
+                                  row ? (values[f.key] ?? "—") : "Active",
+                                ) || "—"}
+                              </output>
+                            </div>
+                          ))}
+                        <small className="muted">Changes use Movements.</small>
                       </div>
-                    ))}
-                  <small className="muted">Changes use Movements.</small>
-                </div>
-              )}
-              {groups
-                .filter((g) =>
-                  regular.some(
-                    (f) =>
-                      f.group_name === g && tab.groups.includes(f.group_id),
-                  ),
-                )
-                .map((g) => (
-                  <fieldset key={g}>
-                    <legend>
-                      {g === "Address" &&
-                      regular
-                        .filter(
-                          (f) =>
-                            f.group_name === g &&
-                            tab.groups.includes(f.group_id),
-                        )
-                        .every((f) => f.key.startsWith("emergency_contact_"))
-                        ? "Emergency contact"
-                        : g}
-                    </legend>
-                    <div className="form-grid field-entry-grid">
-                      {regular
-                        .filter((f) => f.group_name === g)
-                        .map((f) => (
-                          <div
-                            key={f.key}
-                            className="field-slot"
-                            data-field={f.key}
-                            style={
-                              {
-                                "--field-width": valueWidth(
-                                  f.type,
-                                  f.options,
-                                  f.validation?.government_id_digits,
-                                  f.key,
-                                  f.validation?.input_width,
-                                ),
-                              } as CSSProperties
-                            }
-                          >
-                            <ValueEditor
-                              field={
-                                [
-                                  "emergency_contact_relationship",
-                                  "emergency_relationship",
-                                ].includes(f.key)
-                                  ? {
-                                      ...f,
-                                      type: "select",
-                                      options: [
-                                        ...new Set([
-                                          ...relationshipOptions,
-                                          ...(f.options ?? []),
-                                        ]),
-                                      ],
-                                    }
-                                  : nameKeys.includes(
-                                        f.key as (typeof nameKeys)[number],
-                                      )
-                                    ? {
-                                        ...f,
-                                        type: "short_text",
-                                        required:
-                                          !row &&
-                                          ["last_name", "first_name"].includes(
-                                            f.key,
-                                          ),
-                                      }
-                                    : f.key === "position"
-                                      ? {
-                                          ...f,
-                                          type: "short_text",
-                                          required: inactive,
-                                          help_text: "",
-                                          validation: { max_length: 200 },
-                                        }
-                                      : f.key === "status"
-                                        ? {
-                                            ...f,
-                                            type: "select",
-                                            options: [
-                                              "Active",
-                                              "Inactive",
-                                              "Separated",
-                                            ],
-                                            required: true,
-                                          }
-                                        : {
-                                            ...f,
-                                            required:
-                                              (inactive &&
-                                                inactiveEmploymentRequired.includes(
-                                                  f.key,
-                                                )) ||
-                                              (inactive &&
-                                                f.key ===
-                                                  "separation_details") ||
-                                              requiredForEdit(
-                                                f,
-                                                values,
-                                                changed,
-                                                !row,
-                                              ),
-                                          }
-                              }
-                              value={
-                                Object.hasOwn(changed, f.key)
-                                  ? changed[f.key]
-                                  : f.key === "status"
-                                    ? employmentStatus(draft.status)
-                                    : draft[f.key]
-                              }
-                              blind={!!row && !f.actions.includes("R")}
-                              clearable={
-                                !["position", "status"].includes(f.key) &&
-                                (!row || f.actions.includes("D"))
-                              }
-                              onChange={(value) =>
-                                setChanged((v) => ({ ...v, [f.key]: value }))
-                              }
-                            />
-                          </div>
-                        ))}
-                    </div>
-                  </fieldset>
-                ))}
-              {["", "current_"].map((prefix) => {
-                const access = addressAccess(fields, !!row, prefix);
-                for (const key of addressKeys) {
-                  access[key].visible =
-                    access[key].visible &&
-                    fields.some(
-                      (f) =>
-                        f.key === prefix + key &&
-                        tab.groups.includes(f.group_id),
-                    );
-                }
-                if (
-                  !fields.some(
-                    (f) =>
-                      addressKeys.some((key) => prefix + key === f.key) &&
-                      tab.groups.includes(f.group_id),
-                  )
-                )
-                  return null;
-                if (!Object.values(access).some((right) => right.visible))
-                  return null;
-                return (
-                  <fieldset key={prefix || "home"}>
-                    <legend>
-                      {prefix ? "Current Address" : "Home Address"}
-                    </legend>
-                    <AddressFields
-                      value={addressValue(draft, prefix)}
-                      access={access}
-                      disabled={busy}
-                      onValidityChange={(valid) =>
-                        setAddressValid((old) =>
-                          old[JSON.stringify([tab.name, prefix])] === valid
-                            ? old
-                            : {
-                                ...old,
-                                [JSON.stringify([tab.name, prefix])]: valid,
-                              },
-                        )
-                      }
-                      onChange={(_, patch) => {
-                        setChanged((old) => ({
-                          ...old,
-                          ...Object.fromEntries(
-                            Object.entries(patch).map(([key, value]) => [
-                              prefix + key,
-                              value,
-                            ]),
-                          ),
-                        }));
-                        setAddressErrors((old) => ({ ...old, [prefix]: "" }));
-                      }}
-                    />
-                    {addressErrors[prefix] && (
-                      <p role="alert" className="address-error">
-                        {addressErrors[prefix]}
-                      </p>
                     )}
-                  </fieldset>
-                );
-              })}
+                    {groups
+                      .filter((g) => tab.groups.includes(g.id))
+                      .map((g) => (
+                        <Fragment key={g.id}>
+                          <fieldset>
+                            <legend>
+                              {g.parent_group_id
+                                ? `${context.groups.find((parent) => parent.id === g.parent_group_id)?.name} / ${g.name}`
+                                : g.name}
+                            </legend>
+                            <div className="form-grid field-entry-grid">
+                              {regular
+                                .filter((f) => f.group_id === g.id)
+                                .map((f) => (
+                                  <div
+                                    key={f.key}
+                                    className="field-slot"
+                                    data-field={f.key}
+                                    style={
+                                      {
+                                        "--field-width": valueWidth(
+                                          f.type,
+                                          f.options,
+                                          f.validation?.government_id_digits,
+                                          f.key,
+                                          f.validation?.input_width,
+                                        ),
+                                      } as CSSProperties
+                                    }
+                                  >
+                                    <ValueEditor
+                                      field={
+                                        [
+                                          "emergency_contact_relationship",
+                                          "emergency_relationship",
+                                        ].includes(f.key)
+                                          ? {
+                                              ...f,
+                                              type: "select",
+                                              options: [
+                                                ...new Set([
+                                                  ...relationshipOptions,
+                                                  ...(f.options ?? []),
+                                                ]),
+                                              ],
+                                            }
+                                          : nameKeys.includes(
+                                                f.key as (typeof nameKeys)[number],
+                                              )
+                                            ? {
+                                                ...f,
+                                                type: "short_text",
+                                                required:
+                                                  !row &&
+                                                  [
+                                                    "last_name",
+                                                    "first_name",
+                                                  ].includes(f.key),
+                                              }
+                                            : f.key === "position"
+                                              ? {
+                                                  ...f,
+                                                  type: "short_text",
+                                                  required: inactive,
+                                                  help_text: "",
+                                                  validation: {
+                                                    max_length: 200,
+                                                  },
+                                                }
+                                              : f.key === "status"
+                                                ? {
+                                                    ...f,
+                                                    type: "select",
+                                                    options: [
+                                                      "Active",
+                                                      "Inactive",
+                                                      "Separated",
+                                                    ],
+                                                    required: true,
+                                                  }
+                                                : {
+                                                    ...f,
+                                                    required:
+                                                      (inactive &&
+                                                        inactiveEmploymentRequired.includes(
+                                                          f.key,
+                                                        )) ||
+                                                      (inactive &&
+                                                        f.key ===
+                                                          "separation_details") ||
+                                                      requiredForEdit(
+                                                        f,
+                                                        values,
+                                                        changed,
+                                                        !row,
+                                                      ),
+                                                  }
+                                      }
+                                      value={
+                                        Object.hasOwn(changed, f.key)
+                                          ? changed[f.key]
+                                          : f.key === "status"
+                                            ? employmentStatus(draft.status)
+                                            : draft[f.key]
+                                      }
+                                      blind={!!row && !f.actions.includes("R")}
+                                      clearable={
+                                        !["position", "status"].includes(
+                                          f.key,
+                                        ) &&
+                                        (!row || f.actions.includes("D"))
+                                      }
+                                      onChange={(value) =>
+                                        setChanged((v) => ({
+                                          ...v,
+                                          [f.key]: value,
+                                        }))
+                                      }
+                                    />
+                                  </div>
+                                ))}
+                            </div>
+                          </fieldset>
+                          {["", "current_"].map((prefix) => {
+                            const access = addressAccess(fields, !!row, prefix);
+                            for (const key of addressKeys) {
+                              access[key].visible =
+                                access[key].visible &&
+                                formFields.some(
+                                  (f) =>
+                                    f.key === prefix + key &&
+                                    f.group_id === g.id,
+                                );
+                            }
+                            if (
+                              !formFields.some(
+                                (f) =>
+                                  addressKeys.some(
+                                    (key) => prefix + key === f.key,
+                                  ) && f.group_id === g.id,
+                              )
+                            )
+                              return null;
+                            if (
+                              !Object.values(access).some(
+                                (right) => right.visible,
+                              )
+                            )
+                              return null;
+                            return (
+                              <fieldset key={prefix || "home"}>
+                                <legend>
+                                  {prefix ? "Current Address" : "Home Address"}
+                                </legend>
+                                <AddressFields
+                                  value={addressValue(draft, prefix)}
+                                  access={access}
+                                  disabled={busy}
+                                  onValidityChange={(valid) =>
+                                    setAddressValid((old) =>
+                                      old[prefix] === valid
+                                        ? old
+                                        : { ...old, [prefix]: valid },
+                                    )
+                                  }
+                                  onChange={(_, patch) => {
+                                    setChanged((old) => ({
+                                      ...old,
+                                      ...Object.fromEntries(
+                                        Object.entries(patch).map(
+                                          ([key, value]) => [
+                                            prefix + key,
+                                            value,
+                                          ],
+                                        ),
+                                      ),
+                                    }));
+                                    setAddressErrors((old) => ({
+                                      ...old,
+                                      [prefix]: "",
+                                    }));
+                                  }}
+                                />
+                                {addressErrors[prefix] && (
+                                  <p role="alert" className="address-error">
+                                    {addressErrors[prefix]}
+                                  </p>
+                                )}
+                              </fieldset>
+                            );
+                          })}
+                        </Fragment>
+                      ))}
+                  </>
+                )}
+              </div>
             </div>
           ))}
           {row && (
@@ -722,20 +887,6 @@ export function EmployeeEditor({
               aria-labelledby={`${tabId}-tab-${tabs.length}`}
               hidden={selectedTab !== "Record history"}
             >
-              <h3>Authorized current information</h3>
-              <dl className="details">
-                {Object.entries(values).map(([k, v]) => (
-                  <div key={k}>
-                    <dt>{fields.find((f) => f.key === k)?.label || k}</dt>
-                    <dd>
-                      {displayFieldValue(
-                        fields.find((f) => f.key === k),
-                        v,
-                      )}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
               <h3>Assignments</h3>
               {detail?.assignments?.length ? (
                 detail.assignments.map((a: any) => (

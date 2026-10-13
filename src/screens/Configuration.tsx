@@ -173,7 +173,18 @@ export function FieldBuilder({
       .catch((e) => setError(e.message));
   }, [context.revision]);
   const fields: Field[] = schema?.fields || context.fields;
-  const groups = schema?.groups || context.groups;
+  const sourceGroups = schema?.groups || context.groups;
+  const groups = [...sourceGroups].sort((a: any, b: any) => {
+    const rootA =
+        sourceGroups.find((g: any) => g.id === a.parent_group_id) || a,
+      rootB = sourceGroups.find((g: any) => g.id === b.parent_group_id) || b;
+    return (
+      (rootA.tab_order ?? 0) - (rootB.tab_order ?? 0) ||
+      rootA.name.localeCompare(rootB.name) ||
+      Number(!!a.parent_group_id) - Number(!!b.parent_group_id) ||
+      (a.display_order ?? 0) - (b.display_order ?? 0)
+    );
+  });
   // Advisory matching only; the database's Unicode case-folded unique indexes remain authoritative.
   const normalize = (s: string) =>
     s.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
@@ -347,7 +358,7 @@ export function FieldBuilder({
                 .map((g: any) => {
                   const matching = fields.filter(
                     (f) =>
-                      f.group_id === g.id &&
+                      (f.form_group_id || f.group_id) === g.id &&
                       `${f.label} ${f.key} ${f.help_text || ""}`
                         .toLowerCase()
                         .includes(search.toLowerCase()) &&
@@ -361,7 +372,11 @@ export function FieldBuilder({
                       <tr className="definition-group">
                         <th colSpan={6}>
                           <div>
-                            <strong>{g.name}</strong>
+                            <strong>
+                              {g.parent_group_id
+                                ? `${groups.find((parent: any) => parent.id === g.parent_group_id)?.name || "Group"} / ${g.name}`
+                                : g.name}
+                            </strong>
                             <small>
                               {matching.length} fields
                               {!g.active ? " � Inactive group" : ""}
@@ -474,6 +489,32 @@ export function FieldBuilder({
                   value={[draft.group_id]}
                   onChange={(v) => setDraft({ ...draft, group_id: v[0] })}
                 />
+              </div>
+              <div className="form-control">
+                <span>Form group / sub-group</span>
+                <SearchFilterPicker
+                  mode="single"
+                  label="Form group / sub-group"
+                  options={groups
+                    .filter((g: any) => g.active)
+                    .map((g: any) => ({
+                      id: g.id,
+                      label: g.name,
+                      context: g.parent_group_id
+                        ? groups.find(
+                            (parent: any) => parent.id === g.parent_group_id,
+                          )?.name
+                        : "Parent group",
+                    }))}
+                  value={draft.form_group_id ? [draft.form_group_id] : []}
+                  onChange={(v) =>
+                    setDraft({ ...draft, form_group_id: v[0] || null })
+                  }
+                />
+                <small className="help-text">
+                  Use the field group when empty. Form placement does not change
+                  access permissions.
+                </small>
               </div>
               <div className="form-control">
                 <span>Field type</span>
@@ -888,6 +929,27 @@ export function FieldBuilder({
                 }
               />
             </label>
+            <div className="form-control">
+              <span>Parent group</span>
+              <SearchFilterPicker
+                mode="single"
+                label="Parent group"
+                options={groups
+                  .filter(
+                    (g: any) =>
+                      !g.parent_group_id && g.id !== group.id && g.active,
+                  )
+                  .map((g: any) => ({ id: g.id, label: g.name }))}
+                value={group.parent_group_id ? [group.parent_group_id] : []}
+                onChange={(v) =>
+                  setGroup({ ...group, parent_group_id: v[0] || null })
+                }
+              />
+              <small className="help-text">
+                Leave empty for a parent group. Sub-groups share their parent's
+                entry tab; existing access permissions are preserved.
+              </small>
+            </div>
             <p className="help-text">
               A standalone tab with the same name follows this group name.
               Custom or shared tab names are managed using Form tabs.

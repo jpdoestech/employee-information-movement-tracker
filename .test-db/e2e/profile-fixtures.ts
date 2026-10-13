@@ -3,7 +3,9 @@ export async function fillGovernmentIds(editor: Locator) {
   const previous = await editor
     .getByRole("tab", { selected: true })
     .innerText();
-  await editor.getByRole("tab", { name: "Government ID", exact: true }).click();
+  await editor
+    .getByRole("tab", { name: "Personal Information", exact: true })
+    .click();
   for (const [label, value] of [
     ["BIR TIN", "012345678"],
     ["SSS Number", "0123456789"],

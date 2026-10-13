@@ -19,6 +19,9 @@ for (const [width, height] of [
       name: "Employee profile",
       exact: true,
     });
+    await profile
+      .getByRole("button", { name: "Edit details", exact: true })
+      .click();
     const suffix = profile.getByLabel("Suffix", { exact: true });
     for (const value of ["VIII", "Ph.D."]) {
       await suffix.fill(value);
