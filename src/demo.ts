@@ -77,7 +77,7 @@ const org: Option[] = [
 ];
 const base = [
   ["employee_number", "System ID", "system"],
-  ["client_employee_number", "Client-based ID", "system"],
+  ["client_employee_number", "ID", "system"],
   ["name", "Employee Name", "system"],
   ["status", "Employment Status", "system"],
   ["position", "Position", "system"],
@@ -95,6 +95,7 @@ const clientSettings = new Map<
   string,
   {
     row_version: number;
+    id_mode: "automatic" | "manual";
     filter_keys: string[];
     default_values: Record<string, unknown>;
   }
@@ -197,11 +198,45 @@ let employees: Employee[] = Array.from({ length: 34 }, (_, i) => ({
 }));
 const clientCounters = new Map<string, number>();
 const clientIdentities = new Map<string, string>();
-function clientIdentity(employee: Employee, clientId: string) {
+function clientIdentity(
+  employee: Employee,
+  clientId: string,
+  requested?: string,
+  commit = true,
+) {
   const key = `${employee.id}:${clientId}`;
+  const supplied = requested?.trim().toUpperCase();
+  const existing = clientIdentities.get(key);
+  if (existing) {
+    if (supplied && supplied !== existing)
+      throw new Error(
+        "This employee already has an ID for this client; the existing ID is retained",
+      );
+    return existing;
+  }
+  const mode = clientSettings.get(clientId)?.id_mode ?? "automatic";
+  const used = (value: string) =>
+    [...clientIdentities].some(
+      ([binding, id]) => binding.endsWith(`:${clientId}`) && id === value,
+    );
+  if (mode === "manual") {
+    if (!supplied || !/^[A-Z0-9][A-Z0-9._/-]{0,63}$/.test(supplied))
+      throw new Error(
+        "Enter an ID of 1–64 letters, digits, hyphens, underscores, dots or slashes",
+      );
+    if (used(supplied))
+      throw new Error("ID is already used within this client");
+    if (commit) clientIdentities.set(key, supplied);
+    return supplied;
+  }
+  if (supplied)
+    throw new Error("This client uses automatic IDs; remove the manual ID");
   if (!clientIdentities.has(key)) {
-    const next = (clientCounters.get(clientId) || 0) + 1;
+    let next = (clientCounters.get(clientId) || 0) + 1;
+    const prefix = org.find((o) => o.id === clientId)?.code;
+    while (used(`${prefix}-${String(next).padStart(5, "0")}`)) next++;
     if (next > 99999) throw new Error("Client ID sequence is exhausted");
+    if (!commit) return `${prefix}-${String(next).padStart(5, "0")}`;
     clientCounters.set(clientId, next);
     clientIdentities.set(
       key,
@@ -209,6 +244,13 @@ function clientIdentity(employee: Employee, clientId: string) {
     );
   }
   return clientIdentities.get(key)!;
+}
+export function demoIdentityPreview(p: any) {
+  if (p.client_id && !["status", "position", "return"].includes(p.type)) {
+    const employee = employees.find((e) => e.id === p.employee_id);
+    if (!employee) throw new Error("Employee is unavailable");
+    clientIdentity(employee, p.client_id, p.manual_client_id, false);
+  }
 }
 for (const e of employees)
   e.values.client_employee_number = e.values.client
@@ -418,6 +460,7 @@ export async function demoQuery(op: string, q: any = {}) {
       row_version: 0,
       filter_keys: ["status"],
       default_values: {},
+      id_mode: "automatic",
       ...structuredClone(clientSettings.get(q.client_id)),
     };
   if (op === "filter_values") {
@@ -621,6 +664,10 @@ export async function demoMutate(op: string, p: any) {
   }
   if (op === "client_settings") {
     const prior = clientSettings.get(p.client_id);
+    if (p.id_mode !== undefined && context.profile.role !== "superadmin")
+      throw new Error("Only a Superadmin may configure ID allocation");
+    if (p.id_mode !== undefined && !["automatic", "manual"].includes(p.id_mode))
+      throw new Error("Choose Manual or Automatic IDs");
     if ((prior?.row_version ?? 0) !== p.expected_version)
       throw new Error("Client settings changed; reload before saving");
     if (p.filter_keys.length > 8)
@@ -641,6 +688,7 @@ export async function demoMutate(op: string, p: any) {
       row_version: (prior?.row_version ?? 0) + 1,
       filter_keys: p.filter_keys,
       default_values: defaults,
+      id_mode: p.id_mode ?? prior?.id_mode ?? "automatic",
     };
     clientSettings.set(p.client_id, structuredClone(result));
     context.revision++;
@@ -802,7 +850,7 @@ export async function demoMutate(op: string, p: any) {
       created.values.client =
         org.find((o) => o.id === p.client_id)?.label || null;
       created.values.client_employee_number = p.client_id
-        ? clientIdentity(created, p.client_id)
+        ? clientIdentity(created, p.client_id, p.manual_client_id)
         : null;
       employees.push(created);
       audit.unshift({
@@ -1054,7 +1102,8 @@ export async function demoMutate(op: string, p: any) {
     const e = employees.find((e) => e.id === p.employee_id)!;
     if (!e || e.row_version !== p.expected_version)
       throw new Error("Movement preview is stale");
-    if (p.client_id) clientIdentity(e, p.client_id);
+    if (p.client_id && !["status", "position", "return"].includes(p.type))
+      clientIdentity(e, p.client_id, p.manual_client_id);
     history.unshift({
       ...p,
       from_value:

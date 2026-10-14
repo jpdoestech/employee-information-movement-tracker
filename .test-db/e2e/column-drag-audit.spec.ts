@@ -27,7 +27,7 @@ for (const width of [375, 1366]) {
       .check();
     await dialog
       .getByRole("checkbox", {
-        name: "Select Client-based ID to move",
+        name: "Select ID to move",
         exact: true,
       })
       .check();

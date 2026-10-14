@@ -1,3 +1,9 @@
+import {
+  useClientIdMode,
+  clientIdError,
+  normalizeClientId,
+} from "../clientIdentity";
+import { ManualClientId } from "../components/ManualClientId";
 import { separationCategories, separationReasons } from "../profileFields";
 import { FloatingNotification } from "../components/FloatingNotification";
 import { useCallback, useEffect, useState } from "react";
@@ -26,6 +32,7 @@ export function MovementEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [manualId, setManualId] = useState("");
   const [eid, setEid] = useState(""),
     [typ, setTyp] = useState("transfer"),
     [dest, setDest] = useState(""),
@@ -99,6 +106,12 @@ export function MovementEditor({
   }, [dest]);
   const e = rows.find((r) => r.id === eid),
     o = options.find((o) => o.id === dest);
+  const identityClient =
+    !["status", "position", "return"].includes(typ) && o?.kind === "client"
+      ? o
+      : undefined;
+  const idConfig = useClientIdMode(identityClient?.id);
+  useEffect(() => setManualId(""), [dest]);
   const payload = () => ({
     employee_id: eid,
     expected_version: preview?.employee?.row_version ?? e?.row_version,
@@ -119,6 +132,9 @@ export function MovementEditor({
     category,
     assignment_id: assignmentId || undefined,
     values: destinationValues,
+    ...(identityClient && idConfig.mode === "manual" && manualId.trim()
+      ? { manual_client_id: normalizeClientId(manualId) }
+      : {}),
     status: typ === "status" ? value : undefined,
     position: typ === "position" ? value : undefined,
   });
@@ -231,6 +247,24 @@ export function MovementEditor({
                   />
                 )}
               </>
+            )}
+            {identityClient && idConfig.mode === "manual" && (
+              <ManualClientId
+                field={destinationFields.find(
+                  (field) => field.key === "client_employee_number",
+                )}
+                value={manualId}
+                onChange={setManualId}
+                disabled={busy}
+              />
+            )}
+            {identityClient && idConfig.error && (
+              <FloatingNotification>{idConfig.error}</FloatingNotification>
+            )}
+            {identityClient && !idConfig.mode && !idConfig.error && (
+              <FloatingNotification kind="loading">
+                Loading client ID settings…
+              </FloatingNotification>
             )}
             {separating && (
               <>
@@ -392,6 +426,7 @@ export function MovementEditor({
           className="primary"
           disabled={
             busy ||
+            (!!identityClient && !idConfig.mode) ||
             !eid ||
             !reason.trim() ||
             !date ||
@@ -407,6 +442,8 @@ export function MovementEditor({
             setBusy(true);
             setError("");
             try {
+              if (identityClient && manualId.trim() && clientIdError(manualId))
+                throw new Error(clientIdError(manualId));
               if (!preview) {
                 const d = await query("employee", { id: eid });
                 await validatePreview("movement", {

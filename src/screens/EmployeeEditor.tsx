@@ -1,3 +1,9 @@
+import {
+  useClientIdMode,
+  clientIdError,
+  normalizeClientId,
+} from "../clientIdentity";
+import { ManualClientId } from "../components/ManualClientId";
 import { lengthOfService } from "../employeeOverview";
 import { FieldTypeIcon } from "../components/FieldTypeIcon";
 import { fieldTextRole } from "../typography";
@@ -65,6 +71,7 @@ export function EmployeeEditor({
   const [editingOverview, setEditingOverview] = useState(false);
   const [editScope, setEditScope] = useState<string | null>(null);
   const [editorMounted, setEditorMounted] = useState(false);
+  const [manualId, setManualId] = useState("");
   const verticalTabs = false;
   const [values, setValues] = useState<Record<string, unknown>>({}),
     [changed, setChanged] = useState<Record<string, unknown>>({}),
@@ -76,6 +83,14 @@ export function EmployeeEditor({
     [confirmArchive, setConfirmArchive] = useState(false),
     [addressValid, setAddressValid] = useState<Record<string, boolean>>({}),
     [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
+  const initialClient = options.find(
+    (option) => option.id === target && option.kind === "client",
+  );
+  const idConfig = useClientIdMode(
+    !row ? initialClient?.id : undefined,
+    context.revision,
+  );
+  useEffect(() => setManualId(""), [target]);
   useEffect(() => {
     let active = true;
     if (row) {
@@ -220,7 +235,11 @@ export function EmployeeEditor({
     ...formFields.filter(
       (f) =>
         f.active &&
-        f.actions.includes("R") &&
+        (f.actions.includes("R") ||
+          (!row &&
+            idConfig.mode === "manual" &&
+            f.key === "client_employee_number" &&
+            f.actions.includes("C"))) &&
         employmentDisplayOrder.includes(f.key) &&
         !regular.some((entry) => entry.id === f.id) &&
         (![
@@ -464,6 +483,15 @@ export function EmployeeEditor({
         setChangeChoice(true);
         return;
       }
+      if (!row && initialClient) {
+        if (idConfig.error) throw new Error(idConfig.error);
+        if (!idConfig.mode)
+          throw new Error("Wait for client ID settings to load.");
+        if (idConfig.mode === "manual" && clientIdError(manualId)) {
+          revealField("client_employee_number");
+          throw new Error(clientIdError(manualId));
+        }
+      }
       const createValues = { ...changed };
       delete createValues.position;
       delete createValues.status;
@@ -492,6 +520,9 @@ export function EmployeeEditor({
               typeof changed.position === "string" && changed.position.trim()
                 ? changed.position.trim()
                 : undefined,
+            ...(!row && initialClient && idConfig.mode === "manual"
+              ? { manual_client_id: normalizeClientId(manualId) }
+              : {}),
             initial_employment: {
               change_kind: "official",
               status: employmentStatus(draft.status),
@@ -563,6 +594,14 @@ export function EmployeeEditor({
               value={target ? [target] : []}
               onChange={(v) => setTarget(v[0] || "")}
             />
+          )}
+          {!row && initialClient && !idConfig.mode && !idConfig.error && (
+            <FloatingNotification kind="loading">
+              Loading client ID settings…
+            </FloatingNotification>
+          )}
+          {!row && idConfig.error && (
+            <FloatingNotification>{idConfig.error}</FloatingNotification>
           )}
         </div>
         <div
@@ -696,7 +735,12 @@ export function EmployeeEditor({
                                       style={
                                         {
                                           "--field-width": valueWidth(
-                                            f.type,
+                                            f.key ===
+                                              "client_employee_number" &&
+                                              !row &&
+                                              idConfig.mode === "manual"
+                                              ? "short_text"
+                                              : f.type,
                                             f.options,
                                             f.validation?.government_id_digits,
                                             f.key,
@@ -705,9 +749,19 @@ export function EmployeeEditor({
                                         } as CSSProperties
                                       }
                                     >
-                                      {!editable.some(
-                                        (entry) => entry.id === f.id,
-                                      ) ? (
+                                      {f.key === "client_employee_number" &&
+                                      !row &&
+                                      idConfig.mode === "manual" ? (
+                                        <ManualClientId
+                                          field={f}
+                                          value={manualId}
+                                          onChange={setManualId}
+                                          required
+                                          disabled={busy}
+                                        />
+                                      ) : !editable.some(
+                                          (entry) => entry.id === f.id,
+                                        ) ? (
                                         <div className="field">
                                           <label
                                             htmlFor={`${tabId}-reference-${f.key}`}
@@ -1023,6 +1077,7 @@ export function EmployeeEditor({
             className="primary"
             disabled={
               busy ||
+              (!row && !!initialClient && !idConfig.mode) ||
               !Object.keys(changed).length ||
               Object.values(addressValid).includes(false)
             }

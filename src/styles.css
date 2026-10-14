@@ -4372,3 +4372,6 @@ dialog.employee-edit-dialog[open] {
 .read-only-control { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
 .read-only-control > output { min-width: 0; overflow-wrap: anywhere; font-size: var(--text-body); line-height: var(--leading-body); }
 @media (max-width:760px) {.read-only-control {min-height:44px;} }
+.manual-id-entry,
+.employee-edit-dialog .employee-tab-body fieldset.manual-id-entry,
+.transaction-form fieldset.manual-id-entry { border: 0; padding: 0; margin: 0; min-width: 0; max-width: 100%; }

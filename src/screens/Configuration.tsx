@@ -90,7 +90,7 @@ export function Organization({
               />
               {draft.kind === "client" && (
                 <small>
-                  Used for client-based IDs, for example COM-00001. Locked after
+                  Used for automatic IDs, for example COM-00001. Locked after
                   IDs are issued.
                 </small>
               )}

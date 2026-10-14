@@ -72,6 +72,27 @@ export function ClientSettings({
         </div>
         {settings && (
           <>
+            {context.profile.role === "superadmin" && (
+              <fieldset>
+                <legend>ID allocation</legend>
+                <SearchFilterPicker
+                  mode="single"
+                  label="ID allocation"
+                  options={[
+                    { id: "automatic", label: "Automatic" },
+                    { id: "manual", label: "Manual" },
+                  ]}
+                  value={[settings.id_mode || "automatic"]}
+                  onChange={(ids) =>
+                    setSettings({ ...settings, id_mode: ids[0] || "automatic" })
+                  }
+                />
+                <p className="help-text">
+                  IDs are unique within this client. Existing IDs are retained
+                  when the mode changes.
+                </p>
+              </fieldset>
+            )}
             <fieldset>
               <legend>Direct employee filters</legend>
               <p className="muted">
@@ -175,7 +196,10 @@ export function ClientSettings({
                 expected_version: settings.row_version,
                 filter_keys: settings.filter_keys,
                 ...(context.profile.role === "superadmin"
-                  ? { default_values: settings.default_values }
+                  ? {
+                      default_values: settings.default_values,
+                      id_mode: settings.id_mode || "automatic",
+                    }
                   : {}),
                 reason: "Configure client entry defaults and direct filters",
               });

@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { demoQuery, demoMutate } from "./demo";
+import { demoQuery, demoMutate, demoIdentityPreview } from "./demo";
 import { requireConfirmation } from "./components/TransactionConfirmation";
 import { trackTransaction } from "./transactions";
 const url = import.meta.env.VITE_SUPABASE_URL,
@@ -54,7 +54,10 @@ export async function query<T = any>(
   return data as T;
 }
 export async function preview(operation: string, p: unknown) {
-  if (demo) return { valid: true };
+  if (demo) {
+    if (operation === "movement") demoIdentityPreview(p);
+    return { valid: true };
+  }
   if (!supabase) throw new Error("Supabase is not configured");
   return trackTransaction("Validating transaction", async () => {
     const { data, error } = await supabase!.rpc("transaction_preview", {

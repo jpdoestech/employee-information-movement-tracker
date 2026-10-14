@@ -2875,6 +2875,63 @@ try {
     await assert.rejects(m(id.sa,'field',{...f,form_group_id:randomUUID(),expected_version:version,targets:[]}),/foreign key/);
   });
 
+  await test("manual IDs are client-scoped, normalized, atomic, and idempotent", async () => {
+    const c = randomUUID(), other = randomUUID();
+    await owner.query("insert into public.clients(id,branch_id,code,name) values($1,$2,'MID','Manual identity test'),($3,$2,'MIO','Other manual identity test')", [c,id.b1,other]);
+    const settings = (user, payload, request=randomUUID()) => as(user, connection => connection.query("select public.set_client_settings($1,$2) r", [payload,request]).then(r=>r.rows[0].r));
+    const cfg = {client_id:c,expected_version:0,filter_keys:['status'],id_mode:'manual',reason:'Synthetic ID mode test'};
+    await settings(id.sa,cfg);
+    assert.equal((await as(id.sa, connection=>connection.query("select public.client_settings($1) r",[{client_id:c}]))).rows[0].r.id_mode,'manual');
+    await settings(id.sa,{...cfg,client_id:other});
+    const payload = {target_level:'client',branch_id:id.b1,client_id:c,values:{last_name:'Manual',first_name:'Identity'}};
+    const before=(await owner.query("select count(*)::int n from public.employees")).rows[0].n;
+    await assert.rejects(m(id.sa,'employee_create',payload),{code:'22023'});
+    await assert.rejects(m(id.sa,'employee_create',{...payload,manual_client_id:'bad space'}),{code:'22023'});
+    assert.equal((await owner.query("select count(*)::int n from public.employees")).rows[0].n,before);
+    const request=randomUUID(), input={...payload,manual_client_id:'  ab-00001  '};
+    const employee=await m(id.sa,'employee_create',input,request);
+    assert.deepEqual(await m(id.sa,'employee_create',input,request),employee);
+    assert.equal((await q(id.sa,'employee',{id:employee.id})).employee.values.client_employee_number,'AB-00001');
+    await assert.rejects(m(id.sa,'employee_create',{...payload,manual_client_id:'Ab-00001'}),{code:'23505'});
+    const same=await m(id.sa,'employee_create',{...payload,client_id:other,manual_client_id:'AB-00001'});
+    assert.equal((await q(id.sa,'employee',{id:same.id})).employee.values.client_employee_number,'AB-00001');
+    assert.equal((await owner.query("select employee_id_counter from public.clients where id=$1",[c])).rows[0].employee_id_counter,0);
+    await assert.rejects(settings(id.sa,{...cfg,expected_version:0}),/changed/);
+    await assert.rejects(settings(id.admin,{...cfg,expected_version:1}),{code:'42501'});
+    const reserved=await m(id.sa,'employee_create',{...payload,manual_client_id:'MID-00001'});
+    await settings(id.sa,{...cfg,expected_version:1,id_mode:'automatic'});
+    const auto=await m(id.sa,'employee_create',payload);
+    assert.equal((await q(id.sa,'employee',{id:auto.id})).employee.values.client_employee_number,'MID-00002');
+    assert.equal((await q(id.sa,'employee',{id:reserved.id})).employee.values.client_employee_number,'MID-00001');
+    await assert.rejects(m(id.sa,'employee_create',{...payload,manual_client_id:'MANUAL'}),{code:'22023'});
+  });
+  await test("twenty concurrent manual ID creators have exactly one winner", async () => {
+    const c=randomUUID();
+    await owner.query("insert into public.clients(id,branch_id,code,name) values($1,$2,'RAC','Manual race test')",[c,id.b1]);
+    await as(id.sa,connection=>connection.query("select public.set_client_settings($1,$2)",[{client_id:c,expected_version:0,filter_keys:['status'],id_mode:'manual',reason:'Synthetic ID race test'},randomUUID()]));
+    const raced=await concurrent('employee_create',Array.from({length:20},(_,i)=>({target_level:'client',branch_id:id.b1,client_id:c,manual_client_id:'000023',values:{last_name:'Race',first_name:String(i)}})));
+    assert.equal(raced.filter(r=>r.ok).length,1);
+    const entries=(await owner.query("select manual_id,sequence_number,client_employee_number from public.employee_client_ids where client_id=$1",[c])).rows;
+    assert.deepEqual(entries,[{manual_id:'000023',sequence_number:null,client_employee_number:'000023'}]);
+  });
+  await test("manual movement previews roll back IDs and field denial blocks issuance", async () => {
+    const c=randomUUID();
+    await owner.query("insert into public.clients(id,branch_id,code,name) values($1,$2,'MOV','Manual movement identity test')",[c,id.b1]);
+    await as(id.sa,connection=>connection.query("select public.set_client_settings($1,$2)",[{client_id:c,expected_version:0,filter_keys:['status'],id_mode:'manual',reason:'Synthetic movement ID test'},randomUUID()]));
+    const employee=await m(id.sa,'employee_create',{target_level:'branch',branch_id:id.b1,values:{last_name:'Movement',first_name:'Identity'}});
+    const payload={employee_id:employee.id,expected_version:await revision(employee.id),type:'reassignment',target_level:'client',branch_id:id.b1,client_id:c,effective_on:date(1),manual_client_id:'MOV-00023',reason:'Synthetic manual reassignment'};
+    await as(id.sa,connection=>connection.query("select public.transaction_preview($1,$2)",['movement',payload]));
+    assert.equal((await owner.query("select count(*)::int n from public.employee_client_ids where client_id=$1",[c])).rows[0].n,0);
+    const deny=(await owner.query("insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'C','deny' from public.field_definitions where key='client_employee_number' returning id",[id.admin])).rows[0].id;
+    await assert.rejects(m(id.admin,'movement',payload),error=>error.code==='42501' && error.message.includes('Creating an ID'));
+    assert.equal((await owner.query("select count(*)::int n from public.employee_client_ids where client_id=$1",[c])).rows[0].n,0);
+    await owner.query("delete from public.field_access_policies where id=$1",[deny]);
+    const movement=await m(id.admin,'movement',payload);
+    const stored=(await owner.query("select payload from public.employee_movements where id=$1",[movement.id])).rows[0].payload;
+    assert.equal(Object.hasOwn(stored,'manual_client_id'),false);
+    assert.equal((await owner.query("select client_employee_number from public.employee_client_ids where employee_id=$1 and client_id=$2",[employee.id,c])).rows[0].client_employee_number,'MOV-00023');
+    await assert.rejects(as(id.admin,connection=>connection.query("select * from public.employee_client_ids")),{code:'42501'});
+  });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
     ".test-db/reports/verification/database.json",

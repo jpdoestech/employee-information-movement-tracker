@@ -76,7 +76,7 @@ for (const [width, height] of [
     });
     expect(await overview.locator("dt").allTextContents()).toEqual([
       "System ID",
-      "Client-based ID",
+      "ID",
       "Primary Branch",
       "Primary Client",
       "Department",
