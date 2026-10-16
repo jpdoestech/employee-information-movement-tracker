@@ -894,6 +894,15 @@ try {
       }),
       { code: "23P01" },
     );
+    await m(id.sa, "employee_update", {
+      id: e3,
+      expected_version: await revision(e3),
+      values: {
+        department: "Operations",
+        date_hired: "2020-01-01",
+        employment_type: "Regular",
+      },
+    });
     await m(id.sa, "movement", {
       employee_id: e3,
       expected_version: await revision(e3),
@@ -2931,6 +2940,374 @@ try {
     assert.equal(Object.hasOwn(stored,'manual_client_id'),false);
     assert.equal((await owner.query("select client_employee_number from public.employee_client_ids where employee_id=$1 and client_id=$2",[employee.id,c])).rows[0].client_employee_number,'MOV-00023');
     await assert.rejects(as(id.admin,connection=>connection.query("select * from public.employee_client_ids")),{code:'42501'});
+  });
+  await test("omitted and null field sensitivity cannot declassify restricted values", async () => {
+    const f = await m(id.sa, "field", {
+      group_id: id.core,
+      key: "audit_restricted_regression",
+      label: "Audit restricted regression",
+      type: "short_text",
+      sensitivity: "restricted",
+      scope_mode: "selected",
+      options: [],
+      validation: {},
+      targets: [{ scope_type: "branch", scope_id: id.b1 }],
+    });
+    const employee = await m(id.sa, "employee_create", {
+      target_level: "branch",
+      branch_id: id.b1,
+      values: {
+        last_name: "Restricted",
+        first_name: "Regression",
+        audit_restricted_regression: "Synthetic private value",
+      },
+    });
+    const input = {
+      id: f.id,
+      expected_version: 1,
+      group_id: id.core,
+      key: "audit_restricted_regression",
+      label: "Audit restricted regression",
+      type: "short_text",
+      options: [],
+      validation: {},
+    };
+    for (const extra of [{}, { sensitivity: null }]) {
+      const version = (
+        await owner.query(
+          "select row_version from public.field_definitions where id=$1",
+          [f.id],
+        )
+      ).rows[0].row_version;
+      await m(id.admin, "field", {
+        ...input,
+        expected_version: version,
+        ...extra,
+      });
+      assert.equal((await owner.query("select scope_mode from public.field_definitions where id=$1",[f.id])).rows[0].scope_mode,"selected");
+      assert.deepEqual((await owner.query("select scope_type,scope_id from public.field_scope_targets where field_id=$1",[f.id])).rows,[{scope_type:"branch",scope_id:id.b1}]);
+      assert.equal(
+        (
+          await owner.query(
+            "select sensitivity from public.field_definitions where id=$1",
+            [f.id],
+          )
+        ).rows[0].sensitivity,
+        "restricted",
+      );
+      assert.equal(
+        Object.hasOwn(
+          (await q(id.admin, "employee", { id: employee.id })).employee.values,
+          "audit_restricted_regression",
+        ),
+        false,
+      );
+    }
+    const version = (
+      await owner.query(
+        "select row_version from public.field_definitions where id=$1",
+        [f.id],
+      )
+    ).rows[0].row_version;
+    await assert.rejects(
+      m(id.admin, "field", {
+        ...input,
+        expected_version: version,
+        sensitivity: "normal",
+      }),
+      { code: "42501" },
+    );
+  });
+  await test("inactive requirements cover direct status, ordinary and bulk writes without blocking unrelated legacy edits", async () => {
+    const employee = await m(id.sa, "employee_create", {
+      initial_position: "Analyst",
+      values: { last_name: "Inactive", first_name: "Guard" },
+    });
+    const status = {
+      employee_id: employee.id,
+      expected_version: 1,
+      type: "status",
+      status: "Inactive",
+      effective_on: today,
+      reason: "Synthetic inactive guard",
+    };
+    await assert.rejects(m(id.sa, "movement", status), { code: "22023" });
+    const complete = {
+      department: "Operations",
+      date_hired: "2020-01-01",
+      employment_type: "Regular",
+      status_effective_date: today,
+      separation_category: "VOLUNTARY",
+      separation_reason: "Retirement",
+    };
+    await m(id.sa, "employee_update", {
+      id: employee.id,
+      expected_version: 1,
+      values: complete,
+    });
+    await m(id.sa, "movement", {
+      ...status,
+      expected_version: await revision(employee.id),
+      status: "Separated",
+      separation_category: "VOLUNTARY",
+      separation_reason: "Retirement",
+    });
+    const version = await revision(employee.id);
+    const counts = async () =>
+      (
+        await owner.query(
+          "select (select count(*) from public.audit_log) audit,(select count(*) from public.sync_outbox) outbox",
+        )
+      ).rows[0];
+    const before = await counts();
+    await assert.rejects(
+      m(id.sa, "employee_update", {
+        id: employee.id,
+        expected_version: version,
+        values: { department: null },
+      }),
+      { code: "22023" },
+    );
+    await assert.rejects(
+      m(id.sa, "bulk_update", {
+        rows: [{ id: employee.id, row_version: version }],
+        values: { date_hired: null },
+      }),
+      { code: "22023" },
+    );
+    assert.deepEqual(await counts(), before);
+    assert.equal(await revision(employee.id), version);
+    // Old incomplete profiles remain editable outside employment fields.
+    await owner.query(
+      "update public.employees set custom_values=custom_values-'department' where id=$1",
+      [employee.id],
+    );
+    await m(id.sa, "employee_update", {
+      id: employee.id,
+      expected_version: version,
+      values: { email: "legacy-edit@example.invalid" },
+    });
+    assert.equal(
+      (await q(id.sa, "employee", { id: employee.id })).employee.values.email,
+      "legacy-edit@example.invalid",
+    );
+  });
+  await test("same-day non-active creation is valid and void restores the initial placement", async () => {
+    const employee = await m(id.sa, "employee_create", {
+      target_level: "branch",
+      branch_id: id.b1,
+      initial_position: "Analyst",
+      values: {
+        last_name: "Same day",
+        first_name: "Inactive",
+        department: "Operations",
+        date_hired: "2020-01-01",
+        employment_type: "Regular",
+        status_effective_date: today,
+        separation_category: "VOLUNTARY",
+        separation_reason: "Retirement",
+      },
+      initial_employment: { change_kind: "official", status: "Inactive" },
+    });
+    const detail = await q(id.sa, "employee", { id: employee.id });
+    assert.equal(detail.employee.values.status, "Inactive");
+    const movement = (
+      await owner.query(
+        "select id from public.employee_movements where employee_id=$1 and type='status'",
+        [employee.id],
+      )
+    ).rows[0].id;
+    await m(id.sa, "void_movement", {
+      id: movement,
+      expected_version: await revision(employee.id),
+      reason: "Synthetic same-day reversal",
+    });
+    const restored = await q(id.sa, "employee", { id: employee.id });
+    assert.equal(restored.employee.values.status, "Active");
+    assert.equal(restored.employee.values.branch, "Example North Branch");
+  });
+  await test("voiding department movements restores values and rejects overwriting later corrections", async () => {
+    const employee = await m(id.sa, "employee_create", {
+      target_level: "branch",
+      branch_id: id.b1,
+      initial_position: "Analyst",
+      values: {
+        last_name: "Department",
+        first_name: "Reversal",
+        department: "Operations",
+      },
+    });
+    await m(id.sa, "employee_update", {
+      id: employee.id,
+      expected_version: 1,
+      values: { department: "Sales" },
+      employment: { change_kind: "official" },
+    });
+    const movement = (
+      await owner.query(
+        "select id from public.employee_movements where employee_id=$1",
+        [employee.id],
+      )
+    ).rows[0].id;
+    await m(id.sa, "employee_update", {
+      id: employee.id,
+      expected_version: await revision(employee.id),
+      values: { department: "Sales corrected" },
+      employment: { change_kind: "correction" },
+    });
+    await assert.rejects(
+      m(id.sa, "void_movement", {
+        id: movement,
+        expected_version: await revision(employee.id),
+        reason: "Cannot overwrite later correction",
+      }),
+      { code: "40001" },
+    );
+    await m(id.sa, "employee_update", {
+      id: employee.id,
+      expected_version: await revision(employee.id),
+      values: { department: "Sales" },
+      employment: { change_kind: "correction" },
+    });
+    await m(id.sa, "void_movement", {
+      id: movement,
+      expected_version: await revision(employee.id),
+      reason: "Synthetic department reversal",
+    });
+    assert.equal(
+      (await q(id.sa, "employee", { id: employee.id })).employee.values
+        .department,
+      "Operations",
+    );
+    const reversal = (
+      await records(id.sa, { kind: "audit", search: "Operations" })
+    ).items.find(
+      (row) => row.entity_id === employee.id && row.operation === "void",
+    );
+    assert.ok(reversal);
+    assert.ok(reversal.from_value.includes("Sales"));
+    assert.ok(reversal.to_value.includes("Operations"));
+  });
+  await test("scheduler skips idle, backoff and live leases but preserves calendar reconciliation", async () => {
+    const schedule = await readFile("supabase/ops/schedule-sync.sql", "utf8");
+    const guard = schedule.slice(
+      schedule.indexOf("  where not exists"),
+      schedule.lastIndexOf("  $job$"),
+    );
+    assert.ok(guard.startsWith("  where not exists"));
+    await owner.query("begin");
+    try {
+      await owner.query("delete from public.sync_outbox where true");
+      await owner.query(
+        "update public.system_state set last_sync_date=app_private.today() where id=true",
+      );
+      const due = async () =>
+        (await owner.query(`select true ${guard}`)).rowCount > 0;
+      assert.equal(await due(), false);
+      await owner.query(
+        "insert into public.sync_outbox(action,revision,next_retry) values('test',1,now()+interval '1 hour')",
+      );
+      assert.equal(await due(), false);
+      await owner.query(
+        "update public.sync_outbox set next_retry=now() where true",
+      );
+      assert.equal(await due(), true);
+      await owner.query(
+        "update public.sync_outbox set status='processing',lease_until=now()+interval '15 minutes' where true",
+      );
+      assert.equal(await due(), false);
+      await owner.query(
+        "update public.sync_outbox set lease_until=now()-interval '1 minute' where true",
+      );
+      assert.equal(await due(), true);
+      await owner.query("delete from public.sync_outbox where true");
+      await owner.query(
+        "update public.system_state set last_sync_date=app_private.today()-1 where id=true",
+      );
+      assert.equal(await due(), true);
+    } finally {
+      await owner.query("rollback");
+    }
+  });
+  await test("typed projection preserves pages and records same-database cost comparison", async () => {
+    const optimized = (
+      await owner.query(
+        "select pg_get_functiondef('app_private.readable_employee_rows()'::regprocedure) definition",
+      )
+    ).rows[0].definition;
+    const source = await readFile(
+      "supabase/migrations/20261010001100_statement_scoped_read_projection.sql",
+      "utf8",
+    );
+    const baseline = source
+      .match(
+        /create function app_private\.readable_employee_rows\(\)[\s\S]+?\$\$;/,
+      )[0]
+      .replace("create function", "create or replace function");
+    const timings = {};
+    let expected;
+    try {
+      for (const [label, definition] of [
+        ["baseline", baseline],
+        ["typed", optimized],
+      ]) {
+        await owner.query(definition);
+        timings[label] = [];
+        for (let sample = 0; sample < 3; sample++) {
+          const started = performance.now();
+          const page = await q(id.sa, "employees", {
+            search: "Synthetic Load",
+            sort: "name",
+            limit: 100,
+            offset: 100,
+          });
+          timings[label].push(Math.round(performance.now() - started));
+          if (expected) assert.deepEqual(page, expected);
+          else expected = page;
+        }
+      }
+      results.push({
+        name: "projection cost comparison",
+        syntheticRows: 1000,
+        latenciesMs: timings,
+      });
+    } finally {
+      await owner.query(optimized);
+    }
+  });
+  await test("single-pass export matches deterministic pages without widening public pagination", async () => {
+    const filter = {
+      search: "Synthetic Load",
+      sort: "name",
+      direction: "desc",
+    };
+    const expected = [];
+    for (let offset = 0; offset < 1000; offset += 100)
+      expected.push(
+        ...(await q(id.sa, "employees", { ...filter, limit: 100, offset }))
+          .items,
+      );
+    const started = performance.now();
+    const exported = await as(
+      id.sa,
+      async (c) =>
+        (await c.query("select public.export_employees($1) r", [filter]))
+          .rows[0].r,
+    );
+    assert.equal(exported.items.length, 1000);
+    assert.deepEqual(exported.items, expected);
+    results.push({
+      name: "single-pass 1000-row export",
+      latencyMs: Math.round(performance.now() - started),
+    });
+    await assert.rejects(
+      q(id.sa, "employees", { limit: 10001 }),
+      /Invalid pagination/,
+    );
+    await assert.rejects(
+      as(id.sa, (c) => c.query("select app_private.employee_page('{}',true)")),
+      { code: "42501" },
+    );
   });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(

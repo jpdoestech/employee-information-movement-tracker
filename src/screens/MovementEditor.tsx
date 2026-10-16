@@ -4,7 +4,6 @@ import {
   normalizeClientId,
 } from "../clientIdentity";
 import { ManualClientId } from "../components/ManualClientId";
-import { separationCategories, separationReasons } from "../profileFields";
 import { FloatingNotification } from "../components/FloatingNotification";
 import { useCallback, useEffect, useState } from "react";
 import { Dialog } from "../components/Dialog";
@@ -52,6 +51,7 @@ export function MovementEditor({
     [selectedEmployee, setSelectedEmployee] = useState<Option[]>([]),
     [assignmentId, setAssignmentId] = useState(""),
     [destinationFields, setDestinationFields] = useState<Field[]>([]),
+    [employeeFields, setEmployeeFields] = useState<Field[]>([]),
     [destinationValues, setDestinationValues] = useState<
       Record<string, unknown>
     >({});
@@ -75,10 +75,16 @@ export function MovementEditor({
     if (eid)
       query("employee", { id: eid })
         .then((d) => {
-          if (active) setAssignments(d.assignments);
+          if (active) {
+            setAssignments(d.assignments);
+            setEmployeeFields(d.fields);
+          }
         })
         .catch(() => {
-          if (active) setAssignments([]);
+          if (active) {
+            setAssignments([]);
+            setEmployeeFields([]);
+          }
         });
     return () => {
       active = false;
@@ -273,7 +279,11 @@ export function MovementEditor({
                   <SearchFilterPicker
                     mode="single"
                     label="Separation Category"
-                    options={separationCategories.map((id) => ({
+                    options={(
+                      employeeFields.find(
+                        (field) => field.key === "separation_category",
+                      )?.options || []
+                    ).map((id) => ({
                       id,
                       label: id,
                     }))}
@@ -286,7 +296,11 @@ export function MovementEditor({
                   <SearchFilterPicker
                     mode="single"
                     label="Reason for Separation"
-                    options={separationReasons.map((id) => ({ id, label: id }))}
+                    options={(
+                      employeeFields.find(
+                        (field) => field.key === "separation_reason",
+                      )?.options || []
+                    ).map((id) => ({ id, label: id }))}
                     value={separationReason ? [separationReason] : []}
                     onChange={(v) => setSeparationReason(v[0] ?? "")}
                   />

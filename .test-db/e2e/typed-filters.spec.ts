@@ -33,7 +33,7 @@ async function createField(
   await expect(d).toHaveCount(0);
 }
 for (const width of [320, 1366])
-  test(`typed column filters use bounded native values at ${width}px`, async ({
+  test(`client defaults keep typed values and direct filters stay bounded at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 740 });
@@ -48,90 +48,74 @@ for (const width of [320, 1366])
     );
     await page.goto("/#employees");
     await page
-      .getByRole("button", { name: "More filters", exact: true })
+      .getByRole("button", { name: "Configure client filters and defaults" })
       .click();
     const editor = page.getByRole("dialog", {
-      name: "More filters",
+      name: "Client entry settings",
       exact: true,
     });
-    async function chooseColumn(label: string) {
-      await editor
-        .getByRole("button", { name: "Filter column", exact: true })
-        .click();
-      await page
-        .getByRole("dialog", { name: "Filter column options" })
-        .getByRole("option", { name: new RegExp(label) })
-        .click();
-    }
-    await chooseColumn("Workload score");
-    await editor.getByRole("button", { name: "Operator", exact: true }).click();
-    const operators = page.getByRole("dialog", { name: "Operator options" });
-    await expect(
-      operators.getByRole("option", { name: "Contains", exact: true }),
-    ).toHaveCount(0);
-    await operators
-      .getByRole("option", { name: "Between", exact: true })
-      .click();
-    await editor.getByLabel("Range start").fill("20");
-    await editor.getByLabel("Range end").fill("10");
     await editor
-      .getByRole("button", { name: "Add filter", exact: true })
+      .getByRole("button", { name: "Client settings scope", exact: true })
       .click();
-    await expect(page.getByRole("alert")).toContainText(
-      "range start must not exceed",
-    );
     await page
-      .getByRole("button", { name: "Dismiss error", exact: true })
+      .getByRole("dialog", { name: "Client settings scope options" })
+      .getByRole("option")
+      .first()
       .click();
-    await editor.getByLabel("Range end").fill("30");
+    for (const label of ["Client default fields", "Direct filter columns"]) {
+      await editor.getByRole("button", { name: label, exact: true }).click();
+      const picker = page.getByRole("dialog", {
+        name: `${label} options`,
+        exact: true,
+      });
+      await picker.getByRole("combobox").fill("Work");
+      await picker.getByRole("option", { name: /Workload score/ }).click();
+      await picker.getByRole("option", { name: /Work arrangement/ }).click();
+      const bounds = (await picker.boundingBox())!;
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      await picker.getByRole("button", { name: "Apply", exact: true }).click();
+    }
     await editor
-      .getByRole("button", { name: "Add filter", exact: true })
+      .getByRole("textbox", { name: "Workload score", exact: true })
+      .fill("1234.5");
+    await editor
+      .getByRole("button", { name: "Work arrangement", exact: true })
+      .click();
+    await page
+      .getByRole("dialog", { name: "Work arrangement options", exact: true })
+      .getByRole("option", { name: "Remote", exact: true })
       .click();
     await expect(
-      editor.getByRole("button", { name: "Remove Workload score filter" }),
-    ).toBeVisible();
-    await chooseColumn("Work arrangement");
-    await editor.getByRole("button", { name: "Operator", exact: true }).click();
-    await operators
-      .getByRole("option", { name: "Is any of", exact: true })
+      editor.getByRole("textbox", { name: "Workload score", exact: true }),
+    ).toHaveValue("1,234.50");
+    await editor
+      .getByRole("button", { name: "Save client settings", exact: true })
+      .click();
+    await page
+      .getByRole("dialog", { name: "Save client entry settings", exact: true })
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    await expect(editor).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Configure client filters and defaults" })
       .click();
     await editor
-      .getByRole("button", { name: "Column filter value", exact: true })
+      .getByRole("button", { name: "Client settings scope", exact: true })
       .click();
-    const values = page.getByRole("dialog", {
-      name: "Column filter value options",
-    });
-    await values.getByRole("option", { name: "Onsite", exact: true }).click();
-    await values.getByRole("option", { name: "Remote", exact: true }).click();
-    await values.getByRole("button", { name: "Apply", exact: true }).click();
-    await editor
-      .getByRole("button", { name: "Add filter", exact: true })
+    await page
+      .getByRole("dialog", { name: "Client settings scope options" })
+      .getByRole("option")
+      .first()
       .click();
     await expect(
-      editor.getByRole("button", { name: "Remove Work arrangement filter" }),
-    ).toBeVisible();
-    expect(
-      await editor.evaluate((e) => e.scrollWidth <= e.clientWidth + 1),
-    ).toBe(true);
+      editor.getByRole("textbox", { name: "Workload score", exact: true }),
+    ).toHaveValue("1,234.50");
     await expect(
-      page.getByRole("status", { name: "Loading authorized data…" }),
-    ).toHaveCount(0);
-    const saved = page.getByRole("button", {
-      name: "Dismiss notice",
-      exact: true,
-    });
-    if (await saved.isVisible()) await saved.click();
-    const columnTrigger = editor.getByRole("button", {
-      name: "Filter column",
-      exact: true,
-    });
-    expect((await columnTrigger.boundingBox())!.height).toBeLessThanOrEqual(
-      width === 320 ? 48 : 40,
-    );
-    await page.screenshot({
-      path: `.test-db/results/typed-filters-${width}.png`,
-    });
+      editor.getByRole("button", { name: "Work arrangement", exact: true }),
+    ).toContainText("Remote");
   });
+
 test("matching active definitions offer reuse without creating a duplicate or losing draft on cancellation", async ({
   page,
 }) => {

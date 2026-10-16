@@ -81,10 +81,20 @@ for (const [width, height] of [
       page.getByRole("searchbox", { name: "Search employees" }),
       "12px",
     );
-    expect(await page.locator(".register > .section-heading").evaluate(e => getComputedStyle(e).paddingLeft)).toBe("12px");
-    expect(await page.locator(".register > .section-heading").evaluate(e => getComputedStyle(e).paddingRight)).toBe("12px");
+    expect(
+      await page
+        .locator(".register > .section-heading")
+        .evaluate((e) => getComputedStyle(e).paddingLeft),
+    ).toBe("12px");
+    expect(
+      await page
+        .locator(".register > .section-heading")
+        .evaluate((e) => getComputedStyle(e).paddingRight),
+    ).toBe("12px");
     if (width > 760)
-      expect((await page.locator(".register .search-control").boundingBox())!.width).toBeLessThanOrEqual(320);
+      expect(
+        (await page.locator(".register .search-control").boundingBox())!.width,
+      ).toBeLessThanOrEqual(320);
     if (width < 760)
       expect(
         (await page.locator(".register .search-control").boundingBox())!.width,
@@ -120,6 +130,8 @@ for (const [width, height] of [
       const modal = page.getByRole("dialog", { name: title, exact: true });
       await size(modal.locator("header h2"), "14px");
       await bounded(modal, width, height);
+      if (title === "Customize Columns")
+        await modal.getByRole("tab", { name: "View settings" }).click();
       const input = modal
         .locator('input:not([type="checkbox"]), textarea')
         .first();
@@ -132,9 +144,14 @@ for (const [width, height] of [
         ).toContain("Segoe UI Variable");
       }
       if (title === "Create field definition") {
-        const type = modal.getByRole("button", { name: "Field type", exact: true });
+        const type = modal.getByRole("button", {
+          name: "Field type",
+          exact: true,
+        });
         await size(type, "14px");
-        expect((await type.locator(".picker-label").boundingBox())!.height).toBeLessThanOrEqual(22);
+        expect(
+          (await type.locator(".picker-label").boundingBox())!.height,
+        ).toBeLessThanOrEqual(22);
       }
       await page.screenshot({
         path: `.test-db/reports/verification/typography-${route}-${width}x${height}.png`,

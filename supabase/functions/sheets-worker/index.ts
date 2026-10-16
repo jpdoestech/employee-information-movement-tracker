@@ -27,6 +27,7 @@ Deno.serve(async (req) => {
   const deadline = Date.now() + 110000;
   let current: string | undefined;
   let suspended = false;
+  let failed = false;
   async function fence() {
     if (Date.now() > deadline) throw new Error("Bounded worker time elapsed");
     if (!(await rpc("heartbeat", { token: job.token })).valid)
@@ -71,120 +72,137 @@ Deno.serve(async (req) => {
         continue;
       current = book.id;
       suspended = false;
-      await fence();
-      if (
-        book.approved &&
-        book.spreadsheet_id &&
-        book.last_synced_revision >= job.revision
-      )
-        continue;
-      if (!book.approved) {
-        await rpc("book_status", { id: book.id, status: "Suspended" });
-        continue;
-      }
-      let sheet = book.spreadsheet_id;
-      if (!sheet) {
-        const found = await google(
-          "https://www.googleapis.com/drive/v3/files?q=" +
-            encodeURIComponent(
-              `trashed=false and appProperties has { key='eimt_scope' and value='${book.id}' }`,
-            ) +
-            "&fields=files(id)",
+      try {
+        await fence();
+        if (
+          book.approved &&
+          book.spreadsheet_id &&
+          book.last_synced_revision >= job.revision
+        )
+          continue;
+        if (!book.approved) {
+          await rpc("book_status", { id: book.id, status: "Suspended" });
+          continue;
+        }
+        let sheet = book.spreadsheet_id;
+        if (!sheet) {
+          const found = await google(
+            "https://www.googleapis.com/drive/v3/files?q=" +
+              encodeURIComponent(
+                `trashed=false and appProperties has { key='eimt_scope' and value='${book.id}' }`,
+              ) +
+              "&fields=files(id)",
+            token,
+          );
+          if (found.files.length > 1)
+            throw new Error("Duplicate workbook requires reconciliation");
+          sheet = found.files[0]?.id;
+          if (!sheet) {
+            sheet = (
+              await google("https://www.googleapis.com/drive/v3/files", token, {
+                method: "POST",
+                body: JSON.stringify({
+                  name: book.name,
+                  mimeType: "application/vnd.google-apps.spreadsheet",
+                  parents: [folder],
+                  appProperties: { eimt_scope: book.id },
+                }),
+              })
+            ).id;
+          }
+          await rpc("mapping", {
+            id: book.id,
+            spreadsheet_id: sheet,
+            folder_id: folder,
+          });
+        }
+        const permissions = await google(
+          `https://www.googleapis.com/drive/v3/files/${sheet}/permissions?fields=permissions(type,role,emailAddress)`,
           token,
         );
-        if (found.files.length > 1)
-          throw new Error("Duplicate workbook requires reconciliation");
-        sheet = found.files[0]?.id;
-        if (!sheet) {
-          sheet = (
-            await google("https://www.googleapis.com/drive/v3/files", token, {
+        if (
+          !sharingApproved(permissions.permissions || [], book.sharing_emails)
+        ) {
+          suspended = true;
+          await rpc("book_status", { id: book.id, status: "Suspended" });
+          throw new Error("Workbook sharing exceeds approval");
+        }
+        const snapshot = await rpc("snapshot", { id: book.id });
+        let meta = await google(
+          `https://sheets.googleapis.com/v4/spreadsheets/${sheet}?fields=sheets(properties)`,
+          token,
+        );
+        const missing = [
+          "Employees_Current",
+          "Assignments_Current",
+          "Movement_History",
+          "Sync_Metadata",
+        ].filter(
+          (title) =>
+            !meta.sheets.some((s: any) => s.properties.title === title),
+        );
+        if (missing.length) {
+          await google(
+            `https://sheets.googleapis.com/v4/spreadsheets/${sheet}:batchUpdate`,
+            token,
+            {
               method: "POST",
               body: JSON.stringify({
-                name: book.name,
-                mimeType: "application/vnd.google-apps.spreadsheet",
-                parents: [folder],
-                appProperties: { eimt_scope: book.id },
+                requests: missing.map((title) => ({
+                  addSheet: {
+                    properties: { title, hidden: title === "Sync_Metadata" },
+                  },
+                })),
               }),
-            })
-          ).id;
+            },
+          );
+          meta = await google(
+            `https://sheets.googleapis.com/v4/spreadsheets/${sheet}?fields=sheets(properties)`,
+            token,
+          );
         }
-        await rpc("mapping", {
-          id: book.id,
-          spreadsheet_id: sheet,
-          folder_id: folder,
-        });
-      }
-      const permissions = await google(
-        `https://www.googleapis.com/drive/v3/files/${sheet}/permissions?fields=permissions(type,role,emailAddress)`,
-        token,
-      );
-      if (
-        !sharingApproved(permissions.permissions || [], book.sharing_emails)
-      ) {
-        suspended = true;
-        await rpc("book_status", { id: book.id, status: "Suspended" });
-        throw new Error("Workbook sharing exceeds approval");
-      }
-      const snapshot = await rpc("snapshot", { id: book.id });
-      let meta = await google(
-        `https://sheets.googleapis.com/v4/spreadsheets/${sheet}?fields=sheets(properties)`,
-        token,
-      );
-      const missing = [
-        "Employees_Current",
-        "Assignments_Current",
-        "Movement_History",
-        "Sync_Metadata",
-      ].filter(
-        (title) => !meta.sheets.some((s: any) => s.properties.title === title),
-      );
-      if (missing.length) {
+        await fence();
+        // Recheck current approval after external reads, immediately before projection write.
+        const latest = (await rpc("workbooks")).find(
+          (b: any) => b.id === book.id,
+        );
+        if (!latest?.approved || latest.row_version !== book.row_version)
+          throw new Error("Workbook policy changed during sync");
         await google(
           `https://sheets.googleapis.com/v4/spreadsheets/${sheet}:batchUpdate`,
           token,
           {
             method: "POST",
             body: JSON.stringify({
-              requests: missing.map((title) => ({
-                addSheet: {
-                  properties: { title, hidden: title === "Sync_Metadata" },
-                },
-              })),
+              requests: replacementRequests(
+                snapshotTabs(snapshot),
+                meta.sheets,
+              ),
             }),
           },
         );
-        meta = await google(
-          `https://sheets.googleapis.com/v4/spreadsheets/${sheet}?fields=sheets(properties)`,
+        await google(
+          `https://www.googleapis.com/drive/v3/files/${sheet}`,
           token,
+          { method: "PATCH", body: JSON.stringify({ name: book.name }) },
         );
+        await rpc("book_status", {
+          id: book.id,
+          status: "Synced",
+          revision: snapshot.revision,
+        });
+      } catch {
+        failed = true;
+        if (!suspended)
+          await rpc("book_status", { id: book.id, status: "Failed" }).catch(
+            () => {},
+          );
+        if (Date.now() > deadline) break;
       }
-      await fence();
-      // Recheck current approval after external reads, immediately before projection write.
-      const latest = (await rpc("workbooks")).find(
-        (b: any) => b.id === book.id,
-      );
-      if (!latest?.approved || latest.row_version !== book.row_version)
-        throw new Error("Workbook policy changed during sync");
-      await google(
-        `https://sheets.googleapis.com/v4/spreadsheets/${sheet}:batchUpdate`,
-        token,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            requests: replacementRequests(snapshotTabs(snapshot), meta.sheets),
-          }),
-        },
-      );
-      await google(
-        `https://www.googleapis.com/drive/v3/files/${sheet}`,
-        token,
-        { method: "PATCH", body: JSON.stringify({ name: book.name }) },
-      );
-      await rpc("book_status", {
-        id: book.id,
-        status: "Synced",
-        revision: snapshot.revision,
-      });
+    }
+    if (failed) {
+      await rpc("retry", { token: job.token });
+      return Response.json({ retryScheduled: true }, { status: 503 });
     }
     await rpc("complete", { token: job.token });
     return Response.json({ synced: true });

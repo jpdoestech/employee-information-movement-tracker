@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -101,36 +101,41 @@ export function RecordExplorer({
     [error, setError] = useState("");
   const set = (patch: Partial<ListFilter>) =>
     setFilter((f) => ({ ...f, ...patch, offset: 0 }));
+  const fetchedSearch = useRef(filter.search);
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError("");
-    const timer = setTimeout(() => {
-      query<{ items: RecordRow[]; total: number }>("record_page", {
-        kind,
-        ...filter,
-      })
-        .then((r) => {
-          if (!active) return;
-          if (filter.offset && filter.offset >= r.total) {
-            setFilter((f) => ({
-              ...f,
-              offset: Math.max(0, Math.ceil(r.total / f.limit) - 1) * f.limit,
-            }));
-            return;
-          }
-          setData(r);
+    const timer = setTimeout(
+      () => {
+        fetchedSearch.current = filter.search;
+        query<{ items: RecordRow[]; total: number }>("record_page", {
+          kind,
+          ...filter,
         })
-        .catch((e) => {
-          if (active) {
-            setError(e.message);
-            setData({ items: [], total: 0 });
-          }
-        })
-        .finally(() => {
-          if (active) setLoading(false);
-        });
-    }, 180);
+          .then((r) => {
+            if (!active) return;
+            if (filter.offset && filter.offset >= r.total) {
+              setFilter((f) => ({
+                ...f,
+                offset: Math.max(0, Math.ceil(r.total / f.limit) - 1) * f.limit,
+              }));
+              return;
+            }
+            setData(r);
+          })
+          .catch((e) => {
+            if (active) {
+              setError(e.message);
+              setData({ items: [], total: 0 });
+            }
+          })
+          .finally(() => {
+            if (active) setLoading(false);
+          });
+      },
+      filter.search === fetchedSearch.current ? 0 : 180,
+    );
     return () => {
       active = false;
       clearTimeout(timer);

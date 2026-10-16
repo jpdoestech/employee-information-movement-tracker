@@ -1,4 +1,6 @@
 import { RecordExplorer } from "./components/RecordExplorer";
+import { Appearance, SidebarToggle } from "./components/Appearance";
+import { refreshContext } from "./refreshContext";
 import { RowsPerPage } from "./components/RowsPerPage";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -58,6 +60,10 @@ const nav = [
   { id: "audit", label: "Audit history", icon: Settings2 },
 ];
 export default function App() {
+  const [mobileNavigation, setMobileNavigation] = useState(
+    () => matchMedia("(max-width:760px)").matches,
+  );
+  const navigation = useRef<HTMLElement>(null);
   const [authenticated, setAuthenticated] = useState(isDemo()),
     [ctx, setCtx] = useState<Context>(),
     [page, setPage] = useState(location.hash.slice(1) || "dashboard"),
@@ -86,6 +92,46 @@ export default function App() {
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false);
   const loadedUser = useRef<string | null>(null);
+  const fetchedSearch = useRef(filter.search);
+  useEffect(() => {
+    const media = matchMedia("(max-width:760px)");
+    const update = () => {
+      setMobileNavigation(media.matches);
+      setMenu(false);
+    };
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (!menu || !mobileNavigation) return;
+    const previous = document.activeElement as HTMLElement;
+    navigation.current?.querySelector<HTMLElement>("button,a")?.focus();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMenu(false);
+      }
+      if (event.key === "Tab") {
+        const items = Array.from(
+          navigation.current!.querySelectorAll<HTMLElement>("button,a"),
+        ).filter((item) => item.getClientRects().length);
+        const first = items[0],
+          last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", keydown);
+    return () => {
+      document.removeEventListener("keydown", keydown);
+      previous?.focus();
+    };
+  }, [menu, mobileNavigation]);
   const [correction, setCorrection] = useState<any>(),
     [correctionReason, setCorrectionReason] = useState("");
   const refresh = () => {
@@ -153,45 +199,61 @@ export default function App() {
         }
       }
     }
-    fetch();
-    const timer = setInterval(fetch, 30000);
-    const onFocus = () => fetch();
-    window.addEventListener("focus", onFocus);
+    const stop = refreshContext(fetch);
     return () => {
       active = false;
-      clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
+      stop();
     };
   }, [authenticated, version]);
   useEffect(() => {
-    if (!ctx) return;
+    if (!ctx || !["employees", "dashboard"].includes(page)) {
+      setLoading(false);
+      return;
+    }
     let active = true;
     setLoading(true);
     setError("");
-    const timer = setTimeout(() => {
-      Promise.all([
-        query("employees", filter),
-        page === "dashboard" ? query("dashboard") : Promise.resolve(undefined),
-      ])
-        .then(([result, r]) => {
-          if (active) {
-            setRows(result.items);
-            setTotal(result.total);
-            setReport(r);
-            setSelected([]);
-          }
-        })
-        .catch((e) => {
-          if (active) {
-            setError(e.message);
-            setRows([]);
-            setReport(undefined);
-          }
-        })
-        .finally(() => {
-          if (active) setLoading(false);
-        });
-    }, 180);
+    const timer = setTimeout(
+      () => {
+        fetchedSearch.current = filter.search;
+        Promise.all([
+          page === "employees"
+            ? query("employees", filter)
+            : Promise.resolve(undefined),
+          page === "dashboard"
+            ? query("dashboard")
+            : Promise.resolve(undefined),
+        ])
+          .then(([result, r]) => {
+            if (active) {
+              if (result && filter.offset && filter.offset >= result.total) {
+                setFilter((f) => ({
+                  ...f,
+                  offset:
+                    Math.max(0, Math.ceil(result.total / f.limit) - 1) *
+                    f.limit,
+                }));
+                return;
+              }
+              setRows(result?.items || []);
+              setTotal(result?.total || 0);
+              setReport(r);
+              setSelected([]);
+            }
+          })
+          .catch((e) => {
+            if (active) {
+              setError(e.message);
+              setRows([]);
+              setReport(undefined);
+            }
+          })
+          .finally(() => {
+            if (active) setLoading(false);
+          });
+      },
+      filter.search === fetchedSearch.current ? 0 : 180,
+    );
     return () => {
       active = false;
       clearTimeout(timer);
@@ -268,6 +330,9 @@ export default function App() {
           </div>
         </section>
         <section className="login-form">
+          <div className="login-appearance">
+            <Appearance />
+          </div>
           <span className="eyebrow">ACCOUNT ACCESS</span>
           <h2>Sign in</h2>
           <p>Use your authorized company account.</p>
@@ -343,7 +408,23 @@ export default function App() {
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <aside className={menu ? "sidebar open" : "sidebar"}>
+      <aside
+        ref={navigation}
+        className={menu ? "sidebar open" : "sidebar"}
+        inert={mobileNavigation && !menu}
+        role={mobileNavigation ? "dialog" : undefined}
+        aria-label={mobileNavigation ? "Navigation" : undefined}
+        aria-modal={mobileNavigation && menu ? true : undefined}
+      >
+        {mobileNavigation && (
+          <button
+            className="mobile-navigation-close"
+            aria-label="Close navigation"
+            onClick={() => setMenu(false)}
+          >
+            <X size={18} aria-hidden />
+          </button>
+        )}
         <a className="brand" href="#dashboard">
           <span className="brandmark">
             <GitBranch size={22} />
@@ -381,14 +462,15 @@ export default function App() {
         </div>
       </aside>
       {menu && (
-        <button
+        <div
           className="nav-scrim"
-          aria-label="Close navigation"
+          aria-hidden="true"
           onClick={() => setMenu(false)}
         />
       )}
-      <div className="workspace">
+      <div className="workspace" inert={mobileNavigation && menu}>
         <header className="topbar">
+          <SidebarToggle />
           <button
             className="menu-button"
             aria-label="Open navigation"
@@ -398,10 +480,16 @@ export default function App() {
           >
             <Menu size={22} />
           </button>
-          <div className="workspace-title">
-            <span className="breadcrumb">Employee Tracker</span>
-            <h1>{currentNav.label}</h1>
-          </div>
+          <nav className="workspace-title" aria-label="Breadcrumb">
+            <a className="breadcrumb" href="#dashboard">
+              Employee Tracker
+            </a>
+            <span className="breadcrumb-divider" aria-hidden>
+              {" "}
+              /{" "}
+            </span>
+            <h1 aria-current="page">{currentNav.label}</h1>
+          </nav>
           <nav className="section-navigation" aria-label="Section navigation">
             {sectionNav.map((n) => (
               <a
@@ -414,6 +502,7 @@ export default function App() {
             ))}
           </nav>
           <div className="account">
+            <Appearance />
             {isDemo() && (
               <span
                 className="environment-badge"

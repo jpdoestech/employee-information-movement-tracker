@@ -14,6 +14,13 @@ select cron.schedule(
       (select decrypted_secret from vault.decrypted_secrets where name='eimt_worker_secret')),
     body := '{}'::jsonb,
     timeout_milliseconds := 120000
+  )
+  -- Avoid idle Edge invocations/HTTP logs; the worker still owns lease fencing.
+  where not exists(select 1 from public.sync_outbox where status='processing' and lease_until>now())
+  and (
+    exists(select 1 from public.system_state where last_sync_date is distinct from app_private.today())
+    or exists(select 1 from public.sync_outbox
+      where (status='pending' or status='processing' and lease_until<=now()) and next_retry<=now())
   );
   $job$
 );

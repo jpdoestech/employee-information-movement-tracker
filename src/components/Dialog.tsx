@@ -36,8 +36,15 @@ export function Dialog({
   }
   useEffect(() => {
     const before = document.activeElement as HTMLElement;
-    ref.current!.showModal();
-    return () => before?.focus();
+    const dialog = ref.current!;
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      // Nested confirmations finish their cleanup before restoring the opener.
+      queueMicrotask(() => {
+        if (!dialog.open && before?.isConnected) before.focus();
+      });
+    };
   }, []);
   return (
     <dialog

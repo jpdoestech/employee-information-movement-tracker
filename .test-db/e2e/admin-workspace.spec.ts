@@ -58,6 +58,7 @@ test("personal row-number preference saves without changing identity columns", a
     name: "Customize Columns",
     exact: true,
   });
+  await editor.getByRole("tab", { name: "View settings", exact: true }).click();
   await editor.getByLabel("Show row numbers").uncheck();
   await editor
     .getByRole("button", { name: "Apply & Save", exact: true })

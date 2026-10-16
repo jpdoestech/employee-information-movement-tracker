@@ -56,7 +56,7 @@ for (const [width, height] of [
           .querySelector('td[title="synthetic1@example.invalid"]')
           ?.getBoundingClientRect().width,
         phoneWidth: el
-          .querySelector('td[title="Example only"]')
+          .querySelector('td[title="0912-345-6789"]')
           ?.getBoundingClientRect().width,
       };
     });

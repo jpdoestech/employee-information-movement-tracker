@@ -19,10 +19,6 @@ for (const width of [375, 1440]) {
     await page.goto("/");
     await page.getByRole("button", { name: "Explore synthetic demo" }).click();
     await page.goto("/#employees");
-    if (width < 760)
-      await page
-        .getByRole("button", { name: "More filters", exact: true })
-        .click();
     await page.getByRole("button", { name: "Status", exact: true }).click();
     const picker = page.getByRole("dialog", {
       name: "Status options",
@@ -63,7 +59,7 @@ for (const [width, height] of [
   [1440, 900],
   [812, 375],
 ]) {
-  test(`More Filters uses one bounded surface at ${width}x${height}`, async ({
+  test(`direct branch picker is bounded, searchable and preserves draft cancellation at ${width}x${height}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height });
@@ -73,57 +69,36 @@ for (const [width, height] of [
     const table = page.getByLabel("Scrollable employee table");
     await expect(table.locator("tbody tr").first()).toBeVisible();
     const before = await table.boundingBox();
-    await page
-      .getByRole("button", { name: "More filters", exact: true })
-      .click();
-    const editor = page.getByRole("dialog", {
-      name: "More filters",
+    const trigger = page.getByRole("button", { name: "Branches", exact: true });
+    await trigger.click();
+    const picker = page.getByRole("dialog", {
+      name: "Branches options",
       exact: true,
     });
-    await page.screenshot({
-      path: `.test-db/reports/screenshots/more-filters-${width}-${height}.png`,
-    });
-    await editor.getByRole("button", { name: "Branches", exact: true }).click();
-    const picker = editor.getByRole("dialog", { name: "Branches options" });
     await expect(picker.getByRole("combobox")).toBeFocused();
+    await picker.getByRole("combobox").fill("North");
     await picker.getByRole("option", { name: /North/ }).click();
-    await editor.getByRole("button", { name: "Back to filters" }).click();
+    await picker.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(
-      editor.getByRole("button", { name: "Clear Branches" }),
+      page.getByRole("button", { name: "Clear Branches", exact: true }),
     ).toHaveCount(0);
-    await expect(
-      editor.getByRole("button", { name: "Branches", exact: true }),
-    ).toBeFocused();
-    await editor
-      .getByRole("button", { name: "Filter column", exact: true })
-      .click();
-    const columns = editor.getByRole("dialog", {
-      name: "Filter column options",
-    });
-    await expect(columns.getByRole("option").first()).toBeVisible();
-    const outer = (await editor.boundingBox())!,
-      inner = (await columns.boundingBox())!;
-    expect(inner.x).toBeGreaterThanOrEqual(outer.x);
-    expect(inner.x + inner.width).toBeLessThanOrEqual(outer.x + outer.width);
-    expect(inner.y + inner.height).toBeLessThanOrEqual(outer.y + outer.height);
-    expect(outer.y + outer.height).toBeLessThanOrEqual(height);
-    await page.screenshot({
-      path: `.test-db/reports/screenshots/filter-columns-${width}-${height}.png`,
-    });
-    await columns.getByRole("combobox").press("Shift+Tab");
-    await expect(
-      editor.getByRole("button", { name: "Close More filters" }),
-    ).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(columns.getByRole("combobox")).toBeFocused();
-    await columns.getByRole("combobox").fill("Employee Name");
-    await columns.getByRole("combobox").press("Enter");
-    await expect(
-      editor.getByRole("button", { name: "Filter column", exact: true }),
-    ).toContainText("Employee Name");
+    await trigger.click();
+    await picker.getByRole("combobox").fill("North");
+    await picker.getByRole("option", { name: /North/ }).click();
+    const bounds = (await picker.boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(height);
+    await picker.getByRole("button", { name: "Apply", exact: true }).click();
+    await expect(trigger).toContainText("North");
     expect(await table.boundingBox()).toEqual(before);
-    await editor.press("Escape");
-    await expect(editor).toHaveCount(0);
+    await trigger.click();
+    await picker.press("Escape");
+    await expect(trigger).toBeFocused();
+    await page
+      .getByRole("button", { name: "Clear Branches", exact: true })
+      .click();
+    await expect(trigger).toHaveText("Branches");
   });
 }
 
@@ -151,9 +126,7 @@ for (const width of [375, 1440]) {
       await expect(active).toHaveAttribute("aria-current", "page");
       await expect(active).toBeVisible();
       if (width < 760)
-        await page
-          .getByRole("button", { name: "Close navigation" })
-          .click({ position: { x: width - 12, y: 12 } });
+        await page.getByRole("button", { name: "Close navigation" }).click();
       if (["dashboard", "employees", "permissions"].includes(route))
         await page.screenshot({
           path: `.test-db/reports/screenshots/${route}-${width}.png`,
@@ -232,47 +205,35 @@ for (const width of [375, 1440]) {
     await page.goto("/");
     await page.getByRole("button", { name: "Explore synthetic demo" }).click();
     await page.goto("/#employees");
-    await expect(
-      page.getByRole("button", { name: "More filters" }),
-    ).toHaveAttribute("aria-expanded", "false");
-    await expect(
-      page.getByRole("button", { name: "Filter column", exact: true }),
-    ).toHaveCount(0);
     const table = page.getByLabel("Scrollable employee table");
     await expect(table).toBeVisible();
     expect((await table.boundingBox())!.y).toBeLessThan(280);
-    await expect(page.locator(".register-tools")).toHaveCount(0);
-    const row = await page.locator(".filterbar").boundingBox();
+    const row = (await page.locator(".filterbar").boundingBox())!;
     for (const name of [
-      "Search employees",
+      "Branches",
+      "Clients",
+      "Status",
       "Saved view",
-      "More filters",
+      "Configure client filters and defaults",
       "Reset filters",
     ]) {
       const bounds = (await page
-        .getByLabel(name, { exact: true })
+        .getByRole("button", { name, exact: true })
         .boundingBox())!;
-      expect(bounds.y).toBeGreaterThanOrEqual(row!.y);
-      expect(bounds.y + bounds.height).toBeLessThanOrEqual(
-        row!.y + row!.height,
-      );
+      expect(bounds.y).toBeGreaterThanOrEqual(row.y);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(row.y + row.height);
     }
-    const tableBeforeFilters = await page
-      .getByLabel("Scrollable employee table")
-      .boundingBox();
-    await page.getByRole("button", { name: "More filters" }).click();
-    await expect(
-      page.getByRole("button", { name: "Filter column", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Clear Operator", exact: true }),
-    ).toHaveCount(0);
-    expect(
-      await page.getByLabel("Scrollable employee table").boundingBox(),
-    ).toEqual(tableBeforeFilters);
+    const before = await table.boundingBox();
     await page
-      .getByRole("button", { name: "Close More filters", exact: true })
+      .getByRole("button", { name: "Configure client filters and defaults" })
       .click();
+    const settings = page.getByRole("dialog", {
+      name: "Client entry settings",
+      exact: true,
+    });
+    await expect(settings).toBeVisible();
+    expect(await table.boundingBox()).toEqual(before);
+    await settings.getByRole("button", { name: "Close dialog" }).click();
     await page.goto("/#movements");
     const picker = page.getByRole("button", {
       name: "Movement types",
@@ -379,7 +340,7 @@ for (const [width, height] of [
 }
 
 for (const width of [375, 1440]) {
-  test(`column filter overlays and floating errors preserve layout at ${width}px`, async ({
+  test(`employee validation errors float without moving data at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -387,52 +348,40 @@ for (const width of [375, 1440]) {
     await page.getByRole("button", { name: "Explore synthetic demo" }).click();
     await page.goto("/#employees");
     const table = page.getByLabel("Scrollable employee table");
-    await expect(table.locator("tbody tr").first()).toBeVisible();
     const before = await table.boundingBox();
     const trigger = page.getByRole("button", {
-      name: "More filters",
+      name: "EMP-0000002",
       exact: true,
     });
     await trigger.click();
     const editor = page.getByRole("dialog", {
-      name: "More filters",
+      name: "Employee profile",
       exact: true,
     });
-    const bounds = (await editor.boundingBox())!;
-    expect(bounds.x).toBeGreaterThanOrEqual(0);
-    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
     await editor
-      .getByRole("button", { name: "Filter column", exact: true })
+      .getByRole("button", { name: "Edit details", exact: true })
       .click();
-    const columns = page.getByRole("dialog", {
-      name: "Filter column options",
-      exact: true,
-    });
-    await columns.getByRole("option", { name: /System ID/ }).click();
-    await expect(editor).toBeVisible();
-    await editor.getByRole("button", { name: "Operator", exact: true }).click();
-    await page
-      .getByRole("dialog", { name: "Operator options", exact: true })
-      .getByRole("option", { name: "Equals", exact: true })
-      .click();
-    await editor.getByLabel("Column filter value").fill("");
     await editor
-      .getByRole("button", { name: "Add filter", exact: true })
+      .getByRole("textbox", { name: "Mobile", exact: true })
+      .fill("bad");
+    await editor
+      .getByRole("button", { name: "Save to Supabase", exact: true })
       .click();
-    const error = page.getByRole("alert");
-    await expect(error).toContainText("Enter a filter value.");
+    const error = editor.locator(".floating-notification.error");
+    await expect(error).toContainText("09");
     expect(await error.evaluate((el) => getComputedStyle(el).position)).toBe(
-      "relative",
+      "fixed",
     );
-    expect(
-      await error.locator("..").evaluate((el) => getComputedStyle(el).position),
-    ).toBe("fixed");
+    const errorBounds = (await error.boundingBox())!;
+    expect(errorBounds.x).toBeGreaterThanOrEqual(0);
+    expect(errorBounds.x + errorBounds.width).toBeLessThanOrEqual(width);
     expect(await table.boundingBox()).toEqual(before);
+    await error.getByRole("button", { name: "Dismiss error" }).click();
+    await editor.getByRole("button", { name: "Close dialog" }).click();
     await page
-      .getByRole("button", { name: "Dismiss error", exact: true })
+      .getByRole("dialog", { name: "Discard unsaved changes?" })
+      .getByRole("button", { name: "Discard changes", exact: true })
       .click();
-    await editor.press("Escape");
-    await expect(editor).toHaveCount(0);
     await expect(trigger).toBeFocused();
     expect(await table.boundingBox()).toEqual(before);
   });
@@ -511,7 +460,9 @@ for (const width of [375, 1440]) {
     await page
       .getByRole("button", { name: "EMP-0000001", exact: true })
       .click();
-    await editor.getByRole("button", { name: "Edit details", exact: true }).click();
+    await editor
+      .getByRole("button", { name: "Edit details", exact: true })
+      .click();
     await name.fill("Discard this draft");
     await editor.getByRole("button", { name: "Cancel", exact: true }).click();
     await discard

@@ -23,11 +23,6 @@ async function enter(page: Page, route = "employees") {
     .toHaveCount(0)
     .catch(() => {});
   await page.waitForTimeout(400);
-  const mobileFilters = page.getByRole("button", {
-    name: "More filters",
-    exact: true,
-  });
-  if (await mobileFilters.isVisible()) await mobileFilters.click();
 }
 for (const [width, height] of [
   [320, 740],
@@ -59,8 +54,10 @@ for (const [width, height] of [
     await panel.getByRole("combobox").fill("North");
     await panel.getByRole("option", { name: /Example North Branch/ }).click();
     await panel.getByRole("combobox").fill("South");
-    await expect(panel.getByText("1 selected", { exact: false })).toHaveText(
-      /1 selected/,
+    await panel.getByRole("combobox").fill("North");
+    await expect(panel.getByRole("option", { name: /North/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
     await panel.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(
@@ -71,22 +68,28 @@ test("single picker mixes clients with branches and applies IDs", async ({
   page,
 }) => {
   await enter(page);
-  await page
-    .getByRole("button", { name: "Search branch or client", exact: true })
-    .click();
-  const p = page.getByRole("dialog", {
-    name: "Search branch or client options",
+  await page.getByRole("button", { name: "Add employee", exact: true }).click();
+  const editor = page.getByRole("dialog", {
+    name: "New employee",
+    exact: true,
   });
-  await p.getByRole("combobox").fill("Example Client");
-  await expect(p.getByRole("option")).toHaveCount(2);
-  await expect(p.getByRole("option").first()).toContainText(
+  await editor
+    .getByRole("button", { name: "Initial organization", exact: true })
+    .click();
+  const picker = page.getByRole("dialog", {
+    name: "Initial organization options",
+    exact: true,
+  });
+  await picker.getByRole("combobox").fill("Example Client");
+  await expect(picker.getByRole("option")).toHaveCount(2);
+  await expect(picker.getByRole("option").first()).toContainText(
     "Example North Branch",
   );
-  await p.getByRole("combobox").press("ArrowDown");
-  await p.getByRole("combobox").press("Enter");
-  await expect(p).toHaveCount(0);
+  await picker.getByRole("combobox").press("ArrowDown");
+  await picker.getByRole("combobox").press("Enter");
+  await expect(picker).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Clear Search branch or client" }),
+    editor.getByRole("button", { name: "Clear Initial organization" }),
   ).toBeVisible();
 });
 test("multi-select Apply commits, reset clears, dependent clients remain scoped", async ({
@@ -146,9 +149,7 @@ test("column selection is draft-only; Apply saves personal view", async ({
   await p.getByRole("combobox").fill("Email");
   await p.getByRole("option", { name: /Email/ }).click();
   await p.getByRole("button", { name: "Apply", exact: true }).click();
-  await expect(
-    dialog.locator('[data-column-key="email"]'),
-  ).toBeVisible();
+  await expect(dialog.locator('[data-column-key="email"]')).toBeVisible();
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await page
     .getByRole("dialog", { name: "Discard unsaved changes?", exact: true })

@@ -446,7 +446,7 @@ h3 {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 24px;
-  background: white;
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
   min-height: 64px;
   flex-shrink: 0;
@@ -1019,7 +1019,7 @@ label > .picker {
 .picker-panel {
   z-index: 1000;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--surface);
   border-radius: 8px;
   box-shadow: 0 12px 40px #14243d26;
   display: flex;
@@ -1057,7 +1057,7 @@ label > .picker {
   font-size: 13px;
   padding: 6px 8px;
   border-radius: 5px;
-  background: #fff;
+  background: var(--surface);
 }
 .picker-options > button > span:not(.checkbox) {
   flex: 1;
@@ -1153,7 +1153,7 @@ td {
   text-align: left;
   border-bottom: 1px solid var(--line);
   overflow-wrap: anywhere;
-  background: white;
+  background: var(--surface);
   vertical-align: middle;
 }
 th {
@@ -1448,7 +1448,7 @@ dialog > header {
   padding: 20px 24px;
   position: sticky;
   top: 0;
-  background: white;
+  background: var(--surface);
   z-index: 5;
 }
 dialog > header small {
@@ -1473,7 +1473,7 @@ dialog > footer {
   padding: 16px 24px;
   position: sticky;
   bottom: 0;
-  background: white;
+  background: var(--surface);
   z-index: 5;
 }
 /* Column configuration shares the same compact data surfaces as the register. */
@@ -1759,7 +1759,7 @@ dialog.app-dialog.column-designer-dialog { width: min(760px, calc(100vw - 24px))
   top: -60px;
   left: 8px;
   z-index: 2000;
-  background: white;
+  background: var(--surface);
   padding: 12px;
 }
 .skip:focus {
@@ -2786,18 +2786,18 @@ textarea:focus {
 }
 .table-region th,
 .record-table th {
-  background: #e9eef2;
+  background: var(--section-surface);
   font-size: 12px;
   font-weight: 500;
   border-right: 1px solid var(--line);
 }
 .table-region td,
 .record-table td {
-  border-bottom-color: #edf0f3;
+  border-bottom-color: var(--line);
 }
 .filterbar .picker-trigger,
 .register-tools .picker-trigger {
-  background: #edf1f4;
+  background: var(--section-surface);
   border-color: transparent;
   border-radius: 5px;
 }

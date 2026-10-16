@@ -4,10 +4,14 @@ for (const [width, height] of [
   [375, 740],
   [1366, 600],
 ]) {
-  test(`bundled typography and compact page-size selection at ${width}x${height}`, async ({
+  test(`local typography and compact page-size selection at ${width}x${height}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height });
+    const fontRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.resourceType() === "font") fontRequests.push(request.url());
+    });
     await page.goto("/");
     await page.getByRole("button", { name: "Explore synthetic demo" }).click();
     await page.goto("/#employees");
@@ -18,17 +22,14 @@ for (const [width, height] of [
     const fonts = await page.evaluate(async () => {
       await document.fonts.ready;
       return {
-        loaded: Array.from(document.fonts).some(
-          (font) => font.family === "Inter" && font.status === "loaded",
-        ),
         body: getComputedStyle(document.body).fontFamily,
         input: getComputedStyle(document.querySelector("input")!).fontFamily,
         button: getComputedStyle(document.querySelector("button")!).fontFamily,
       };
     });
-    expect(fonts.loaded).toBe(true);
+    expect(fontRequests).toEqual([]);
     for (const family of [fonts.body, fonts.input, fonts.button])
-      expect(family).toContain("Inter");
+      expect(family).toContain("Segoe UI Variable");
     const size = page.getByRole("combobox", {
       name: "Rows per page",
       exact: true,

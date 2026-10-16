@@ -21,10 +21,6 @@ for (const width of [375, 1440]) {
     );
     expect(await search.boundingBox()).toEqual(before);
     const region = await table.boundingBox();
-    if (width < 760)
-      await page
-        .getByRole("button", { name: "More filters", exact: true })
-        .click();
     await page.getByRole("button", { name: "Status", exact: true }).click();
     const picker = page.getByRole("dialog", {
       name: "Status options",
@@ -36,32 +32,18 @@ for (const width of [375, 1440]) {
     ).toBe("none");
     await picker.getByRole("option", { name: "Inactive", exact: true }).click();
     await picker.getByRole("button", { name: "Apply", exact: true }).click();
-    if (width < 760)
-      await page
-        .getByRole("dialog", { name: "More filters", exact: true })
-        .getByRole("button", { name: "Close More filters" })
-        .click();
     await expect(table.locator("tbody tr")).toHaveCount(5);
     await expect(page.locator(".chips")).toHaveCount(0);
     expect(await table.boundingBox()).toEqual(region);
     await page.screenshot({
       path: `.test-db/reports/screenshots/directory-reference-${width}.png`,
     });
-    if (width < 760)
-      await page
-        .getByRole("button", { name: "More filters", exact: true })
-        .click();
     await page
       .getByRole("button", { name: "Clear Status", exact: true })
       .click();
-    if (width < 760)
-      await page
-        .getByRole("dialog", { name: "More filters", exact: true })
-        .getByRole("button", { name: "Close More filters" })
-        .click();
     await expect(table.locator("tbody tr")).toHaveCount(25);
     if (width > 760) {
-      expect((await page.locator(".sidebar").boundingBox())!.width).toBe(72);
+      expect((await page.locator(".sidebar").boundingBox())!.width).toBe(60);
       await expect(
         page.getByRole("navigation", { name: "Section navigation" }),
       ).toBeVisible();
