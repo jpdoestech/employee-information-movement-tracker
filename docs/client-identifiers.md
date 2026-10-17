@@ -1,0 +1,13 @@
+# System and client identities
+
+User-requested extension to the authoritative v1.8 requirements: each employee retains their permanent **System ID** (`employee_number`, e.g. `EMP-0000023`) and receives a **Client-based ID** for each client placement (`client_employee_number`, e.g. `COM-00023`). The current primary client's ID is displayed in authorized employee tables, searches, filters, and exports. Branch-only and unassigned profiles have no current Client-based ID.
+
+Client creation requires an ID prefix: 1–20 characters, starting with a letter, followed by letters, numbers, underscores or hyphens. PostgreSQL normalizes it to uppercase. The prefix becomes immutable once any employee/client identity has been issued. Names can still change.
+
+Each client UUID has an independent counter starting at 1. PostgreSQL locks the client row and allocates within the existing employee/movement transaction. Five-digit numbers stop at 99999 with an explicit error; failed writes and previews roll back allocation. Database constraints prevent duplicate employee/client pairs and sequence numbers within a client. Direct identity-table access and editing derived IDs through profile/bulk mutations are denied.
+
+IDs are reserved when a placement is recorded, including scheduled, temporary and additional placements. Current primary placement determines the displayed ID; secondary placements do not change it or expand read permissions. Moving to another client preserves the System ID; returning to a client reuses the original pair's ID. Voiding a movement retains its reserved identity. Client codes remain unique within their branch under v1.8; identical prefixes can exist in different branches. Use the client UUID and System ID as integration keys, not a client-prefixed string alone.
+
+Migration `20261010001700` deterministically backfills all existing employee/client assignment pairs, including historical/voided placements, in client UUID/employee UUID order. Existing imported client identifiers are not inferred or overwritten. Review existing client codes and the backfilled mapping in staging before release. The new field joins Core identity and inherits only explicitly configured new-field permissions; direct deny still wins. Existing personal column views are retained; add Client-based ID through Customize Columns if absent. Google workbook allowlists require explicit approval before exporting this field.
+
+Apply database migrations before deploying the dependent frontend. Fresh native PostgreSQL migration and concurrency checks are automated under `.test-db`; hosted Supabase/PostgREST and live Google synchronization remain staging release gates.

@@ -1,0 +1,116 @@
+[
+  {
+    "key": "address",
+    "label": "Home Street / building",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "province",
+    "label": "Home Province",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "city_municipality",
+    "label": "Home City / municipality",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "barangay",
+    "label": "Home Barangay",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "postal_code",
+    "label": "Home Postal code",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "current_address",
+    "label": "Current Street / building",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "current_province",
+    "label": "Current Province",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "current_city_municipality",
+    "label": "Current City / municipality",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "current_barangay",
+    "label": "Current Barangay",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "current_postal_code",
+    "label": "Current Postal code",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "emergency_contact_name",
+    "label": "Emergency contact name",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "emergency_contact_number",
+    "label": "Emergency contact number",
+    "type": "phone",
+    "options": []
+  },
+  {
+    "key": "emergency_contact_relationship",
+    "label": "Emergency contact relationship",
+    "type": "select",
+    "options": [
+      "Spouse",
+      "Partner",
+      "Mother",
+      "Father",
+      "Parent",
+      "Son",
+      "Daughter",
+      "Child",
+      "Brother",
+      "Sister",
+      "Sibling",
+      "Grandmother",
+      "Grandfather",
+      "Grandparent",
+      "Grandchild",
+      "Aunt",
+      "Uncle",
+      "Niece",
+      "Nephew",
+      "Cousin",
+      "Mother-in-law",
+      "Father-in-law",
+      "Brother-in-law",
+      "Sister-in-law",
+      "Son-in-law",
+      "Daughter-in-law",
+      "Step-parent",
+      "Step-child",
+      "Step-sibling",
+      "Guardian",
+      "Relative",
+      "Friend",
+      "Colleague",
+      "Neighbor",
+      "Other"
+    ]
+  }
+]

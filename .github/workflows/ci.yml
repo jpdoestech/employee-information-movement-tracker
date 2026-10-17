@@ -1,0 +1,57 @@
+name: Validate application
+on: [push, pull_request]
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm run test:db
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check supabase/functions/google-oauth/index.ts supabase/functions/sheets-worker/index.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification
+          include-hidden-files: true
+          path: |
+            .test-db/reports/
+            .test-db/results/
+  supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.120.0
+      - run: supabase start
+      - run: supabase db reset
+      - run: supabase db lint --level error
+      - run: mkdir -p .test-db/reports/verification
+      - run: node .test-db/scripts/test-rest.mjs --local-cli
+      - run: supabase migration list --local
+      - run: supabase db diff --local --schema public,app_private > .test-db/reports/verification/local-drift.sql
+      - run: node .test-db/scripts/assert-no-drift.mjs .test-db/reports/verification/local-drift.sql
+      - run: supabase stop --no-backup
+        if: always()
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: supabase-verification
+          include-hidden-files: true
+          path: .test-db/reports/verification/

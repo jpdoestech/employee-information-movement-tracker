@@ -1,0 +1,142 @@
+# Acceptance evidence and remaining release gates
+
+Latest verification on 2026-10-11 is recorded in the v1.8 review section below; earlier dated entries preserve historical evidence. The UI covers all eight routes at phone/desktop widths, selected text contrast, keyboard focus, stationary pagination, compact toolbars, floating feedback, save/discard confirmations, and organized column configuration. The database suite covers granular authorization, inherited permissions, effective-date transactions, permanent/per-client identities, address hierarchy, concurrency and scoped projections. The authoritative specification is the complete employee-prefixed v1.8 document supplied in `docs/`. No reference repository was modified. No production data, credentials, migration or deployment was used. See [requirements status](requirements-status.md) for the current traceability review and remaining release work.
+
+Historical baseline (2026-10-10), before the later dated additions below:
+
+| Requirement                                               | Evidence                                                                                                                                                                                                          | Live release gate                                                                                                                        |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Per-user scope/group/field C/R/U/D; deny and blind update | Native PostgreSQL tests: explicit deny, separate clear permission, client-scoped field policy, malicious keys, denied metadata, hidden-value preservation                                                         | Repeat with real Supabase Auth/REST identities                                                                                           |
+| Automatic new-field inheritance and restricted exception  | New fields inherit only configured group policies; unrelated users cannot see metadata; restricted direct grant requirement                                                                                       | Hosted sessions and cache refresh                                                                                                        |
+| Branch/client/Head Office isolation and revocation        | Branch descendants opt-in; client-only and explicit HO scopes; live profile/scope revocation; immediate and future transfers                                                                                      | Hosted API, browser and audit review                                                                                                     |
+| Applicability and retained values                         | Selected/all scopes, destination required-data rejection/atomic completion, scope-preview counts, immutable keys, inactive/renamed fields retain values                                                           | Review actual organization definitions                                                                                                   |
+| Duplicate prevention                                      | Unicode/spacing/key database constraints; eight simultaneous duplicate creators produce exactly one commit                                                                                                        | Repeat on staging PostgreSQL 17                                                                                                          |
+| Concurrent/atomic updates                                 | Twenty separate administrator principals and connections edit one revision: one commit, nineteen conflicts; bulk failures roll back; multicolumn success preserves hidden values                                  | Measure staging throughput and lock contention                                                                                           |
+| Movements and corrections                                 | Effective status/position, primary exclusion constraint, temporary/additional assignments, date conflicts, retained voided history and restored intervals                                                         | Business workflow review with synthetic staging cases                                                                                    |
+| Search, export, dashboard and metadata projection         | Hidden search/filter/CSV leakage tests; same evaluator; options use stable IDs and parent context                                                                                                                 | Full REST route regression                                                                                                               |
+| Responsive search and table layouts                       | Forty-one Chromium tests: 320–2560px, phone landscape, dependent filters, draft Apply/Cancel, saved personal view reload, live preview, at least fifteen columns, two desktop pins, narrow modal and reduced motion | Physical touch devices, browser zoom and Safari/Firefox                                                                                  |
+| Google policies, routing, retries and idempotency         | Native approval/branch/lease/backoff tests; masked unapproved client IDs; unit tests for sharing, formula safety, complete replacement, AES-GCM tampering, revoked consent, 429 and network failures              | Actual consumer-account OAuth, folder/workbook/sharing, transfer reconciliation, interrupted writes and quota/storage/ownership failures |
+| Migration/deployment consistency                          | Seventeen ordered migrations applied to fresh disposable native databases; Docker-backed Supabase Auth/REST/drift CI provided                                                                                       | Execute CI/full Supabase checks, staging apply/diff, explicit production approval                                                        |
+
+Commands and reports: `npm run build`, `npm test`, `npm run test:db`, `npm run test:e2e`, Deno type checking, and `npm audit`. Native database evidence is written to ignored `.test-db/reports/verification/database.json`; browser evidence to `.test-db/reports/playwright/` and failure traces. CI uploads reports. The native runtime is PostgreSQL 18 with simulated `auth.uid()` and actual database roles/RLS/locks/constraints. It does **not** prove hosted PostgreSQL 17, Auth JWT/PostgREST behavior or an actual Google round trip. `.test-db/scripts/test-rest.mjs` supplies distinct real Auth accounts for the disposable full Supabase check, which was not run here because Docker/local Supabase is unavailable.
+
+The 1,000-row synthetic search benchmark records three RPC latencies and a separate indexed-table baseline EXPLAIN. Statement-scoped authorization improved initial 8–10 second queries to roughly subsecond locally; consult the generated report for final samples. This is a local observation, not a production SLA. The report records zero Google requests because no live integration was configured.
+
+## Migration inventory
+
+Ordered versions `20261010000100` through `20261010001700`: foundation; authorization; queries; employee transactions; configuration mutations; worker/core bootstrap; security hardening and exports; target field catalogs; required destination data; branch-routed outbox/audit references; statement-scoped read projection; per-action decision explanations; safe applicability preview; definition/scope integrity; safeupdate-compatible singleton writes; authorized record-list pagination; stable per-client employee identities. Additional ordered versions are `20261011000100_register_display_policy.sql`, `20261011000200_default_addresses.sql`, `20261011000300_creation_applicability_preview.sql` and `20261011000400_employee_names_and_form_tabs.sql`, bringing the current inventory to twenty-one migrations. All source lives in `supabase/migrations/`. Current staged/production migration versions and drift are **unknown** until a new project is configured and checked. Native fresh application passed; no assertion of hosted consistency is made.
+
+## Manual staging checklist
+
+1. Create a new staging Supabase project, apply migrations, enroll two trusted administrators and separate restricted Admin/Viewer accounts. Disable signup and grant only selected organization/group/field actions.
+2. Verify every relevant RPC plus raw table REST denial, anonymous requests, attempted role elevation, hidden search/filter/sort/export metadata and stale tokens after revocation. Exercise role policies, time-bounded scopes, restricted fields and additional assignments.
+3. Create/rename/deactivate fields while a second account has a dirty draft. Confirm its authorized catalog changes without discarding input; change scope and inspect retention counts. Race duplicate creation and revisions. Confirm hidden required destination data produces escalation.
+4. Test current/future transfers and every movement/correction; inspect old/new branch data, history and audit with each account. Test successful and failing multicolumn bulk updates.
+5. Check shared pickers, focus/keyboard/Escape/outside cancel, remote search, loading/errors, 200% browser zoom, physical touch/virtual keyboard, and long labels in Chrome/Firefox/Safari. Verify column pinning/reorder/save/reset and preview cancellation across viewports.
+6. Connect Google and approve each workbook. Confirm four tabs, literal strings, stable IDs, label rename, roster removal after transfer, and no additional-assignment leakage. Change sharing to an unapproved user/domain/public link and verify suspension. Revoke consent, inject quota/network failures, interrupt a worker and reconcile; rows must not duplicate.
+7. Rehearse backups/restoration; inspect migration history/diff and scheduler logs. Approve the concrete production release only after these gates pass. Deploy database before dependent worker/frontend code. Vercel and Pages deployment instructions are in `deployment.md`.
+
+Operational assumptions: one company; no import or bidirectional Sheets editing; current-roster workbook replacement; bounded bulk/export/workbook sizes documented in README; serial database writes for correctness. Expanding these limits, higher-volume search and worker throughput require measured changes. Pending live gates are genuine external blockers to production acceptance, not evidence of a completed deployment.
+
+The Supabase REST job initially failed with SQLSTATE `21000` (`UPDATE requires a WHERE clause`) during its first employee create. Forward migration `20261010001500` scopes revision/date writes to the singleton state row. The native regression scans active mutation routines for unscoped UPDATE/DELETE statements; the full local Supabase harness additionally verifies the REST role retains its configured `safeupdate` guard, and exercises employee creation and worker date reconciliation. Hosted CI must confirm this correction on the next pushed revision.
+
+## Directory UI refresh verification (2026-10-11)
+
+Production build, 15 unit tests and 43 Chromium checks passed for the latest reference redesign. New checks verify that focused composite inputs do not draw an overlapping outline/shadow, filter selections do not add a chip row or shift the table, inline X clearing restores the register, and desktop navigation uses the compact rail. Existing checks cover all routes, 320–2560px layouts, short landscape, keyboard navigation, contrast, frozen columns, saved views, remote transaction search and confirmation/discard flows. Database authorization, RPCs, migrations and synchronization were unchanged in this UI refresh; the 38 native database checks above are evidence from 2026-10-10. Hosted Supabase and live Google release gates remain pending.
+
+## Dense table and transaction feedback verification (2026-10-11)
+
+Production build, 17 unit tests and the full 48-check Chromium suite passed. After normalizing the two-line movement identity cell, the build and six affected record-list checks passed again, including exact 44px desktop / 52px phone movement rows. New register checks verify uniform 36px desktop / 50px phone rows, data-dependent column sizing, no document overflow and at least nine complete rows at 1366×600 and fifteen at 1920×900 with all columns enabled. Phone, tablet, short landscape and 320–2560px regression checks retain stationary toolbars/pagination, frozen identities, modal bounds, contrast and keyboard access.
+
+Long selected saved-view names remain readable within their control. Controlled delayed requests verify modal-layer floating progress, unchanged editor geometry, extended-wait feedback and cleanup after settlement; unit tests cover independent concurrent operations and failure cleanup without retry. Every mutation and hosted transaction preview uses this tracker, after existing confirmation. These tests use synthetic data and controlled latency; they do not validate a live hosted transaction or Google synchronization. Database SQL, authorization and idempotency rules remain unchanged. All test sources and generated evidence stay under `.test-db`.
+
+## Row ordinals and administration layouts (2026-10-11)
+
+The full 54-check Chromium suite, 17 unit tests and 40 native database checks passed. New checks cover pinned first-column row ordinals, continuation at page two, personal hide preferences across reload, global disabling, cancellation with no display-policy change, and administration/modal bounds at phone, tablet, laptop and short landscape sizes. Existing identity pinning checks now distinguish No. from data columns. Field applicability, duplicate constraints, inheritance, atomic mutations, authorization, previews and synchronization tests remain green.
+
+Forward migration `20261011000100_register_display_policy.sql` adds the register display singleton and authenticated settings RPCs. Only active superadmins can change it, using expected versions and idempotent request IDs; changes are audited and serialized with other configuration writes. Native tests verify non-superadmin/raw/anonymous denial, replay matching, stale versions and concurrent conflicts. Apply this eighteenth migration before running the updated frontend against Supabase. Hosted application and Google integration remain separate release gates. The locally supplied, unconnected address form's missing UI imports are satisfied by small shared-style/loading adapters; its supplied data and form logic were preserved.
+
+## Philippine address integration (2026-10-11)
+
+The Address group and permission-aware Home/Current Address forms reuse the supplied local references and preserve manually entered postal codes. Added unit, native database and responsive browser checks cover nationwide selection, unresolved text, retry, existing records, private data protection, field relocation, bulk rollback and concurrent address edits. See [address integration](philippine-addresses.md). The current suite applies nineteen migrations; the address delivery passed production build, 25 unit tests, 44 native database checks and 63 Chromium browser tests. Hosted Supabase and Google release gates remain separate.
+
+## v1.8 review and continuation (2026-10-11)
+
+The production build and 31 unit checks passed. All 46 native database checks passed with both 20 and 50 simultaneous administrator principals. The full 70-check Chromium suite passed. After the final narrow-phone layout adjustment, the build and 24 affected browser checks passed again, including visual review at 320px. Verification includes responsive creation previews, typed numeric/choice filters, active-definition reuse, inactive-field reactivation, retained drafts, and the existing address/table/dialog suite. All tests, reports and screenshots remain under `.test-db`.
+
+Migration `20261011000300_creation_applicability_preview.sql` lets draft definitions resolve applicability without a stored ID and returns authorized counts plus at most five readable identity samples. No custom values are returned; scopes/identity fields lacking Read do not appear. It also fixes the capability helper's SQL NULL result for missing/inactive profiles so guarded RPCs deny revoked accounts. Native regressions verify scope isolation, denied columns, read-only revisions, invalid requests, anonymous denial and revocation. The disposable Auth/REST harness includes equivalent scope/revocation checks but was not executed locally; its CI/live result remains a release gate.
+
+The new configurable mixed workload ran separately at 20 and 50 users. Repeated create requests returned one permanent employee; independent requests created distinct identities. Branch update and transfer races each committed once with the other requests returning expected revision conflicts. Concurrent worker calls acquired one lease, then returned to backoff without contacting Google. Observed 20-user transaction latency: p50 217 ms, p95 729 ms, maximum 841 ms; 38 expected conflicts across branch/transfer phases, zero unexpected errors, backlog 96. Observed 50-user latency: p50 852 ms, p95 3,052 ms, maximum 3,600 ms; 98 expected conflicts, zero unexpected errors, backlog 126. These include local lock waits and concurrent verification activity, exclude connection establishment, and are observations rather than an SLA. Sheets API requests were zero. The default report is regenerated per run; the final local report records 50 users.
+
+Field Builder now prevents ordinary cached matching-label/key duplicates before save and offers confirmed reuse/reactivation. Client matching is advisory; PostgreSQL's full Unicode normalization/case-folded unique constraints remain authoritative under races. Reactivation preserves the existing immutable key/ID and still requires the shared save confirmation. Column rules have type-specific operators, numeric/date range inputs, controlled dropdown multi-selection and Yes/No values instead of JSON entry. Invalid filters use existing floating modal feedback; unrelated permissions, transaction and synchronization boundaries remain unchanged.
+
+See `requirements-status.md` for the cumulative audit. No hosted migration, staging/production release, real Auth round trip or live Google synchronization was performed. Twenty migration versions applied locally; deployment remains separately approved and database-first.
+
+## Structured names and release verification (2026-10-12)
+
+The structured-name/tab amendment passed build, 33 unit checks, 49 native PostgreSQL checks and all 77 Chromium E2E checks on 2026-10-11. Existing names are preserved; each component uses the shared authorization evaluator, and form-layout settings retain atomic revision/idempotency behavior. See [employee names and tabs](employee-names-and-tabs.md).
+
+The next release-verification slice fixes the REST applicability sample expectation to the server-generated name and adds real-JWT structured-name validation, hidden-component search protection, blind updates, concurrent revisions, duplicate create replay, and atomic Superadmin tab settings. CI now rejects nonempty schema diffs through `.test-db/scripts/assert-no-drift.mjs`; nine unit cases cover empty/comment-only reports, nested comments, executable SQL, unexpected output and malformed reports. All 42 unit checks and 49 native database checks passed locally, with all 21 migrations applied to a fresh disposable database. Docker/Supabase CLI are unavailable here, so the updated Auth/REST harness and actual CLI drift generation have not run locally. No schema migration or application behavior changed in this slice, and no hosted database or deployment was touched.
+
+## Typography, pagination and employee row editing (2026-10-12)
+
+Production build, all 42 unit checks and all 81 Chromium E2E checks passed. The
+shared Inter 4.1 variable font is served locally with its original OFL license and
+a critical preload. Column measurements use the shared family and refresh after
+font loading. Desktop and phone screenshots were inspected; existing uniform row
+heights, pinned columns, workspace bounds and pagination checks pass.
+
+Employees and the shared record explorer use a compact, labelled 10/25/50/100
+rows-per-page selector without search. Page-size changes reset the offset. Employee
+row data cells and Enter/Space open the existing secured profile editor; checkboxes
+still select rows for bulk actions. New tests verify editing, cancellation, retained
+drafts and confirmed saves at phone/laptop widths. Two address no-results assertions
+now target the Barangay suggestion list rather than counting unrelated pagination
+options; retry, concurrent loading and stale-response assertions remain intact.
+No database migration, permission or transaction changes were required.
+
+## Profile defaults, government IDs and inline values (2026-10-12)
+
+Production build, 58 unit tests, 52 native PostgreSQL checks and all 87 Chromium E2E
+tests passed. The three new migrations applied to a fresh disposable database.
+Phone, tablet, laptop and short-landscape profile flows verify field entry,
+mandatory ID validation, inline clear bounds, saved data, retained drafts,
+confirmation cancellation and viewport bounds. Default tab order and Profile
+contact controls are asserted; custom tab merging remains configurable.
+
+Government ID checks cover missing values, exact lengths, non-digit/numeric/null
+payloads, formatted-input normalization, leading zeroes, restricted projections,
+hidden-field searches and complete rollback. Existing missing IDs remain absent
+on unrelated updates. Initial-position checks cover authorized creation,
+idempotent replay after a later position movement, invalid payloads and denied
+Create permissions. Existing security and 20-user concurrency checks pass.
+
+Number fields retain Integer as a separate type, display comma grouping and two
+fractional digits, and retain stored precision on edit. Invalid numeric text cannot
+reach employee writes or bulk previews. Shared inline X controls preserve Delete
+permissions and transaction confirmations. All verification sources/evidence live
+under `.test-db`; only synthetic identifiers appear in fixtures and screenshots.
+No hosted database, deployment, commit or push was performed in this change.
+
+## Shared ui-styling and editable profile position (2026-10-12)
+
+Production build, all 58 unit tests, 53 native PostgreSQL checks and the complete
+95-test Chromium E2E suite passed. The new profile-position migration applied to
+the disposable database; no hosted migration, deployment, commit or push ran.
+
+Shared dialogs preserve stationary headers/footers with internally scrolling
+bodies. Movement entry, preview and Back keep identical frame bounds at phone,
+tablet, laptop and short-landscape sizes. Employee forms use a section rail on
+desktop, horizontal mobile tabs, flat groups and wrapping field slots. Tests
+verify bounded dates/choices, a shorter Suffix input, readable long selected
+labels, paired Department/Position and saved data after cancelled confirmation.
+Screenshots are in `.test-db/reports/verification`.
+
+Position saves retain the existing movement authorization path and effective-day
+conflicts. Database tests verify atomic Department/Position rollback, unchanged
+versions on failure, idempotent replay, field denial, rejection of direct system
+field patches, and one winner for concurrent same-version position edits.
+Untouched Position is omitted from profile payloads, including synthetic demo
+saves; existing name/contact/number edit regression tests pass unchanged.
+
+Field configuration verification: a shared Lucide registry covers every supported type; Field Builder restores saved defaults including unchecked checkbox values. Input width is optional, responsive numeric metadata (10�80ch); maximum text length and numeric bounds remain separate server-validated rules. A migration enforces superadmin ownership of choices/defaults/validation without changing inheritance or CRUD checks. Tests cover invalid metadata, unauthorized configuration, persisted false defaults, phone/desktop setup and existing responsive flows.
