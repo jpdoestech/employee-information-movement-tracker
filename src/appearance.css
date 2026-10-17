@@ -73,19 +73,36 @@ button.primary:hover {
   min-height: 44px;
 }
 .topbar {
+  --header-ink: var(--ink);
+  --header-muted: var(--muted);
+  --header-control: var(--section-surface);
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line);
   min-height: 48px;
   padding: 6px 16px;
   gap: 12px;
 }
+.topbar button {
+  background: transparent;
+  border-color: var(--line);
+}
+.topbar button:hover {
+  background: var(--section-surface);
+  color: var(--ink);
+}
 .workspace-title {
-  gap: 6px;
+  flex: 1 1 auto;
+  gap: 9px;
   min-width: 0;
 }
 .workspace-title .breadcrumb {
+  display: inline;
   padding: 0;
   border: 0;
   color: var(--header-muted);
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 600;
 }
 .topbar .workspace-title h1 {
   position: static;
@@ -99,6 +116,7 @@ button.primary:hover {
 }
 .breadcrumb-divider {
   color: var(--header-muted);
+  flex-shrink: 0;
 }
 .section-navigation {
   gap: 2px;

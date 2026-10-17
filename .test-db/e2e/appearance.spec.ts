@@ -41,6 +41,44 @@ for (const theme of ["light", "dark"])
         expect(box!.y + box!.height).toBeLessThanOrEqual(height + 1);
       }
       await page.goto("/#employees");
+      const header = page.locator(".topbar");
+      const breadcrumb = header.getByRole("navigation", { name: "Breadcrumb" });
+      const heading = breadcrumb.getByRole("heading", {
+        name: "Employees",
+        exact: true,
+      });
+      await expect(heading).toBeVisible();
+      await expect(
+        header.getByRole("navigation", { name: "Section navigation" }),
+      ).toHaveCount(0);
+      expect(
+        await header.evaluate((el) => {
+          const surface = document.createElement("span");
+          surface.style.backgroundColor = "var(--surface)";
+          el.append(surface);
+          const matches =
+            getComputedStyle(el).backgroundColor ===
+            getComputedStyle(surface).backgroundColor;
+          surface.remove();
+          return matches;
+        }),
+      ).toBe(true);
+      const titleBounds = (await heading.boundingBox())!;
+      const actionsBounds = (await header.locator(".account").boundingBox())!;
+      expect(titleBounds.x + titleBounds.width).toBeLessThanOrEqual(
+        actionsBounds.x,
+      );
+      if (width > 760) {
+        const home = breadcrumb.getByRole("link", {
+          name: "Workspace",
+          exact: true,
+        });
+        await expect(home).toBeVisible();
+        expect((await home.boundingBox())!.x).toBeLessThan(titleBounds.x);
+      }
+      await page.screenshot({
+        path: `.test-db/reports/verification/ams-header-${theme}-${width}.png`,
+      });
       await page
         .getByRole("button", { name: "EMP-0000002", exact: true })
         .click();
@@ -104,6 +142,20 @@ test("appearance and rail persist without resetting data or drafts", async ({
     page.getByRole("searchbox", { name: "Search employees" }),
   ).toHaveValue("Employee 02");
   await page.getByRole("button", { name: "Expand sidebar" }).click();
+  await page
+    .getByRole("navigation", { name: "Breadcrumb" })
+    .getByRole("link", { name: "Workspace", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Overview", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "Movements", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Movements", exact: true }),
+  ).toBeVisible();
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute(
     "data-sidebar",
@@ -112,17 +164,27 @@ test("appearance and rail persist without resetting data or drafts", async ({
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 });
 
-test("mobile navigation contains keyboard focus and Escape restores its opener", async ({ page }) => {
+test("mobile navigation contains keyboard focus and Escape restores its opener", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page.getByRole("button", { name: "Explore synthetic demo" }).click();
-  const opener = page.getByRole("button", { name: "Open navigation", exact: true });
+  const opener = page.getByRole("button", {
+    name: "Open navigation",
+    exact: true,
+  });
   await opener.click();
   const drawer = page.getByRole("dialog", { name: "Navigation", exact: true });
-  const close = drawer.getByRole("button", { name: "Close navigation", exact: true });
+  const close = drawer.getByRole("button", {
+    name: "Close navigation",
+    exact: true,
+  });
   await expect(close).toBeFocused();
   await page.keyboard.press("Shift+Tab");
-  await expect(drawer.getByRole("link", { name: "Audit history", exact: true })).toBeFocused();
+  await expect(
+    drawer.getByRole("link", { name: "Audit history", exact: true }),
+  ).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(close).toBeFocused();
   await page.keyboard.press("Escape");

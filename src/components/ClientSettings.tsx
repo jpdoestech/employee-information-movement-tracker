@@ -58,7 +58,11 @@ export function ClientSettings({
       f.actions.includes("C"),
   );
   return (
-    <Dialog title="Client entry settings" onClose={onClose} wide>
+    <Dialog
+      title="Client entry settings"
+      onClose={onClose}
+      className="client-settings-dialog"
+    >
       <div className="dialog-body client-settings-body">
         <div className="form-control">
           <span>Client</span>

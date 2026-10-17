@@ -4071,8 +4071,16 @@ dialog.employee-edit-dialog[open] {
   flex: 0 1 auto;
   max-width: min(28ch, 100%);
 }
+@media (max-width: 760px), (pointer: coarse) {
+  /* Reserve two label lines so fallback fonts do not move the table on Apply. */
+  .toolbar-placement { min-height: 48px; }
+}
 .direct-filterbar > .search-control {
   flex: 1 1 240px;
+}
+dialog.app-dialog.client-settings-dialog {
+  width: min(680px, calc(100vw - 24px));
+  height: min(680px, calc(100dvh - 32px));
 }
 .client-settings-body fieldset {
   border: 0;
@@ -4320,7 +4328,7 @@ code, td.text-id, td.text-id .cell-value, td.text-id .text-link,
   background: transparent;
 }
 .filterbar .search-control > svg { flex-shrink: 0; }
-.filterbar > .picker .picker-trigger,
+.filterbar .picker-trigger,
 .filterbar > .popover > button,
 .filterbar > .filter-reset { min-height: 36px; }
 .record-column-label { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
@@ -4339,7 +4347,7 @@ code, td.text-id, td.text-id .cell-value, td.text-id .text-link,
 .record-explorer .record-correct:hover { background: var(--tint); }
 @media (max-width: 760px) {
   .filterbar > .search-control { height: 44px; min-height: 44px; }
-  .filterbar > .picker .picker-trigger,
+  .filterbar .picker-trigger,
   .filterbar > .popover > button,
   .filterbar > .filter-reset,
   .record-explorer .record-correct { min-height: 44px; }

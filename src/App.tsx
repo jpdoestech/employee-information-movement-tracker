@@ -6,6 +6,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowLeft,
+  ChevronRight,
   Building2,
   Columns3,
   Download,
@@ -275,11 +276,6 @@ export default function App() {
             ? can("sync_manage")
             : can("audit_read")),
   );
-  const sectionNav = visibleNav.filter((n) =>
-    ["dashboard", "employees", "movements"].includes(page)
-      ? ["dashboard", "employees", "movements"].includes(n.id)
-      : !["dashboard", "employees", "movements"].includes(n.id),
-  );
   async function exportCSV() {
     setBusy(true);
     try {
@@ -482,24 +478,14 @@ export default function App() {
           </button>
           <nav className="workspace-title" aria-label="Breadcrumb">
             <a className="breadcrumb" href="#dashboard">
-              Employee Tracker
+              Workspace
             </a>
-            <span className="breadcrumb-divider" aria-hidden>
-              {" "}
-              /{" "}
-            </span>
+            <ChevronRight
+              className="breadcrumb-divider"
+              size={14}
+              aria-hidden
+            />
             <h1 aria-current="page">{currentNav.label}</h1>
-          </nav>
-          <nav className="section-navigation" aria-label="Section navigation">
-            {sectionNav.map((n) => (
-              <a
-                key={n.id}
-                href={`#${n.id}`}
-                aria-current={page === n.id ? "page" : undefined}
-              >
-                {n.label}
-              </a>
-            ))}
           </nav>
           <div className="account">
             <Appearance />

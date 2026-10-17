@@ -19,6 +19,13 @@ for (const [width, height] of [
       name: "Client entry settings",
       exact: true,
     });
+    await expect(settings).toBeVisible();
+    const frame = (await settings.boundingBox())!;
+    expect(frame.width).toBeLessThanOrEqual(680);
+    expect(frame.x).toBeGreaterThanOrEqual(12);
+    expect(frame.x + frame.width).toBeLessThanOrEqual(width - 12);
+    expect(frame.y).toBeGreaterThanOrEqual(16);
+    expect(frame.y + frame.height).toBeLessThanOrEqual(height - 16);
     await settings
       .getByRole("button", { name: "Client settings scope", exact: true })
       .click();
@@ -30,6 +37,25 @@ for (const [width, height] of [
       .getByRole("option")
       .first()
       .click();
+    await expect(
+      settings.getByRole("button", { name: "ID allocation", exact: true }),
+    ).toBeVisible();
+    expect(await settings.boundingBox()).toEqual(frame);
+    const header = settings.locator(":scope > header");
+    const footer = settings.locator(":scope > footer");
+    const headerBounds = await header.boundingBox();
+    const footerBounds = await footer.boundingBox();
+    await settings.locator(".client-settings-body").evaluate((body) => {
+      body.scrollTop = body.scrollHeight;
+    });
+    expect(await header.boundingBox()).toEqual(headerBounds);
+    expect(await footer.boundingBox()).toEqual(footerBounds);
+    await expect(
+      footer.getByRole("button", { name: "Save client settings", exact: true }),
+    ).toBeInViewport();
+    await page.screenshot({
+      path: `.test-db/reports/verification/client-settings-${width}.png`,
+    });
     await settings
       .getByRole("button", { name: "ID allocation", exact: true })
       .click();
@@ -74,7 +100,9 @@ for (const [width, height] of [
     const bounds = await id.boundingBox();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
-    await page.screenshot({path:`.test-db/reports/verification/manual-id-${width}.png`});
+    await page.screenshot({
+      path: `.test-db/reports/verification/manual-id-${width}.png`,
+    });
     await editor
       .getByRole("button", { name: "Save to Supabase", exact: true })
       .click();

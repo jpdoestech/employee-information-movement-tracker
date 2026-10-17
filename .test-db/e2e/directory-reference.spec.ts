@@ -45,7 +45,17 @@ for (const width of [375, 1440]) {
     if (width > 760) {
       expect((await page.locator(".sidebar").boundingBox())!.width).toBe(60);
       await expect(
-        page.getByRole("navigation", { name: "Section navigation" }),
+        page.getByRole("navigation", { name: "Breadcrumb" }),
+      ).toBeVisible();
+      await expect(
+        page
+          .getByRole("navigation", { name: "Breadcrumb" })
+          .getByRole("link", { name: "Workspace", exact: true }),
+      ).toHaveAttribute("href", "#dashboard");
+      await expect(
+        page
+          .getByRole("navigation", { name: "Main navigation" })
+          .getByRole("link", { name: "Movements", exact: true }),
       ).toBeVisible();
     }
   });

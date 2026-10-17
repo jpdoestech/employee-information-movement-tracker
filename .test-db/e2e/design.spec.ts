@@ -54,18 +54,21 @@ for (const width of [375, 1440]) {
   });
 }
 
-for (const [width, height] of [
-  [375, 812],
-  [1440, 900],
-  [812, 375],
-]) {
-  test(`direct branch picker is bounded, searchable and preserves draft cancellation at ${width}x${height}`, async ({
+for (const [width, height, font] of [
+  [375, 812, ""],
+  [1440, 900, ""],
+  [812, 375, ""],
+  [375, 812, "Verdana"],
+] as const) {
+  test(`direct branch picker is bounded, searchable and preserves draft cancellation at ${width}x${height}${font ? ` with ${font}` : ""}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height });
     await page.goto("/");
     await page.getByRole("button", { name: "Explore synthetic demo" }).click();
     await page.goto("/#employees");
+    if (font)
+      await page.addStyleTag({ content: `:root { --font-sans: ${font}; }` });
     const table = page.getByLabel("Scrollable employee table");
     await expect(table.locator("tbody tr").first()).toBeVisible();
     const before = await table.boundingBox();
