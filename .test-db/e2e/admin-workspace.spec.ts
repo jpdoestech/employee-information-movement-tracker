@@ -98,11 +98,11 @@ for (const [width, height] of [
     });
     await expect(region.locator("tbody tr").first()).toBeVisible();
     const heading = await page
-      .locator(".field-workspace .record-heading")
+      .locator(".field-workspace .workspace-toolbar")
       .boundingBox();
     await region.evaluate((el) => (el.scrollTop = 500));
     expect(
-      await page.locator(".field-workspace .record-heading").boundingBox(),
+      await page.locator(".field-workspace .workspace-toolbar").boundingBox(),
     ).toEqual(heading);
     await page
       .getByRole("searchbox", { name: "Search fields" })

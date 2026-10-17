@@ -219,12 +219,18 @@ for (const width of [375, 1440]) {
       "Saved view",
       "Configure client filters and defaults",
       "Reset filters",
+      "Customize Columns",
+      "Export CSV",
+      "Add employee",
     ]) {
       const bounds = (await page
         .getByRole("button", { name, exact: true })
         .boundingBox())!;
       expect(bounds.y).toBeGreaterThanOrEqual(row.y);
       expect(bounds.y + bounds.height).toBeLessThanOrEqual(row.y + row.height);
+      expect(
+        Math.abs(bounds.y + bounds.height / 2 - row.y - row.height / 2),
+      ).toBeLessThanOrEqual(5);
     }
     const before = await table.boundingBox();
     await page

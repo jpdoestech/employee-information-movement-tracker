@@ -279,26 +279,7 @@ export function FieldBuilder({
   return (
     <>
       <section className="admin-workspace field-workspace panel data-panel">
-        <div className="record-heading">
-          <div className="actions">
-            {context.profile.role === "superadmin" && (
-              <button onClick={() => setEditingTabs(true)}>Form tabs</button>
-            )}
-            <button
-              onClick={() =>
-                setGroup({ name: "", description: "", active: true })
-              }
-            >
-              <FolderPlus size={15} aria-hidden />
-              New group
-            </button>
-            <button className="primary" onClick={() => edit()}>
-              <Plus size={15} aria-hidden />
-              New field
-            </button>
-          </div>
-        </div>
-        <div className="filterbar">
+        <div className="filterbar workspace-toolbar">
           <label className="search-control">
             <Search size={16} aria-hidden />
             <input
@@ -326,6 +307,23 @@ export function FieldBuilder({
             value={stateFilter}
             onChange={setStateFilter}
           />
+          <div className="actions">
+            {context.profile.role === "superadmin" && (
+              <button onClick={() => setEditingTabs(true)}>Form tabs</button>
+            )}
+            <button
+              onClick={() =>
+                setGroup({ name: "", description: "", active: true })
+              }
+            >
+              <FolderPlus size={15} aria-hidden />
+              New group
+            </button>
+            <button className="primary" onClick={() => edit()}>
+              <Plus size={15} aria-hidden />
+              New field
+            </button>
+          </div>
         </div>
         <div
           className="data-scroll-region definition-list"

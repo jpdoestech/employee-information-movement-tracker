@@ -309,3 +309,46 @@ dialog.app-dialog.column-designer-dialog {
     padding: 8px 12px;
   }
 }
+
+/* One stationary row; small screens scroll controls instead of shrinking targets. */
+.filterbar.workspace-toolbar,
+.register .direct-filterbar.workspace-toolbar {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: center;
+  scrollbar-width: thin;
+  overscroll-behavior-inline: contain;
+  min-height: 48px;
+}
+.workspace-toolbar > * { flex-shrink: 0; }
+.filterbar.workspace-toolbar > .search-control,
+.register .direct-filterbar.workspace-toolbar > .search-control,
+.register .direct-filterbar.workspace-toolbar > .search-control:focus-within {
+  flex: 1 0 200px;
+  width: 200px;
+  max-width: 320px;
+}
+.workspace-toolbar .toolbar-placement { flex: none; max-width: none; }
+.workspace-toolbar > .picker { flex: none; }
+.workspace-toolbar .toolbar-actions,
+.workspace-toolbar > .actions,
+.workspace-toolbar .toolbar-actions > .actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+.workspace-toolbar .toolbar-actions,
+.workspace-toolbar > .actions { margin-left: auto; }
+.workspace-toolbar .filter-reset { margin-left: 0; flex: none; }
+.workspace-toolbar button { white-space: nowrap; }
+.workspace-toolbar:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+@media (max-width: 1200px) {
+  .workspace-toolbar .actions button:not(.primary) .action-label { display: none; }
+}
+@media (max-width: 760px), (pointer: coarse) {
+  .filterbar.workspace-toolbar { min-height: 64px; }
+  .workspace-toolbar button { min-height: 44px; }
+  .workspace-toolbar .actions button { min-width: 44px; }
+}

@@ -83,12 +83,12 @@ for (const [width, height] of [
     );
     expect(
       await page
-        .locator(".register > .section-heading")
+        .locator(".register > .workspace-toolbar")
         .evaluate((e) => getComputedStyle(e).paddingLeft),
     ).toBe("12px");
     expect(
       await page
-        .locator(".register > .section-heading")
+        .locator(".register > .workspace-toolbar")
         .evaluate((e) => getComputedStyle(e).paddingRight),
     ).toBe("12px");
     if (width > 760)
@@ -98,7 +98,7 @@ for (const [width, height] of [
     if (width < 760)
       expect(
         (await page.locator(".register .search-control").boundingBox())!.width,
-      ).toBeGreaterThan(width - 60);
+      ).toBeGreaterThanOrEqual(180);
     const scrollBefore = await table.boundingBox();
     await table.evaluate((e) => {
       e.scrollTop = e.scrollHeight;

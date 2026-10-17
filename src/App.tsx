@@ -659,44 +659,47 @@ export default function App() {
           )}
           {ctx && page === "employees" && (
             <section className="panel register">
-              <div className="section-heading">
-                <div className="actions">
-                  <button
-                    aria-label="Customize Columns"
-                    title="Customize columns"
-                    onClick={() => setDialog("columns")}
-                  >
-                    <Columns3 size={16} />
-                    <span className="action-label">Customize Columns</span>
-                  </button>
-                  <button
-                    aria-label="Export CSV"
-                    title="Export CSV"
-                    disabled={busy || !total}
-                    onClick={exportCSV}
-                  >
-                    <Download size={16} />
-                    <span className="action-label">Export CSV</span>
-                  </button>
-                  {can("employee_create") && (
-                    <button
-                      className="primary"
-                      aria-label="Add employee"
-                      onClick={() => {
-                        setEditing(null);
-                        setDialog("employee");
-                      }}
-                    >
-                      <Plus size={16} />
-                      <span className="action-label">Add employee</span>
-                      <span className="mobile-action-label" aria-hidden="true">
-                        Add
-                      </span>
-                    </button>
-                  )}
-                </div>
-              </div>
               <FilterBar
+                actions={
+                  <div className="actions">
+                    <button
+                      aria-label="Customize Columns"
+                      title="Customize columns"
+                      onClick={() => setDialog("columns")}
+                    >
+                      <Columns3 size={16} />
+                      <span className="action-label">Customize Columns</span>
+                    </button>
+                    <button
+                      aria-label="Export CSV"
+                      title="Export CSV"
+                      disabled={busy || !total}
+                      onClick={exportCSV}
+                    >
+                      <Download size={16} />
+                      <span className="action-label">Export CSV</span>
+                    </button>
+                    {can("employee_create") && (
+                      <button
+                        className="primary"
+                        aria-label="Add employee"
+                        onClick={() => {
+                          setEditing(null);
+                          setDialog("employee");
+                        }}
+                      >
+                        <Plus size={16} />
+                        <span className="action-label">Add employee</span>
+                        <span
+                          className="mobile-action-label"
+                          aria-hidden="true"
+                        >
+                          Add
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                }
                 filter={filter}
                 setFilter={setFilter}
                 options={options}

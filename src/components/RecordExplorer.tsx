@@ -350,17 +350,7 @@ export function RecordExplorer({
   if (kind === "movements") recordWidths[4] = Math.max(recordWidths[4], 160);
   return (
     <section className="panel data-panel record-explorer">
-      {onCreate && (
-        <div className="record-heading">
-          <button className="primary" onClick={onCreate}>
-            <Plus size={16} />
-            <span>
-              {kind === "movements" ? "New transaction" : "Add organization"}
-            </span>
-          </button>
-        </div>
-      )}
-      <div className="filterbar">
+      <div className="filterbar workspace-toolbar">
         <label className="search-control">
           <Search size={16} aria-hidden />
           <input
@@ -464,6 +454,16 @@ export function RecordExplorer({
           <RotateCcw size={16} />
           <span>Reset</span>
         </button>
+        {onCreate && (
+          <div className="toolbar-actions">
+            <button className="primary" onClick={onCreate}>
+              <Plus size={16} />
+              <span>
+                {kind === "movements" ? "New transaction" : "Add organization"}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
       <div
         className="data-scroll-region"

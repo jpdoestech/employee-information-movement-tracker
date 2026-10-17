@@ -77,6 +77,7 @@ export function FilterBar({
   setFilter,
   options,
   children,
+  actions,
   context,
   onSaved,
 }: {
@@ -84,6 +85,7 @@ export function FilterBar({
   setFilter: (f: Filter) => void;
   options: Option[];
   children?: ReactNode;
+  actions?: ReactNode;
   context: Context;
   onSaved: () => void;
 }) {
@@ -114,7 +116,12 @@ export function FilterBar({
     setFilter({ ...filter, ...patch, offset: 0 });
   return (
     <>
-      <div className="filterbar direct-filterbar">
+      <div
+        className="filterbar direct-filterbar workspace-toolbar"
+        role="region"
+        aria-label="Employee toolbar"
+        tabIndex={0}
+      >
         <label className="search-control">
           <Search size={16} aria-hidden />
           <input
@@ -213,6 +220,7 @@ export function FilterBar({
           <RotateCcw size={16} aria-hidden />
           <span>Reset</span>
         </button>
+        {actions && <div className="toolbar-actions">{actions}</div>}
       </div>
       {settingsOpen && (
         <ClientSettings
