@@ -125,39 +125,43 @@ export function FilterBar({
             onChange={(e) => set({ search: e.target.value })}
           />
         </label>
-        <SearchFilterPicker
-          mode="multiple"
-          label="Branches"
-          icon={Building2}
-          options={options.filter((o) => o.kind === "branch")}
-          value={filter.branches}
-          onChange={(branches) =>
-            set({
-              branches,
-              clients: filter.clients.filter((id) =>
-                options.some(
-                  (o) =>
-                    o.id === id &&
-                    (!branches.length || branches.includes(o.branch_id!)),
+        <div className="toolbar-placement">
+          <SearchFilterPicker
+            mode="multiple"
+            label="Branches"
+            icon={Building2}
+            options={options.filter((o) => o.kind === "branch")}
+            value={filter.branches}
+            onChange={(branches) =>
+              set({
+                branches,
+                clients: filter.clients.filter((id) =>
+                  options.some(
+                    (o) =>
+                      o.id === id &&
+                      (!branches.length || branches.includes(o.branch_id!)),
+                  ),
                 ),
-              ),
-              predicates: [],
-            })
-          }
-        />
-        <SearchFilterPicker
-          mode="multiple"
-          label="Clients"
-          icon={BriefcaseBusiness}
-          options={options.filter(
-            (o) =>
-              o.kind === "client" &&
-              (!filter.branches.length ||
-                filter.branches.includes(o.branch_id!)),
-          )}
-          value={filter.clients}
-          onChange={(clients) => set({ clients, predicates: [], quick: null })}
-        />
+                predicates: [],
+              })
+            }
+          />
+          <SearchFilterPicker
+            mode="multiple"
+            label="Clients"
+            icon={BriefcaseBusiness}
+            options={options.filter(
+              (o) =>
+                o.kind === "client" &&
+                (!filter.branches.length ||
+                  filter.branches.includes(o.branch_id!)),
+            )}
+            value={filter.clients}
+            onChange={(clients) =>
+              set({ clients, predicates: [], quick: null })
+            }
+          />
+        </div>
         {keys.map((key) => {
           const field = context.fields.find(
             (f) =>

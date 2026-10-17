@@ -6,6 +6,8 @@ Standalone React/TypeScript application with Supabase Auth/PostgreSQL and an asy
 
 Requires Node.js 24 and npm. The committed lockfile defines dependencies.
 
+Docker is not required to run this application locally against hosted Supabase or deploy it to Vercel. The full Supabase CI checks run on GitHub's disposable runner; they do not require Docker on your computer.
+
 On Windows, double-click `setup-local.bat` once, then `start-local.bat`. Setup installs the locked dependencies and creates a synthetic-demo `.env.local` only if none exists. Existing environment settings are preserved. Start opens the browser, uses the next available port if 5173 is occupied, and keeps the server running until you press Ctrl+C in its window. Neither file starts Supabase, runs migrations, or changes a hosted database. For connected mode, configure this standalone project's public Supabase credentials and set `VITE_DEMO_MODE=false` in `.env.local`. Use `--no-pause` when invoking either batch file from a terminal or automation.
 
 ```powershell
@@ -25,7 +27,7 @@ npm run test:e2e
 npx deno@2 check supabase/functions/google-oauth/index.ts supabase/functions/sheets-worker/index.ts
 ```
 
-The disposable native database harness applies every SQL migration, exercises real PostgreSQL ACL/RLS/transactions/constraints and writes `.test-db/reports/verification/database.json`. It simulates `auth.uid()` and does **not** replace full Supabase Auth/REST testing. For Docker-backed local Supabase:
+The disposable native database harness applies every SQL migration, exercises real PostgreSQL ACL/RLS/transactions/constraints and writes `.test-db/reports/verification/database.json`. It runs without Docker, simulates `auth.uid()` and does **not** replace full Supabase Auth/REST testing. The following optional commands require Docker-backed local Supabase; skip them when using hosted Supabase and let GitHub CI perform these checks:
 
 ```powershell
 npm install --no-save --package-lock=false supabase@2.120.0

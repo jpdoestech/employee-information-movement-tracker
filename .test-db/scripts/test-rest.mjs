@@ -1,6 +1,6 @@
 // Run against a disposable Supabase project, never an employee production database.
 import { createClient } from "@supabase/supabase-js";
-import { employeeFixture } from "./employee-fixtures.mjs";
+import { employeeFixture, identityPolicyGrantSql } from "./employee-fixtures.mjs";
 import pg from "pg";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -103,10 +103,8 @@ try {
     `insert into public.user_scope_grants(user_id,scope_type,scope_id,actions) values($1,'branch',$2,array['R','U']),($3,'branch',$2,array['R'])`,
     [uid[1], b1, uid[2]],
   );
-  await owner.query(
-    `insert into public.field_access_policies(user_id,group_id,action,effect,inherit_new) select u,g,a,'allow',true from unnest($1::uuid[]) u,unnest(array['R','U']) a,(select id g from public.field_groups where name='Core identity') groups`,
-    [[uid[1], uid[2]]],
-  );
+  const grants = await owner.query(identityPolicyGrantSql, [[uid[1], uid[2]]]);
+  assert.equal(grants.rowCount, 4, "REST setup must grant R/U identity access to both scoped accounts");
   const request = (c, op, p) =>
     c.rpc("tracker_mutate", {
       operation: op,

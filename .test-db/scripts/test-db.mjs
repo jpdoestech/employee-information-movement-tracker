@@ -1,5 +1,5 @@
 import EmbeddedPostgres from "embedded-postgres";
-import { employeeFixture } from "./employee-fixtures.mjs";
+import { employeeFixture, identityPolicyGrantSql } from "./employee-fixtures.mjs";
 import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
@@ -258,6 +258,31 @@ try {
         .n,
       "2",
     );
+  });
+  await test("REST identity grants survive display-group renames and expose exactly the scoped employee", async () => {
+    const accounts = [randomUUID(), randomUUID()];
+    for (const user of accounts) {
+      await owner.query("insert into auth.users values($1)", [user]);
+      await owner.query(
+        "insert into public.user_profiles(id,display_name,role) values($1,'Synthetic REST grant regression','viewer')",
+        [user],
+      );
+      await owner.query(
+        "insert into public.user_scope_grants(user_id,scope_type,scope_id,actions) values($1,'branch',$2,array['R'])",
+        [user, id.b1],
+      );
+    }
+    const grants = await owner.query(identityPolicyGrantSql, [accounts]);
+    assert.equal(grants.rowCount, 4);
+    for (const user of accounts) {
+      const page = await q(user, "employees", { search: "Synthetic" });
+      assert.equal(page.total, 1);
+      assert.equal(page.items[0].id, e1);
+    }
+    await owner.query("delete from public.field_access_policies where user_id=any($1::uuid[])", [accounts]);
+    await owner.query("delete from public.user_scope_grants where user_id=any($1::uuid[])", [accounts]);
+    await owner.query("delete from public.user_profiles where id=any($1::uuid[])", [accounts]);
+    await owner.query("delete from auth.users where id=any($1::uuid[])", [accounts]);
   });
   await test("register display policy denies non-superadmins, raw access and anonymous calls", async () => {
     const read = () =>

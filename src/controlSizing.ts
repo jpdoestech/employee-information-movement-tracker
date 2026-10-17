@@ -24,7 +24,7 @@ export function valueWidth(
   if (key === "department") return "26ch";
   if (key === "position") return "28ch";
   if (digits) return `${Math.max(26, digits + 16)}ch`;
-  if (type === "date") return "28ch";
+  if (type === "date") return "min(28ch, 224px)";
   if (type === "integer" || type === "decimal") return "24ch";
   if (type === "phone") return "28ch";
   if (type === "email") return "40ch";

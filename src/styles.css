@@ -4061,6 +4061,16 @@ dialog.employee-edit-dialog[open] {
   flex: 0 1 auto;
   max-width: min(28ch, 100%);
 }
+.toolbar-placement {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+.toolbar-placement > .picker {
+  flex: 0 1 auto;
+  max-width: min(28ch, 100%);
+}
 .direct-filterbar > .search-control {
   flex: 1 1 240px;
 }
@@ -4286,7 +4296,7 @@ code, td.text-id, td.text-id .cell-value, td.text-id .text-link,
 .form-grid > label > input[type="date"],
 .dialog-body > label > input[type="date"],
 .security-workspace label > input[type="date"] {
-  max-width: 28ch;
+  max-width: min(28ch, 224px);
 }
 
 /* Shared list toolbars: a stable baseline and compact search, without nested borders. */

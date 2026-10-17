@@ -1,5 +1,10 @@
 // Existing security scenarios retain their descriptive synthetic names while
 // supplying the now-required structured identity payload.
+// Display group names can change; permission fixtures follow the stable field key.
+export const identityPolicyGrantSql = `insert into public.field_access_policies(user_id,group_id,action,effect,inherit_new)
+select u,g,a,'allow',true from unnest($1::uuid[]) u,unnest(array['R','U']) a,
+(select group_id g from public.field_definitions where key='name') groups`;
+
 export function employeeFixture(operation, payload) {
   if (operation === "employee_create")
     payload.values = {

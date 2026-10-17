@@ -12,9 +12,9 @@ if errorlevel 1 goto missing_node
 node -e "if (Number(process.versions.node.split('.')[0]) < 24) { console.error('Node.js 24 or newer is required.'); process.exit(1); }"
 if errorlevel 1 goto finish
 
-echo Installing dependencies from package-lock.json...
-call npm ci
-if errorlevel 1 goto finish
+echo Installing dependencies and local development tools from package-lock.json...
+call npm ci --include=dev --bin-links=true
+if not "%errorlevel%"=="0" goto finish
 
 if exist ".env.local" goto ready
 rem New local installations use fictional demo data, without a hosted connection.

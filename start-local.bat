@@ -12,6 +12,7 @@ if errorlevel 1 goto missing_node
 node -e "if (Number(process.versions.node.split('.')[0]) < 24) { console.error('Node.js 24 or newer is required.'); process.exit(1); }"
 if errorlevel 1 goto finish
 if not exist "node_modules\vite\bin\vite.js" goto missing_setup
+if not exist "node_modules\.bin\vite.cmd" goto missing_setup
 if not exist ".env.local" goto missing_setup
 
 echo Starting the local application and opening your browser...
@@ -24,7 +25,7 @@ set "result=%errorlevel%"
 goto finish
 
 :missing_setup
-echo Local setup is incomplete. Run setup-local.bat first.
+echo Local setup or development tools are missing. Run setup-local.bat to install or repair them, then start-local.bat again.
 goto finish
 
 :missing_node
