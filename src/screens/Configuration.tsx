@@ -280,10 +280,6 @@ export function FieldBuilder({
     <>
       <section className="admin-workspace field-workspace panel data-panel">
         <div className="record-heading">
-          <div>
-            <h2>Field definitions</h2>
-            <span>{fields.length} definitions</span>
-          </div>
           <div className="actions">
             {context.profile.role === "superadmin" && (
               <button onClick={() => setEditingTabs(true)}>Form tabs</button>

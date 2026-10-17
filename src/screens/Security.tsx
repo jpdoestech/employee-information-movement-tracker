@@ -66,12 +66,6 @@ export function Security({
   }
   return (
     <section className="admin-workspace security-workspace data-panel">
-      <div className="record-heading">
-        <div>
-          <h2>Access rules</h2>
-          <span>Organization, field groups and column permissions</span>
-        </div>
-      </div>
       <nav className="admin-tabs" aria-label="Access configuration">
         {[
           ["rules", "Access rules"],

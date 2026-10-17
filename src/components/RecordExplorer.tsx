@@ -350,20 +350,16 @@ export function RecordExplorer({
   if (kind === "movements") recordWidths[4] = Math.max(recordWidths[4], 160);
   return (
     <section className="panel data-panel record-explorer">
-      <div className="record-heading">
-        <div>
-          <h2>{title}</h2>
-          <span>{data.total} records</span>
-        </div>
-        {onCreate && (
+      {onCreate && (
+        <div className="record-heading">
           <button className="primary" onClick={onCreate}>
             <Plus size={16} />
             <span>
               {kind === "movements" ? "New transaction" : "Add organization"}
             </span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <div className="filterbar">
         <label className="search-control">
           <Search size={16} aria-hidden />

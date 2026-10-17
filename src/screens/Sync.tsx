@@ -38,14 +38,7 @@ export function Sync({
   }
   return (
     <>
-      <div className="section-heading">
-        <div>
-          <h2>Workbook connections</h2>
-          <p>
-            Branch-specific secondary projections. Supabase is the authoritative
-            database.
-          </p>
-        </div>
+      <div className="section-heading page-action-heading">
         <button
           disabled={busy}
           onClick={() =>

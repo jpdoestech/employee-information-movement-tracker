@@ -159,6 +159,11 @@ button.primary:hover {
 .record-heading {
   padding: 6px 12px;
 }
+.record-heading,
+.register > .section-heading,
+.page-action-heading {
+  justify-content: flex-end;
+}
 .register .filterbar,
 .record-explorer .filterbar,
 .admin-workspace .filterbar {

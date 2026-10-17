@@ -660,12 +660,6 @@ export default function App() {
           {ctx && page === "employees" && (
             <section className="panel register">
               <div className="section-heading">
-                <div className="register-heading">
-                  <h2>Employee records</h2>
-                  <span className="record-count">
-                    <strong>{total}</strong> records
-                  </span>
-                </div>
                 <div className="actions">
                   <button
                     aria-label="Customize Columns"
