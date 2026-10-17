@@ -134,8 +134,10 @@ fields.push(
     group_name: "Government IDs",
     type: "short_text",
     active: true,
-    required: true,
+    required: false,
     sensitivity: "restricted",
+    is_unique: true,
+    unique_scope: "global" as const,
     list_eligible: true,
     scope_mode: "all",
     row_version: 1,
@@ -1146,7 +1148,10 @@ export async function demoMutate(op: string, p: any) {
     )
       throw new Error("Only a Superadmin may configure unique fields");
     const configured = { ...f, ...p } as Field;
-    if (configured.validation?.government_id_digits) configured.required = true;
+    if (configured.validation?.government_id_digits) {
+      configured.required = false;
+      configured.is_unique = true;
+    }
     const uniqueError = uniqueDemoError(employees, [
       ...fields.filter((field) => field.id !== f?.id),
       configured,
@@ -1155,7 +1160,11 @@ export async function demoMutate(op: string, p: any) {
       throw new Error(
         `Cannot enable uniqueness: existing non-empty values are duplicated. ${uniqueError}`,
       );
-    p = { ...p, required: configured.required };
+    p = {
+      ...p,
+      required: configured.required,
+      is_unique: configured.is_unique,
+    };
     if (
       fields.some(
         (f) =>

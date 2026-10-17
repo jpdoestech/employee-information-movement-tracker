@@ -2661,23 +2661,25 @@ try {
     assert.equal(statusRow.to_value, "Separated");
     await assert.rejects(m(id.sa, "employee_update", { id: created.id, expected_version: await revision(created.id), values: { department: null }, employment: { change_kind: "correction" } }), { code: "22023" });
   });
-  await test("required government IDs reject missing and cleared values while preserving historical gaps", async () => {
+  await test("optional government IDs allow missing and cleared values while retaining format validation", async () => {
     const before = (
       await owner.query(
         "select (select count(*) from public.employees) employees,(select count(*) from public.audit_log) audit,(select count(*) from public.sync_outbox) outbox",
       )
     ).rows[0];
-    await assert.rejects(as(id.sa, (c) =>
+    const withoutIds = await as(id.sa, (c) =>
       c.query("select public.tracker_mutate('employee_create',$1,$2) r", [
         { values: { first_name: "Missing", last_name: "IDs" } }, randomUUID(),
-      ])), { code: "22023" });
+      ]));
+    const missingDetail = await q(id.sa, "employee", { id: withoutIds.rows[0].r.id });
+    for (const key of ["bir_tin", "sss_number", "philhealth_pin", "pagibig_mid"]) assert.equal(missingDetail.employee.values[key], null);
     const after = (
       await owner.query(
         "select (select count(*) from public.employees) employees,(select count(*) from public.audit_log) audit,(select count(*) from public.sync_outbox) outbox",
       )
     ).rows[0];
-    assert.equal(Number(after.employees), Number(before.employees));
-    assert.equal(Number(after.audit), Number(before.audit));
+    assert.equal(Number(after.employees), Number(before.employees) + 1);
+    assert.ok(Number(after.audit) > Number(before.audit));
     const created = await m(id.sa, "employee_create", {
       values: {
         name: "Synthetic government IDs",
@@ -2708,11 +2710,12 @@ try {
           { code: "22023" },
         );
     assert.equal(await revision(created.id), detail.employee.row_version);
-    await assert.rejects(m(id.sa, "employee_update", {
+    await m(id.sa, "employee_update", {
       id: created.id, expected_version: detail.employee.row_version,
       values: { bir_tin: null, sss_number: null, philhealth_pin: null, pagibig_mid: null },
-    }), { code: "22023" });
-    assert.equal(await revision(created.id), detail.employee.row_version);
+    });
+    const cleared = await q(id.sa, "employee", { id: created.id });
+    for (const key of ["bir_tin", "sss_number", "philhealth_pin", "pagibig_mid"]) assert.equal(cleared.employee.values[key], null);
     const legacy = (
       await owner.query(
         "insert into public.employees(name,custom_values) values('Legacy missing IDs',jsonb_build_object('bir_tin',null)) returning id",
@@ -2733,14 +2736,14 @@ try {
     const ids = schema.fields.filter((f) => f.validation?.government_id_digits);
     assert.equal(ids.length, 4);
     for (const f of ids) {
-      assert.equal(f.required, true);
+      assert.equal(f.required, false);
       assert.equal(f.sensitivity, "restricted");
       assert.equal(f.list_eligible, true);
     }
     const created = await m(id.sa, "employee_create", {
       target_level: "branch",
       branch_id: id.b1,
-      values: { name: "Synthetic private IDs" },
+      values: { name: "Synthetic private IDs", bir_tin: "012345678", sss_number: "0123456789", philhealth_pin: "012345678901", pagibig_mid: "012345678901" },
     });
     await owner.query(
       "insert into public.field_access_policies(user_id,group_id,action,effect,inherit_new) values($1,$2,'R','allow',true)",

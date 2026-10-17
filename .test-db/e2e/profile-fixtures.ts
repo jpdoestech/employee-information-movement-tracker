@@ -1,5 +1,8 @@
-import type { Locator } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+const identifierSequences = new WeakMap<Page, number>();
 export async function fillGovernmentIds(editor: Locator) {
+  const sequence = identifierSequences.get(editor.page()) || 0;
+  identifierSequences.set(editor.page(), sequence + 1);
   const previous = await editor
     .getByRole("tab", { selected: true })
     .innerText();
@@ -18,6 +21,10 @@ export async function fillGovernmentIds(editor: Locator) {
           `^${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?: \\*)?$`,
         ),
       })
-      .fill(value);
+      .fill(
+        (BigInt(value) + BigInt(sequence))
+          .toString()
+          .padStart(value.length, "0"),
+      );
   await editor.getByRole("tab", { name: previous, exact: true }).click();
 }

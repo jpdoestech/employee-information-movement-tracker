@@ -693,8 +693,14 @@ export function FieldBuilder({
               <label>
                 <input
                   type="checkbox"
-                  disabled={context.profile.role !== "superadmin"}
-                  checked={!!draft.is_unique}
+                  disabled={
+                    context.profile.role !== "superadmin" ||
+                    !!draft.validation?.government_id_digits
+                  }
+                  checked={
+                    !!draft.validation?.government_id_digits ||
+                    !!draft.is_unique
+                  }
                   onChange={(e) =>
                     setDraft({ ...draft, is_unique: e.target.checked })
                   }
@@ -722,7 +728,7 @@ export function FieldBuilder({
                   disabled={!!draft.validation?.government_id_digits}
                   checked={
                     draft.validation?.government_id_digits
-                      ? true
+                      ? false
                       : draft.required
                   }
                   onChange={(e) =>

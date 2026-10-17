@@ -52,7 +52,11 @@ export function IdentifierInput({
               canonical.slice(digitPosition);
             digitPosition--;
           }
-          onChange(canonical);
+          onChange(
+            canonical === "" && field.validation?.government_id_digits
+              ? null
+              : canonical,
+          );
           requestAnimationFrame(() => {
             let digits = 0,
               caret = 0;

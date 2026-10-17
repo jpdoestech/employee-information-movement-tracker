@@ -5,9 +5,9 @@ Migration: `supabase/migrations/20261017000200_manpower_and_unique_fields.sql`.
 ## Use
 
 - New employees default to **New/Additional**. Choose **Replacement** to select an authorized Inactive or Separated employee. The server checks their current status again when saving. Previously saved references remain valid for unrelated edits if that person later becomes active.
-- All four Government IDs are required on new records and retain their existing digit/format validation and restricted permissions. Historical missing IDs are not invented or backfilled; unrelated edits remain possible. Populated required IDs cannot be cleared.
-- A superadmin can enable **Unique values** in Field Builder and choose **Across the whole system** or **Within each client**. There is one rule per field; there are no individual-client overrides. Disabling the checkbox turns the uniqueness rule off.
-- Uniqueness is opt-in, including Government IDs. Enabling a rule checks existing data and rejects the change atomically if duplicates already exist. Resolve those duplicates explicitly before enabling it.
+- All four Government IDs are optional, including on new records. Entering a value does not make it required: it can be cleared and saved. Supplied values retain exact-digit/format validation and restricted permissions.
+- A superadmin can enable **Unique values** in Field Builder and choose **Across the whole system** or **Within each client**. There is one rule per field; there are no individual-client overrides. For non-Government fields, disabling the checkbox turns the uniqueness rule off.
+- Government ID uniqueness is enforced, globally by default, with a superadmin-configurable Global/Per-client scope. Other fields are opt-in. Corrective migration `20261017000400_optional_government_ids.sql` makes IDs optional and enables uniqueness without changing existing scope choices or employee values. Existing duplicates reject activation atomically; resolve those explicitly before applying the migration.
 - Empty optional values do not reserve a value. Text uses the existing case-insensitive Unicode/whitespace normalization. Government ID separators are ignored. Numeric values compare numerically.
 - Global uniqueness includes archived employees. Per-client uniqueness reserves values for every non-voided primary client placement, including past and scheduled placements and archived employees. An employee without a client reserves no per-client value until a client placement is created. Voiding a future placement releases that placement's reservation unless another non-voided placement retains it.
 - System ID and the client-issued **ID** retain their existing allocation, manual/automatic settings and uniqueness rules. They are not controlled by this new checkbox.
@@ -20,9 +20,9 @@ The migration adds metadata columns with safe defaults and a private hash-based 
 
 ## Recovery
 
-To undo an unwanted uniqueness policy, disable **Unique values** for that field as superadmin; this removes its claims without changing employee values. Scope changes and rule activation roll back completely on duplicate data. Existing request/version/idempotency handling is unchanged.
+For non-Government fields, to undo an unwanted uniqueness policy, disable **Unique values** for that field as superadmin; this removes its claims without changing employee values. Scope changes and rule activation roll back completely on duplicate data. Existing request/version/idempotency handling is unchanged.
 
-A frontend rollback alone does not relax the new server requirements. If the required-ID or manpower policy must be reversed, use a reviewed corrective forward migration: remove `required_government_ids` and set the four ID definitions' `required` flags to false; remove `manpower_values_changed`, restore `patch_employee` from `patch_employee_before_manpower` using its existing signature, and set the manpower definition's `required` flag to false. Preserve the stored values and new columns. Do not drop claim tables/functions while a unique rule is still enabled. No destructive rollback is run automatically.
+A frontend rollback alone does not relax the new server requirements. Migration `20261017000400_optional_government_ids.sql` corrects the former required-ID policy. If the manpower policy must be reversed, use a reviewed corrective forward migration: remove `manpower_values_changed`, restore `patch_employee` from `patch_employee_before_manpower` using its existing signature, and set the manpower definition's `required` flag to false. Preserve the stored values and new columns. Do not drop claim tables/functions while a unique rule is still enabled. No destructive rollback is run automatically.
 
 ## Verification
 
@@ -42,4 +42,4 @@ Migration: `supabase/migrations/20261017000300_employee_duplicate_review.sql`.
 
 To roll back duplicate review, restore `public.tracker_mutate` from `app_private.tracker_mutate_before_duplicates` (preserving the existing public function signature and its qualified request-ID references), and remove the matching frontend controls in the same release. Preserve the setting and employee data until dependent clients have been retired. This is a reviewed corrective migration, not an automatic action.
 
-Required-ID rollout note: users who create employees need explicit **Create** permission for all four restricted Government ID fields. Existing Read grants are not expanded automatically. Configure those permissions as superadmin before handing the new creation form to other roles.
+Government ID permissions: explicit **Create** permission is needed only for IDs being entered. Blank IDs do not require access to all four fields. Existing Read grants are not expanded automatically.

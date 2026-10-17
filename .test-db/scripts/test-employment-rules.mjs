@@ -238,32 +238,57 @@ export async function testEmploymentRules({
     await create({ uq_global_rule: "REFERENCE ALPHA" });
   });
 
-  await test("government unique rules normalize formatted identifiers and refuse duplicate activation without changing required rules", async () => {
+  await test("optional government IDs enforce normalized uniqueness by default with configurable scope", async () => {
     const government = (
       await owner.query(
         "select * from public.field_definitions where key='sss_number'",
       )
     ).rows[0];
-    const normalized = await owner.query(
-      "select app_private.unique_value(f,to_jsonb('09-1234567-8'::text))=app_private.unique_value(f,to_jsonb('0912345678'::text)) matches from public.field_definitions f where id=$1",
-      [government.id],
-    );
-    assert.equal(normalized.rows[0].matches, true);
-    await assert.rejects(
-      configure(government.id, { is_unique: true, unique_scope: "global" }),
-      { code: "23505" },
-    );
-    const unchanged = (
+    assert.equal(government.required, false);
+    assert.equal(government.is_unique, true);
+    assert.equal(government.unique_scope, "global");
+    await configure(government.id, { required: true, is_unique: false });
+    const enforced = (
       await owner.query(
-        "select required,is_unique,unique_scope from public.field_definitions where id=$1",
+        "select required,is_unique from public.field_definitions where id=$1",
         [government.id],
       )
     ).rows[0];
-    assert.deepEqual(unchanged, {
-      required: true,
-      is_unique: false,
-      unique_scope: "global",
+    assert.deepEqual(enforced, { required: false, is_unique: true });
+    const a = await create({ sss_number: "09-1234567-8" }, clientA);
+    await assert.rejects(create({ sss_number: "0912345678" }, clientB), {
+      code: "23505",
     });
+    await configure(government.id, { unique_scope: "client" });
+    const b = await create({ sss_number: "0912345678" }, clientB);
+    await assert.rejects(create({ sss_number: "0912345678" }, clientA), {
+      code: "23505",
+    });
+    await assert.rejects(configure(government.id, { unique_scope: "global" }), {
+      code: "23505",
+    });
+    await m(id.sa, "employee_update", {
+      id: b.id,
+      expected_version: await revision(b.id),
+      values: { sss_number: null },
+    });
+    await configure(government.id, { unique_scope: "global" });
+    await m(id.sa, "employee_update", {
+      id: a.id,
+      expected_version: await revision(a.id),
+      values: { sss_number: "" },
+    });
+    assert.equal(
+      (await q(id.sa, "employee", { id: a.id })).employee.values.sss_number,
+      null,
+    );
+    await create({ sss_number: null });
+    const blank = await create({ sss_number: "" });
+    assert.equal(
+      (await q(id.sa, "employee", { id: blank.id })).employee.values.sss_number,
+      null,
+    );
+    await create({ sss_number: "0912345678" });
   });
 
   await test("unique values are race-safe, idempotent, permit long text and roll back whole bulk writes", async () => {

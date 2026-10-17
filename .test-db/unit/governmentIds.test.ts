@@ -15,6 +15,8 @@ describe("government IDs", () => {
       };
       const valid = "0" + "1".repeat(definition.digits - 1);
       expect(governmentIdError(field, valid)).toBe("");
+      expect(governmentIdError(field, "")).toBe("");
+      expect(governmentIdError(field, null)).toBe("");
       expect(governmentIdError(field, valid.slice(1))).toContain("exactly");
       expect(governmentIdError(field, valid + "1")).toContain("exactly");
       expect(governmentIdError(field, valid.slice(1) + "A")).toContain(
@@ -31,18 +33,18 @@ describe("government IDs", () => {
     expect(normalizeGovernmentId("012 345 678")).toBe("012345678");
     expect(normalizeGovernmentId("012/345/678")).toBe("012/345/678");
   });
-  it("requires IDs for new profiles and prevents clearing, while preserving historical gaps", () => {
+  it("allows missing, partial and cleared IDs on new and existing profiles", () => {
     const field = {
       key: "bir_tin",
       required: true,
       validation: { government_id_digits: 9 },
     } as Field;
-    expect(requiredForEdit(field, {}, {}, true)).toBe(true);
+    expect(requiredForEdit(field, {}, {}, true)).toBe(false);
     expect(requiredForEdit(field, {}, {}, false)).toBe(false);
     expect(requiredForEdit(field, { bir_tin: "012345678" }, {}, false)).toBe(
-      true,
+      false,
     );
-    expect(requiredForEdit(field, {}, { bir_tin: null }, false)).toBe(true);
+    expect(requiredForEdit(field, {}, { bir_tin: null }, false)).toBe(false);
     expect(requiredForEdit({ ...field, required: false }, {}, {}, true)).toBe(
       false,
     );

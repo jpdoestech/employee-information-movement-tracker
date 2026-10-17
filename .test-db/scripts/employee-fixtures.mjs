@@ -6,14 +6,6 @@ select u,g,a,'allow',true from unnest($1::uuid[]) u,unnest(array['R','U']) a,
 (select group_id g from public.field_definitions where key='name') groups`;
 
 export function employeeFixture(operation, payload) {
-  if (operation === "employee_create")
-    payload.values = {
-      bir_tin: "012345678",
-      sss_number: "0123456789",
-      philhealth_pin: "012345678901",
-      pagibig_mid: "012345678901",
-      ...payload.values,
-    };
   if (
     ["employee_create", "employee_update", "bulk_update"].includes(operation) &&
     typeof payload?.values?.name === "string" &&

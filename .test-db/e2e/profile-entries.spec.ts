@@ -1,9 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { fillGovernmentIds } from "./profile-fixtures";
 
-test("new employees require Government IDs before confirmation", async ({
-  page,
-}) => {
+test("new employees can save without Government IDs", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Explore synthetic demo" }).click();
   await page.goto("/#employees");
@@ -14,20 +12,15 @@ test("new employees require Government IDs before confirmation", async ({
   });
   await editor
     .getByRole("textbox", { name: "Last Name *", exact: true })
-    .fill("Required");
+    .fill("Optional");
   await editor
     .getByRole("textbox", { name: "First Name *", exact: true })
     .fill("Identifiers");
-  await editor
-    .getByRole("button", { name: "Save to Supabase", exact: true })
-    .click();
-  await expect(
-    editor.getByText("BIR TIN is required.", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("dialog", { name: "Create employee", exact: true }),
-  ).toHaveCount(0);
-  await fillGovernmentIds(editor);
+  const sss = editor.getByRole("textbox", { name: "SSS Number", exact: true });
+  await sss.fill("09123");
+  await expect(sss).toHaveAttribute("aria-invalid", "true");
+  await sss.fill("");
+  await expect(sss).not.toHaveAttribute("aria-invalid", "true");
   await editor
     .getByRole("button", { name: "Save to Supabase", exact: true })
     .click();
@@ -36,6 +29,49 @@ test("new employees require Government IDs before confirmation", async ({
     .getByRole("button", { name: "Continue", exact: true })
     .click();
   await expect(editor).toHaveCount(0);
+  await page
+    .getByRole("searchbox", { name: "Search employees", exact: true })
+    .fill("Optional, Identifiers");
+  const row = page
+    .getByLabel("Scrollable employee table")
+    .locator("tbody tr")
+    .first();
+  await expect(row).toContainText("Optional, Identifiers");
+  for (const value of ["0912345678", ""]) {
+    await row.locator("td.employee-name").click();
+    const profile = page.getByRole("dialog", {
+      name: "Employee profile",
+      exact: true,
+    });
+    await profile
+      .getByRole("button", { name: "Edit details", exact: true })
+      .click();
+    const storedSss = profile.getByRole("textbox", {
+      name: "SSS Number",
+      exact: true,
+    });
+    await expect(storedSss).toHaveValue(value ? "" : "09-1234567-8");
+    await storedSss.fill(value);
+    await profile
+      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .click();
+    await page
+      .getByRole("dialog", { name: "Save employee changes", exact: true })
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    await expect(profile).toHaveCount(0);
+  }
+  await row.locator("td.employee-name").click();
+  const profile = page.getByRole("dialog", {
+    name: "Employee profile",
+    exact: true,
+  });
+  await profile
+    .getByRole("button", { name: "Edit details", exact: true })
+    .click();
+  await expect(
+    profile.getByRole("textbox", { name: "SSS Number", exact: true }),
+  ).toHaveValue("");
 });
 
 for (const [width, height] of [
@@ -44,7 +80,7 @@ for (const [width, height] of [
   [1366, 600],
   [812, 375],
 ]) {
-  test(`profile entries and required government IDs save through confirmation at ${width}x${height}`, async ({
+  test(`profile entries and optional government IDs save through confirmation at ${width}x${height}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height });
@@ -118,17 +154,15 @@ for (const [width, height] of [
     await editor
       .getByRole("button", { name: "Save to Supabase", exact: true })
       .click();
-    await expect(
-      page.getByRole("dialog", { name: "Create employee", exact: true }),
-    ).toHaveCount(0);
-    await expect(
-      editor.getByText("BIR TIN is required.", { exact: true }),
-    ).toBeVisible();
+    await page
+      .getByRole("dialog", { name: "Create employee", exact: true })
+      .getByRole("button", { name: "Cancel", exact: true })
+      .click();
     await fillGovernmentIds(editor);
     await editor
       .getByRole("tab", { name: "Personal Information", exact: true })
       .click();
-    const tin = editor.getByRole("textbox", { name: "BIR TIN *", exact: true });
+    const tin = editor.getByRole("textbox", { name: "BIR TIN", exact: true });
     await tin.fill("1234A");
     await expect(tin).toHaveAttribute("aria-invalid", "true");
     await editor
@@ -194,10 +228,10 @@ for (const [width, height] of [
       .getByRole("tab", { name: "Edit details", exact: true })
       .click();
     await expect(
-      profile.getByRole("textbox", { name: "BIR TIN *", exact: true }),
+      profile.getByRole("textbox", { name: "BIR TIN", exact: true }),
     ).toHaveValue("012-345-678");
     await expect(
-      profile.getByRole("textbox", { name: "SSS Number *", exact: true }),
+      profile.getByRole("textbox", { name: "SSS Number", exact: true }),
     ).toHaveValue("01-2345678-9");
   });
 }
