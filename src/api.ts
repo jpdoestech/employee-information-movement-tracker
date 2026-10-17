@@ -28,7 +28,11 @@ export async function query<T = any>(
   if (demo) return demoQuery(operation, q) as T;
   if (!supabase)
     throw new Error("Configure this application’s Supabase connection.");
-  const special = ["client_settings", "filter_values"].includes(operation)
+  const special = [
+    "client_settings",
+    "filter_values",
+    "employee_duplicates",
+  ].includes(operation)
     ? operation
     : operation === "record_page"
       ? "record_page"
@@ -121,7 +125,10 @@ export async function mutate<T = any>(
             });
     if (error)
       throw new Error(
-        error.code === "23505"
+        error.code === "23505" &&
+          !/must have a unique value|Cannot enable uniqueness/.test(
+            error.message,
+          )
           ? operation === "field" || operation === "group"
             ? "This name or machine key already exists, including inactive definitions. Reuse, expand applicability or reactivate the existing definition."
             : "This code or name is already in use. Review existing records."

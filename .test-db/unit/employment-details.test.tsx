@@ -123,7 +123,7 @@ describe("employment details", () => {
       (match) => match[1],
     );
     expect(labels).toEqual(
-      employmentDisplayOrder.map((key) =>
+      employmentDisplayOrder.filter((key) => key !== "replaced_employee_id").map((key) =>
         key === "date_hired-duration" ? "Length of Service" : key,
       ),
     );

@@ -4,6 +4,7 @@ import type { Context, Field } from "../domain";
 import { displayFieldValue } from "../fieldValues";
 import { fieldTextRole } from "../typography";
 import { employmentDisplayOrder, employmentStatus } from "../profileFields";
+import { ReplacementEmployee } from "./ReplacementEmployee";
 import {
   fullYears,
   lengthOfService,
@@ -24,6 +25,7 @@ export function EmployeeOverview({
   groups,
   today,
   employeeId,
+  revision,
   onEdit,
 }: {
   values: Record<string, unknown>;
@@ -31,6 +33,7 @@ export function EmployeeOverview({
   groups: Context["groups"];
   today: string;
   employeeId: string;
+  revision?: number;
   canEdit: boolean;
   onEdit: (groupId?: string) => void;
 }) {
@@ -85,6 +88,11 @@ export function EmployeeOverview({
   for (const f of readable) {
     if (used.has(f.key)) continue;
     if (
+      f.key === "replaced_employee_id" &&
+      values.manpower_classification !== "Replacement"
+    )
+      continue;
+    if (
       [
         "status_effective_date",
         "separation_category",
@@ -112,9 +120,13 @@ export function EmployeeOverview({
       key: f.key,
       label: f.label,
       value:
-        f.validation?.government_id_digits && !unmasked
-          ? maskedIdentifier(value)
-          : value,
+        f.key === "replaced_employee_id" ? (
+          <ReplacementEmployee value={values[f.key]} revision={revision} />
+        ) : f.validation?.government_id_digits && !unmasked ? (
+          maskedIdentifier(value)
+        ) : (
+          value
+        ),
       role: fieldTextRole(f),
     });
     if (["birth_date", "date_hired"].includes(f.key)) {

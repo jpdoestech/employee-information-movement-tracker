@@ -682,14 +682,47 @@ export function FieldBuilder({
                 />
               </label>
             </div>
+            {draft.is_unique && (
+              <p className="hint">
+                Non-empty values must be unique. Existing duplicates must be
+                resolved before enabling this rule. Client scope includes past
+                and scheduled primary placements.
+              </p>
+            )}
             <div className="checks">
+              <label>
+                <input
+                  type="checkbox"
+                  disabled={context.profile.role !== "superadmin"}
+                  checked={!!draft.is_unique}
+                  onChange={(e) =>
+                    setDraft({ ...draft, is_unique: e.target.checked })
+                  }
+                />
+                Unique values
+              </label>
+              {draft.is_unique && (
+                <SearchFilterPicker
+                  mode="single"
+                  label="Uniqueness scope"
+                  disabled={context.profile.role !== "superadmin"}
+                  options={[
+                    { id: "global", label: "Across the whole system" },
+                    { id: "client", label: "Within each client" },
+                  ]}
+                  value={[draft.unique_scope || "global"]}
+                  onChange={(ids) =>
+                    setDraft({ ...draft, unique_scope: ids[0] || "global" })
+                  }
+                />
+              )}
               <label>
                 <input
                   type="checkbox"
                   disabled={!!draft.validation?.government_id_digits}
                   checked={
                     draft.validation?.government_id_digits
-                      ? false
+                      ? true
                       : draft.required
                   }
                   onChange={(e) =>

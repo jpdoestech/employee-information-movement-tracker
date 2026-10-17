@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, TriangleAlert, Trash2, X } from "lucide-react";
 
 type Request = {
   title: string;
-  message: string;
+  message: ReactNode;
   action: string;
   cancelLabel: string;
   resolve: (confirmed: boolean) => void;
@@ -12,7 +12,7 @@ let publish: ((request: Request) => void) | undefined;
 const queue: Request[] = [];
 export function confirmTransaction(
   title: string,
-  message: string,
+  message: ReactNode,
   action = "Continue",
   cancelLabel = "Cancel",
 ): Promise<boolean> {
@@ -22,7 +22,7 @@ export function confirmTransaction(
     else queue.push(request);
   });
 }
-export async function requireConfirmation(title: string, message: string) {
+export async function requireConfirmation(title: string, message: ReactNode) {
   if (!(await confirmTransaction(title, message))) throw new Error("");
 }
 export function TransactionConfirmation() {
@@ -74,7 +74,11 @@ export function TransactionConfirmation() {
         </button>
       </header>
       <div className="dialog-body">
-        <p>{request.message}</p>
+        {typeof request.message === "string" ? (
+          <p>{request.message}</p>
+        ) : (
+          request.message
+        )}
       </div>
       <footer>
         <button autoFocus onClick={() => finish(false)}>

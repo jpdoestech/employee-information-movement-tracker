@@ -1,9 +1,14 @@
+import { trackTransaction } from "../transactions";
+import { DuplicateEmployees } from "../components/DuplicateEmployees";
+import type { DuplicateReview } from "../duplicateEmployees";
 import {
   useClientIdMode,
   clientIdError,
   normalizeClientId,
 } from "../clientIdentity";
 import { ManualClientId } from "../components/ManualClientId";
+import { ReplacementEmployee } from "../components/ReplacementEmployee";
+import { manpowerError } from "../employmentValidation";
 import { lengthOfService } from "../employeeOverview";
 import { FieldTypeIcon } from "../components/FieldTypeIcon";
 import { fieldTextRole } from "../typography";
@@ -191,6 +196,8 @@ export function EmployeeEditor({
       (f) =>
         !addressFieldKeys.has(f.key) &&
         !["name", "status_reason"].includes(f.key) &&
+        (f.key !== "replaced_employee_id" ||
+          draft.manpower_classification === "Replacement") &&
         (![
           "status_effective_date",
           "separation_category",
@@ -241,6 +248,8 @@ export function EmployeeEditor({
             f.key === "client_employee_number" &&
             f.actions.includes("C"))) &&
         employmentDisplayOrder.includes(f.key) &&
+        (f.key !== "replaced_employee_id" ||
+          draft.manpower_classification === "Replacement") &&
         !regular.some((entry) => entry.id === f.id) &&
         (![
           "status_effective_date",
@@ -442,7 +451,12 @@ export function EmployeeEditor({
       const employmentProblem =
         !row ||
         employmentOrder.some(
-          (key) => key !== "remarks" && Object.hasOwn(changed, key),
+          (key) =>
+            ![
+              "remarks",
+              "manpower_classification",
+              "replaced_employee_id",
+            ].includes(key) && Object.hasOwn(changed, key),
         )
           ? employmentError(draft)
           : undefined;
@@ -455,6 +469,21 @@ export function EmployeeEditor({
           requiredForEdit(f, values, changed, !row) &&
           (draft[f.key] == null || draft[f.key] === ""),
       );
+      const manpowerProblem =
+        !row ||
+        ["manpower_classification", "replaced_employee_id"].some((key) =>
+          Object.hasOwn(changed, key),
+        )
+          ? manpowerError(draft, !row)
+          : undefined;
+      if (manpowerProblem) {
+        revealField(
+          draft.manpower_classification === "Replacement"
+            ? "replaced_employee_id"
+            : "manpower_classification",
+        );
+        throw new Error(manpowerProblem);
+      }
       if (missing) {
         revealField(missing.key);
         throw new Error(`${missing.label} is required.`);
@@ -528,7 +557,35 @@ export function EmployeeEditor({
               status: employmentStatus(draft.status),
             },
           };
-      await mutate(row ? "employee_update" : "employee_create", p);
+      let duplicateReview: string | undefined;
+      if (
+        !row ||
+        [...nameKeys, "birth_date"].some((key) => Object.hasOwn(changed, key))
+      ) {
+        const review = await trackTransaction(
+          "Checking possible duplicate employees",
+          () => query<DuplicateReview>("employee_duplicates", p),
+        );
+        if (review.total > 0) {
+          if (
+            !(await confirmTransaction(
+              "Possible duplicate employee",
+              <DuplicateEmployees review={review} />,
+            ))
+          )
+            return;
+          duplicateReview = review.token;
+        }
+      }
+      await mutate(
+        row ? "employee_update" : "employee_create",
+        {
+          ...p,
+          ...(duplicateReview ? { duplicate_review: duplicateReview } : {}),
+        },
+        undefined,
+        !!duplicateReview,
+      );
       onSaved();
       onClose();
     } catch (e) {
@@ -689,6 +746,7 @@ export function EmployeeEditor({
                   groups={context.groups}
                   today={context.today}
                   employeeId={row.id}
+                  revision={context.revision}
                   canEdit={false}
                   onEdit={startEdit}
                 />
@@ -759,6 +817,23 @@ export function EmployeeEditor({
                                           required
                                           disabled={busy}
                                         />
+                                      ) : f.key === "replaced_employee_id" &&
+                                        editable.some(
+                                          (entry) => entry.id === f.id,
+                                        ) ? (
+                                        <ReplacementEmployee
+                                          creating={!row}
+                                          disabled={busy}
+                                          field={f}
+                                          value={draft[f.key]}
+                                          revision={context.revision}
+                                          onChange={(value) =>
+                                            setChanged((v) => ({
+                                              ...v,
+                                              [f.key]: value,
+                                            }))
+                                          }
+                                        />
                                       ) : !editable.some(
                                           (entry) => entry.id === f.id,
                                         ) ? (
@@ -774,12 +849,20 @@ export function EmployeeEditor({
                                               id={`${tabId}-reference-${f.key}`}
                                               className={fieldTextRole(f)}
                                             >
-                                              {f.key === "status"
-                                                ? employmentStatus(draft.status)
-                                                : displayFieldValue(
-                                                    f,
-                                                    draft[f.key],
-                                                  )}
+                                              {f.key ===
+                                              "replaced_employee_id" ? (
+                                                <ReplacementEmployee
+                                                  value={draft[f.key]}
+                                                  revision={context.revision}
+                                                />
+                                              ) : f.key === "status" ? (
+                                                employmentStatus(draft.status)
+                                              ) : (
+                                                displayFieldValue(
+                                                  f,
+                                                  draft[f.key],
+                                                )
+                                              )}
                                             </output>
                                           </div>
                                         </div>
@@ -872,6 +955,12 @@ export function EmployeeEditor({
                                             setChanged((v) => ({
                                               ...v,
                                               [f.key]: value,
+                                              ...(f.key ===
+                                                "manpower_classification" &&
+                                              value !== "Replacement" &&
+                                              draft.replaced_employee_id
+                                                ? { replaced_employee_id: null }
+                                                : {}),
                                             }))
                                           }
                                         />

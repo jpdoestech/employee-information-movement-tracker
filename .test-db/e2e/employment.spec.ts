@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { fillGovernmentIds } from "./profile-fixtures";
 
 for (const width of [375, 1366]) {
   test(`employment order, conditional requirements and custom reason at ${width}px`, async ({
@@ -33,6 +34,7 @@ for (const width of [375, 1366]) {
       "client_employee_number",
       "branch",
       "client",
+      "manpower_classification",
       "department",
       "position",
       "date_hired",
@@ -90,6 +92,7 @@ for (const width of [375, 1366]) {
     await editor
       .getByLabel("Specify reason *", { exact: true })
       .fill("Relocating with family");
+    await fillGovernmentIds(editor);
     await expect(
       editor.getByRole("button", { name: "Status Reason", exact: true }),
     ).toHaveCount(0);

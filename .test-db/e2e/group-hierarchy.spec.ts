@@ -58,18 +58,18 @@ for (const [width, height] of [
     await discard
       .getByRole("button", { name: "Continue editing", exact: true })
       .click();
-    await expect(editor.getByLabel("SSS Number", { exact: true })).toHaveValue(
-      "09-1234567-8",
-    );
+    await expect(
+      editor.getByLabel("SSS Number *", { exact: true }),
+    ).toHaveValue("09-1234567-8");
     await editor
       .getByRole("button", { name: "Back to overview", exact: true })
       .click();
     await editor
       .getByRole("button", { name: "Edit details", exact: true })
       .click();
-    await expect(editor.getByLabel("SSS Number", { exact: true })).toHaveValue(
-      "09-1234567-8",
-    );
+    await expect(
+      editor.getByLabel("SSS Number *", { exact: true }),
+    ).toHaveValue("09-1234567-8");
     await expect(editor.getByLabel("Last Name", { exact: true })).toBeVisible();
     await expect(
       editor.getByLabel("Department", { exact: true }),

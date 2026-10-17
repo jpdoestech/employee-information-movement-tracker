@@ -1,4 +1,5 @@
 import { FloatingNotification } from "../components/FloatingNotification";
+import { FieldTypeIcon } from "../components/FieldTypeIcon";
 import { useEffect, useState } from "react";
 import { query, mutate } from "../api";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
@@ -25,6 +26,9 @@ export function Security({
     [descendants, setDescendants] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
+    [duplicateThreshold, setDuplicateThreshold] = useState(
+      String(context.register_settings.duplicate_name_threshold ?? 90),
+    ),
     [preview, setPreview] = useState<any>(),
     [newId, setNewId] = useState(""),
     [displayName, setDisplayName] = useState(""),
@@ -36,6 +40,11 @@ export function Security({
       .then(setData)
       .catch((e) => setError(e.message));
   }, [context.revision]);
+  useEffect(() => {
+    setDuplicateThreshold(
+      String(context.register_settings.duplicate_name_threshold ?? 90),
+    );
+  }, [context.register_settings.row_version]);
   const target = options.find((o) => o.id === scope);
   const scopes = [
     { id: "all", label: "All organization scopes", kind: "all" },
@@ -523,6 +532,56 @@ export function Security({
               />
               Allow users to display row numbers
             </label>
+            <div className="duplicate-policy">
+              <h3>Possible duplicate employees</h3>
+              <p>
+                Compare full names globally when birthdays match exactly. Only
+                authorized records and assignment details appear in the
+                confirmation.
+              </p>
+              <label className="field">
+                Name similarity threshold (%)
+                <span className="value-control has-type-icon">
+                  <span className="value-type-icon">
+                    <FieldTypeIcon type="integer" />
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={duplicateThreshold}
+                    disabled={busy || context.profile.role !== "superadmin"}
+                    onChange={(e) => setDuplicateThreshold(e.target.value)}
+                  />
+                </span>
+              </label>
+              <button
+                disabled={
+                  busy ||
+                  context.profile.role !== "superadmin" ||
+                  duplicateThreshold.trim() === "" ||
+                  !Number.isInteger(Number(duplicateThreshold)) ||
+                  Number(duplicateThreshold) < 0 ||
+                  Number(duplicateThreshold) > 100 ||
+                  Number(duplicateThreshold) ===
+                    (context.register_settings.duplicate_name_threshold ?? 90)
+                }
+                onClick={() =>
+                  void run(() =>
+                    mutate("register_settings", {
+                      row_numbers_allowed:
+                        context.register_settings.row_numbers_allowed,
+                      duplicate_name_threshold: Number(duplicateThreshold),
+                      expected_version: context.register_settings.row_version,
+                      reason: "Change global employee duplicate name threshold",
+                    }),
+                  )
+                }
+              >
+                Save duplicate check settings
+              </button>
+            </div>
             <small>
               Only a superadmin can change this setting. Row numbers follow the
               current sort and filter; System IDs remain permanent.

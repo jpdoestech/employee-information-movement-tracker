@@ -5,6 +5,15 @@ export const textFieldTypes = ["short_text", "long_text", "email", "phone"];
 export function fieldConfigurationError(
   field: Partial<Field>,
 ): string | undefined {
+  if (field.is_unique !== undefined && typeof field.is_unique !== "boolean")
+    return "Unique values must be enabled or disabled.";
+  if (
+    field.unique_scope !== undefined &&
+    !["global", "client"].includes(field.unique_scope)
+  )
+    return "Choose Global or Per-client uniqueness.";
+  if (field.is_unique && field.type === "system")
+    return "System IDs retain their existing allocation and uniqueness rules.";
   const rules = field.validation ?? {};
   if (Object.values(rules).some((v) => v !== undefined && !Number.isFinite(v)))
     return "Validation values must be finite numbers.";

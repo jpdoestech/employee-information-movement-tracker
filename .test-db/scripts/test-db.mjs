@@ -1,3 +1,4 @@
+import { testEmploymentRules } from "./test-employment-rules.mjs";
 import EmbeddedPostgres from "embedded-postgres";
 import { employeeFixture, identityPolicyGrantSql } from "./employee-fixtures.mjs";
 import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
@@ -2660,28 +2661,23 @@ try {
     assert.equal(statusRow.to_value, "Separated");
     await assert.rejects(m(id.sa, "employee_update", { id: created.id, expected_version: await revision(created.id), values: { department: null }, employment: { change_kind: "correction" } }), { code: "22023" });
   });
-  await test("optional government IDs allow missing and cleared values while rejecting atomic invalid writes", async () => {
+  await test("required government IDs reject missing and cleared values while preserving historical gaps", async () => {
     const before = (
       await owner.query(
         "select (select count(*) from public.employees) employees,(select count(*) from public.audit_log) audit,(select count(*) from public.sync_outbox) outbox",
       )
     ).rows[0];
-    const withoutIds = await as(id.sa, (c) =>
-        c.query("select public.tracker_mutate('employee_create',$1,$2) r", [
-          { values: { first_name: "Missing", last_name: "IDs" } },
-          randomUUID(),
-        ]),
-    );
-    const withoutIdsDetail = await q(id.sa, "employee", { id: withoutIds.rows[0].r.id });
-    for (const key of ["bir_tin", "sss_number", "philhealth_pin", "pagibig_mid"])
-      assert.equal(withoutIdsDetail.employee.values[key], null);
+    await assert.rejects(as(id.sa, (c) =>
+      c.query("select public.tracker_mutate('employee_create',$1,$2) r", [
+        { values: { first_name: "Missing", last_name: "IDs" } }, randomUUID(),
+      ])), { code: "22023" });
     const after = (
       await owner.query(
         "select (select count(*) from public.employees) employees,(select count(*) from public.audit_log) audit,(select count(*) from public.sync_outbox) outbox",
       )
     ).rows[0];
-    assert.equal(Number(after.employees), Number(before.employees) + 1);
-    assert.ok(Number(after.audit) > Number(before.audit));
+    assert.equal(Number(after.employees), Number(before.employees));
+    assert.equal(Number(after.audit), Number(before.audit));
     const created = await m(id.sa, "employee_create", {
       values: {
         name: "Synthetic government IDs",
@@ -2712,17 +2708,14 @@ try {
           { code: "22023" },
         );
     assert.equal(await revision(created.id), detail.employee.row_version);
-    await m(id.sa, "employee_update", {
-      id: created.id,
-      expected_version: detail.employee.row_version,
+    await assert.rejects(m(id.sa, "employee_update", {
+      id: created.id, expected_version: detail.employee.row_version,
       values: { bir_tin: null, sss_number: null, philhealth_pin: null, pagibig_mid: null },
-    });
-    const cleared = await q(id.sa, "employee", { id: created.id });
-    for (const key of ["bir_tin", "sss_number", "philhealth_pin", "pagibig_mid"])
-      assert.equal(cleared.employee.values[key], null);
+    }), { code: "22023" });
+    assert.equal(await revision(created.id), detail.employee.row_version);
     const legacy = (
       await owner.query(
-        "insert into public.employees(name) values('Legacy missing IDs') returning id",
+        "insert into public.employees(name,custom_values) values('Legacy missing IDs',jsonb_build_object('bir_tin',null)) returning id",
       )
     ).rows[0].id;
     await m(id.sa, "employee_update", {
@@ -2740,7 +2733,7 @@ try {
     const ids = schema.fields.filter((f) => f.validation?.government_id_digits);
     assert.equal(ids.length, 4);
     for (const f of ids) {
-      assert.equal(f.required, false);
+      assert.equal(f.required, true);
       assert.equal(f.sensitivity, "restricted");
       assert.equal(f.list_eligible, true);
     }
@@ -3334,6 +3327,7 @@ try {
       { code: "42501" },
     );
   });
+  await testEmploymentRules({ owner, test, q, m, as, concurrent, revision, id, today, date });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
     ".test-db/reports/verification/database.json",

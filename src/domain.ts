@@ -19,6 +19,8 @@ export type Field = {
   type: string;
   active: boolean;
   required: boolean;
+  is_unique?: boolean;
+  unique_scope?: "global" | "client";
   sensitivity: string;
   list_eligible: boolean;
   scope_mode: string;
@@ -56,7 +58,11 @@ export type Context = {
   profile: { id: string; display_name: string; role: string };
   today: string;
   revision: number;
-  register_settings: { row_numbers_allowed: boolean; row_version: number };
+  register_settings: {
+    row_numbers_allowed: boolean;
+    row_version: number;
+    duplicate_name_threshold?: number;
+  };
   fields: Field[];
   groups: {
     id: string;

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { fillGovernmentIds } from "./profile-fixtures";
 for (const [width, height] of [
   [375, 740],
   [768, 1024],
@@ -97,6 +98,7 @@ for (const [width, height] of [
     const id = editor.getByLabel("ID *", { exact: true });
     await expect(id).toBeVisible();
     await id.fill("ab-00023");
+    await fillGovernmentIds(editor);
     const bounds = await id.boundingBox();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);

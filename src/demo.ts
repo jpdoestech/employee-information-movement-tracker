@@ -1,5 +1,11 @@
+import {
+  duplicateEmployees,
+  bulkDuplicateEmployees,
+} from "./duplicateEmployees";
 import { mobileError, normalizeIdentifier } from "./identifiers";
 import { fieldConfigurationError } from "./fieldConfiguration";
+import { manpowerError, uniqueValuesError } from "./employmentValidation";
+import { requiredForEdit } from "./governmentIds";
 import {
   addressDefinitions,
   addressKeys,
@@ -128,7 +134,7 @@ fields.push(
     group_name: "Government IDs",
     type: "short_text",
     active: true,
-    required: false,
+    required: true,
     sensitivity: "restricted",
     list_eligible: true,
     scope_mode: "all",
@@ -143,9 +149,9 @@ fields.push(
     group_name:
       group === "personal" ? "Personal information" : "Employment information",
     active: true,
-    required: false,
+    required: f.key === "manpower_classification",
     sensitivity: "normal",
-    list_eligible: true,
+    list_eligible: f.key !== "replaced_employee_id",
     scope_mode: "all",
     row_version: 1,
     actions: ["C", "R", "U", "D"],
@@ -198,6 +204,41 @@ let employees: Employee[] = Array.from({ length: 34 }, (_, i) => ({
 }));
 const clientCounters = new Map<string, number>();
 const clientIdentities = new Map<string, string>();
+const archivedEmployees: Employee[] = [];
+function uniqueDemoError(
+  candidates: Employee[],
+  definitions = fields,
+  extra?: { id: string; client: string },
+) {
+  return uniqueValuesError(
+    definitions,
+    [...candidates, ...archivedEmployees],
+    (id) => [
+      ...new Set([
+        ...[...clientIdentities.keys()]
+          .filter((key) => key.startsWith(`${id}:`))
+          .map((key) => key.slice(id.length + 1)),
+        ...(extra?.id === id && extra.client ? [extra.client] : []),
+      ]),
+    ],
+  );
+}
+function validateManpowerDemo(
+  values: Record<string, unknown>,
+  id?: string,
+  creating = false,
+) {
+  const error = manpowerError(values, creating);
+  if (error) throw new Error(error);
+  if (values.manpower_classification === "Replacement") {
+    const replaced = employees.find(
+      (e) => e.id === values.replaced_employee_id && e.id !== id,
+    );
+    if (!replaced) throw new Error("Replacement employee is unavailable");
+    if (!["Inactive", "Separated"].includes(String(replaced.values.status)))
+      throw new Error("Only an employee who is not active can be replaced");
+  }
+}
 function clientIdentity(
   employee: Employee,
   clientId: string,
@@ -269,7 +310,11 @@ const context: Context = {
   },
   today: localToday(),
   revision: 1,
-  register_settings: { row_numbers_allowed: true, row_version: 1 },
+  register_settings: {
+    row_numbers_allowed: true,
+    row_version: 1,
+    duplicate_name_threshold: 90,
+  },
   fields,
   groups: [
     {
@@ -484,6 +529,28 @@ export async function demoQuery(op: string, q: any = {}) {
       .sort()
       .slice(0, 100)
       .map((id: any) => ({ id, label: String(JSON.parse(id)) }));
+  }
+  if (op === "employee_duplicates") {
+    if (q.operation === "bulk_update")
+      return bulkDuplicateEmployees(
+        employees,
+        q.rows,
+        q.values,
+        context.register_settings.duplicate_name_threshold ?? 90,
+      );
+    const original = employees.find((e) => e.id === q.id);
+    const values = { ...original?.values, ...q.values };
+    const name =
+      !original || nameKeys.some((key) => Object.hasOwn(q.values || {}, key))
+        ? combinedName(values)
+        : String(original.values.name);
+    return duplicateEmployees(
+      employees,
+      q.id,
+      name,
+      values.birth_date,
+      context.register_settings.duplicate_name_threshold ?? 90,
+    );
   }
   if (op === "target_fields")
     return structuredClone(fields).map((f) => ({
@@ -847,6 +914,31 @@ export async function demoMutate(op: string, p: any) {
           ...p.values,
         },
       };
+      for (const field of fields.filter(
+        (f) => f.active && requiredForEdit(f, {}, p.values, true),
+      ))
+        if (
+          created.values[field.key] == null ||
+          created.values[field.key] === ""
+        )
+          throw new Error(`${field.label} is required.`);
+      validateManpowerDemo(created.values, id, true);
+      const duplicates = duplicateEmployees(
+        employees,
+        undefined,
+        String(created.values.name),
+        created.values.birth_date,
+        context.register_settings.duplicate_name_threshold ?? 90,
+      );
+      if (duplicates.total > 0 && p.duplicate_review !== duplicates.token)
+        throw new Error(
+          "Possible duplicate employee. Review matching records and confirm before saving.",
+        );
+      const uniqueError = uniqueDemoError([...employees, created], fields, {
+        id,
+        client: p.client_id,
+      });
+      if (uniqueError) throw new Error(uniqueError);
       created.values.client =
         org.find((o) => o.id === p.client_id)?.label || null;
       created.values.client_employee_number = p.client_id
@@ -899,12 +991,77 @@ export async function demoMutate(op: string, p: any) {
             if (problem) throw new Error(problem);
           }
       }
+    if (op !== "employee_delete") {
+      const proposed = employees.map((e) => {
+        if (!targets.some((t: any) => t.id === e.id)) return e;
+        const values = { ...e.values, ...p.values };
+        if (nameKeys.some((key) => Object.hasOwn(p.values ?? {}, key)))
+          values.name = structuredValues(values);
+        return { ...e, values };
+      });
+      for (const t of targets) {
+        const original = employees.find((e) => e.id === t.id)!;
+        const values = proposed.find((e) => e.id === t.id)!.values;
+        for (const field of fields.filter(
+          (f) =>
+            f.active &&
+            requiredForEdit(f, original.values, p.values ?? {}, false),
+        ))
+          if (values[field.key] == null || values[field.key] === "")
+            throw new Error(`${field.label} is required.`);
+        if (
+          ["manpower_classification", "replaced_employee_id"].some((key) =>
+            Object.hasOwn(p.values ?? {}, key),
+          )
+        )
+          validateManpowerDemo(values, t.id);
+      }
+      if (
+        op === "employee_update" &&
+        [...nameKeys, "birth_date"].some((key) =>
+          Object.hasOwn(p.values || {}, key),
+        )
+      ) {
+        const updated = proposed.find((e) => e.id === p.id)!;
+        const duplicates = duplicateEmployees(
+          employees,
+          p.id,
+          String(updated.values.name),
+          updated.values.birth_date,
+          context.register_settings.duplicate_name_threshold ?? 90,
+        );
+        if (duplicates.total > 0 && p.duplicate_review !== duplicates.token)
+          throw new Error(
+            "Possible duplicate employee. Review matching records and confirm before saving.",
+          );
+      }
+      if (
+        op === "bulk_update" &&
+        [...nameKeys, "birth_date"].some((key) =>
+          Object.hasOwn(p.values || {}, key),
+        )
+      ) {
+        const duplicates = bulkDuplicateEmployees(
+          employees,
+          p.rows,
+          p.values,
+          context.register_settings.duplicate_name_threshold ?? 90,
+        );
+        if (duplicates.total > 0 && p.duplicate_review !== duplicates.token)
+          throw new Error(
+            "Possible duplicate employee. Review matching records and confirm before saving.",
+          );
+      }
+      const uniqueError = uniqueDemoError(proposed);
+      if (uniqueError) throw new Error(uniqueError);
+    }
     for (const t of targets) {
       const e = employees.find((e) => e.id === t.id)!;
       const previous = { ...e.values };
-      if (op === "employee_delete")
+      if (op === "employee_delete") {
+        archivedEmployees.push(structuredClone(e));
         employees = employees.filter((x) => x.id !== e.id);
-      else {
+      } else {
         Object.assign(e.values, p.values);
         if (nameKeys.some((key) => Object.hasOwn(p.values ?? {}, key)))
           e.values.name = structuredValues(e.values);
@@ -981,6 +1138,24 @@ export async function demoMutate(op: string, p: any) {
     const invalid = fieldConfigurationError(p);
     if (invalid) throw new Error(invalid);
     const f = fields.find((f) => f.id === p.id);
+    if (
+      context.profile.role !== "superadmin" &&
+      (!!p.is_unique !== !!f?.is_unique ||
+        (p.unique_scope || f?.unique_scope || "global") !==
+          (f?.unique_scope || "global"))
+    )
+      throw new Error("Only a Superadmin may configure unique fields");
+    const configured = { ...f, ...p } as Field;
+    if (configured.validation?.government_id_digits) configured.required = true;
+    const uniqueError = uniqueDemoError(employees, [
+      ...fields.filter((field) => field.id !== f?.id),
+      configured,
+    ]);
+    if (uniqueError)
+      throw new Error(
+        `Cannot enable uniqueness: existing non-empty values are duplicated. ${uniqueError}`,
+      );
+    p = { ...p, required: configured.required };
     if (
       fields.some(
         (f) =>
@@ -1076,9 +1251,24 @@ export async function demoMutate(op: string, p: any) {
         row_version: 1,
       });
   } else if (op === "register_settings") {
+    if (context.profile.role !== "superadmin")
+      throw new Error("Only a superadmin can change register display policy");
+    if (
+      p.duplicate_name_threshold != null &&
+      (!Number.isInteger(p.duplicate_name_threshold) ||
+        p.duplicate_name_threshold < 0 ||
+        p.duplicate_name_threshold > 100)
+    )
+      throw new Error(
+        "Name similarity must be a whole percentage from 0 to 100",
+      );
     if (p.expected_version !== context.register_settings.row_version)
       throw new Error("Register settings changed; reload before saving");
     context.register_settings = {
+      duplicate_name_threshold:
+        p.duplicate_name_threshold ??
+        context.register_settings.duplicate_name_threshold ??
+        90,
       row_numbers_allowed: p.row_numbers_allowed,
       row_version: context.register_settings.row_version + 1,
     };
@@ -1102,6 +1292,11 @@ export async function demoMutate(op: string, p: any) {
     const e = employees.find((e) => e.id === p.employee_id)!;
     if (!e || e.row_version !== p.expected_version)
       throw new Error("Movement preview is stale");
+    const uniqueError = uniqueDemoError(employees, fields, {
+      id: e.id,
+      client: p.client_id,
+    });
+    if (uniqueError) throw new Error(uniqueError);
     if (p.client_id && !["status", "position", "return"].includes(p.type))
       clientIdentity(e, p.client_id, p.manual_client_id);
     history.unshift({

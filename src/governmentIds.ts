@@ -42,13 +42,20 @@ export function governmentIdError(
     : `${field.label} must contain exactly ${digits} digits.`;
 }
 
-// Government IDs are optional on creation and editing, including clearing.
-// Their format is validated separately whenever a value is supplied.
+// New employees require IDs. Historical gaps do not block unrelated edits.
 export function requiredForEdit(
   field: Field,
-  _values: Record<string, unknown>,
-  _changed: Record<string, unknown>,
-  _creating: boolean,
+  values: Record<string, unknown>,
+  changed: Record<string, unknown>,
+  creating: boolean,
 ) {
-  return field.required && !field.validation?.government_id_digits;
+  if (
+    field.validation?.government_id_digits ||
+    field.key === "manpower_classification"
+  )
+    return (
+      field.required &&
+      (creating || !!values[field.key] || Object.hasOwn(changed, field.key))
+    );
+  return field.required;
 }

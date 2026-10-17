@@ -3,7 +3,11 @@ import { useState } from "react";
 import { Dialog } from "../components/Dialog";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import { ValueEditor } from "../components/ValueEditor";
-import { mutate, preview as validatePreview } from "../api";
+import { mutate, query, preview as validatePreview } from "../api";
+import { DuplicateEmployees } from "../components/DuplicateEmployees";
+import { confirmTransaction } from "../components/TransactionConfirmation";
+import type { DuplicateReview } from "../duplicateEmployees";
+import { trackTransaction } from "../transactions";
 import { nameKeys } from "../employeeForm";
 import { displayFieldValue, parseNumberInput } from "../fieldValues";
 import { governmentIdError } from "../governmentIds";
@@ -27,6 +31,7 @@ export function BulkEditor({
   const allowed = fields.filter(
     (f) =>
       f.active &&
+      !["manpower_classification", "replaced_employee_id"].includes(f.key) &&
       (f.type !== "system" ||
         nameKeys.includes(f.key as (typeof nameKeys)[number])) &&
       f.actions.includes("U"),
@@ -170,24 +175,57 @@ export function BulkEditor({
                 throw new Error(
                   "Enter a valid number before previewing changes.",
                 );
-              if (!preview) {
-                await validatePreview("bulk_update", {
-                  rows: rows.map((r) => ({
-                    id: r.id,
-                    row_version: r.row_version,
-                  })),
-                  values: patch,
-                });
-                setPreview(true);
-                return;
-              }
-              await mutate("bulk_update", {
+              const payload = {
                 rows: rows.map((r) => ({
                   id: r.id,
                   row_version: r.row_version,
                 })),
                 values: patch,
-              });
+              };
+              const identityChanged = [...nameKeys, "birth_date"].some((key) =>
+                Object.hasOwn(patch, key),
+              );
+              const duplicates = identityChanged
+                ? await trackTransaction(
+                    "Checking possible duplicate employees",
+                    () =>
+                      query<DuplicateReview>("employee_duplicates", {
+                        operation: "bulk_update",
+                        ...payload,
+                      }),
+                  )
+                : undefined;
+              if (!preview) {
+                if (!identityChanged)
+                  await validatePreview("bulk_update", {
+                    rows: rows.map((r) => ({
+                      id: r.id,
+                      row_version: r.row_version,
+                    })),
+                    values: patch,
+                  });
+                setPreview(true);
+                return;
+              }
+              if (
+                duplicates?.total &&
+                !(await confirmTransaction(
+                  "Possible duplicate employee",
+                  <DuplicateEmployees review={duplicates} />,
+                ))
+              )
+                return;
+              await mutate(
+                "bulk_update",
+                {
+                  ...payload,
+                  ...(duplicates?.total
+                    ? { duplicate_review: duplicates.token }
+                    : {}),
+                },
+                undefined,
+                !!duplicates?.total,
+              );
               onSaved();
               onClose();
             } catch (e) {

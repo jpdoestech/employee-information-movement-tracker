@@ -4393,3 +4393,14 @@ dialog.employee-edit-dialog[open] {
 .manual-id-entry,
 .employee-edit-dialog .employee-tab-body fieldset.manual-id-entry,
 .transaction-form fieldset.manual-id-entry { border: 0; padding: 0; margin: 0; min-width: 0; max-width: 100%; }
+
+.duplicate-review ul { margin: 12px 0; padding: 0; list-style: none; max-height: 42dvh; overflow: auto; }
+.duplicate-review li { padding: 10px 0; border-top: 1px solid var(--line); }
+.duplicate-review strong { display: block; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.duplicate-review small { font-size: 11px; color: var(--muted); }
+.duplicate-review dl { margin: 8px 0 0; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px 12px; font-size: 12px; }
+.duplicate-review dt { font-size: 11px; font-weight: 600; color: var(--muted); }
+.duplicate-review dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+.duplicate-policy { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+.duplicate-policy .field { max-width: 220px; margin-bottom: 8px; }
+.duplicate-policy input { width: 100px; }
