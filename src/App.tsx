@@ -286,17 +286,9 @@ export default function App() {
       () => {
         fetchedSearch.current = filter.search;
         Promise.all([
-          query(
-            "employees",
-            page === "employees"
-              ? filter
-              : {
-                  ...defaultFilter,
-                  sort: "id",
-                  limit: 10,
-                  offset: 0,
-                },
-          ),
+          page === "employees"
+            ? query("employees", filter)
+            : Promise.resolve(undefined),
           page === "dashboard"
             ? query("dashboard")
             : Promise.resolve(undefined),
@@ -739,28 +731,6 @@ export default function App() {
                   </a>
                 </section>
               </div>
-              <section className="panel">
-                <div className="section-heading">
-                  <div>
-                    <h2>Employee register</h2>
-                    <p>Records within your access scope</p>
-                  </div>
-                  <a href="#employees">
-                    View all
-                    <ArrowRight size={16} />
-                  </a>
-                </div>
-                <EmployeeTable
-                  rows={rows.slice(0, 5)}
-                  fields={fields}
-                  layout={{ ...layout, filter: defaultFilter }}
-                  rowNumbersAllowed={ctx.register_settings.row_numbers_allowed}
-                  onOpen={(r) => {
-                    setEditing(r);
-                    setDialog("employee");
-                  }}
-                />
-              </section>
             </>
           )}
           {ctx && page === "employees" && (
