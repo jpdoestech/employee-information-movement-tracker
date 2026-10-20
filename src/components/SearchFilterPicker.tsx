@@ -61,11 +61,13 @@ export function SearchFilterPicker({
     [highlight, setHighlight] = useState(0),
     [position, setPosition] = useState<CSSProperties>({});
   const available = load ? remote : options;
-  const visible = available.filter((o) =>
-    `${o.label} ${o.context || ""}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
+  const visible = available
+    .filter((o) =>
+      `${o.label} ${o.context || ""}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    )
+    .slice(0, 100);
   function close() {
     setOpen(false);
     surface?.deactivate();

@@ -123,6 +123,15 @@ try {
     values: { name: "Synthetic REST employee Two" },
   });
   if (second.error) throw second.error;
+  await test("real JWT organization options load without widening scope", async () => {
+    const own = await publicClients[1].rpc("tracker_query", { operation: "options", q: {} });
+    assert.ifError(own.error);
+    assert(own.data.some((o) => o.id === b1));
+    assert(!own.data.some((o) => o.id === b2));
+    const trusted = await publicClients[0].rpc("tracker_query", { operation: "options", q: { search: "Head Office" } });
+    assert.ifError(trusted.error);
+    assert.equal(trusted.data.find((o) => o.id === "head_office").active, true);
+  });
   await test("real JWT direct REST base employee and metadata reads denied", async () => {
     for (const client of publicClients.slice(1))
       for (const table of [

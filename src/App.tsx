@@ -26,7 +26,14 @@ import {
 } from "lucide-react";
 import { FloatingNotification } from "./components/FloatingNotification";
 import { Dialog } from "./components/Dialog";
-import { enableDemo, isDemo, mutate, query, supabase } from "./api";
+import {
+  enableDemo,
+  isDemo,
+  mutate,
+  organizationOptions,
+  query,
+  supabase,
+} from "./api";
 import {
   csv,
   defaultColumns,
@@ -78,7 +85,7 @@ export default function App() {
     }),
     [rows, setRows] = useState<Employee[]>([]),
     [total, setTotal] = useState(0),
-    [selected, setSelected] = useState<string[]>([]),
+    [selectedRows, setSelectedRows] = useState<Employee[]>([]),
     [activeViewId, setActiveViewId] = useState(""),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
@@ -94,6 +101,31 @@ export default function App() {
     [busy, setBusy] = useState(false);
   const loadedUser = useRef<string | null>(null);
   const fetchedSearch = useRef(filter.search);
+  const selectionScope = JSON.stringify([
+    ctx?.profile.id,
+    ctx?.revision,
+    version,
+    { ...filter, offset: 0, limit: 0 },
+  ]);
+  const currentSelectionScope = useRef(selectionScope);
+  currentSelectionScope.current = selectionScope;
+  const selected = selectedRows.map((row) => row.id);
+  const setSelected = (ids: string[]) => {
+    if (ids.length > 100) {
+      setError("Select at most 100 employees for one transaction.");
+      return;
+    }
+    setSelectedRows((current) =>
+      ids.flatMap((id) => {
+        const row =
+          current.find((r) => r.id === id) || rows.find((r) => r.id === id);
+        return row ? [row] : [];
+      }),
+    );
+  };
+  useEffect(() => {
+    setSelectedRows([]);
+  }, [selectionScope]);
   useEffect(() => {
     const media = matchMedia("(max-width:760px)");
     const update = () => {
@@ -175,7 +207,7 @@ export default function App() {
       try {
         const [c, o] = await Promise.all([
           query<Context>("context"),
-          query<Option[]>("options"),
+          organizationOptions(),
         ]);
         if (active) {
           setCtx(c);
@@ -218,16 +250,29 @@ export default function App() {
       () => {
         fetchedSearch.current = filter.search;
         Promise.all([
-          page === "employees"
-            ? query("employees", filter)
-            : Promise.resolve(undefined),
+          query(
+            "employees",
+            page === "employees"
+              ? filter
+              : {
+                  ...defaultFilter,
+                  sort: "id",
+                  limit: 10,
+                  offset: 0,
+                },
+          ),
           page === "dashboard"
             ? query("dashboard")
             : Promise.resolve(undefined),
         ])
           .then(([result, r]) => {
             if (active) {
-              if (result && filter.offset && filter.offset >= result.total) {
+              if (
+                page === "employees" &&
+                result &&
+                filter.offset &&
+                filter.offset >= result.total
+              ) {
                 setFilter((f) => ({
                   ...f,
                   offset:
@@ -239,7 +284,6 @@ export default function App() {
               setRows(result?.items || []);
               setTotal(result?.total || 0);
               setReport(r);
-              setSelected([]);
             }
           })
           .catch((e) => {
@@ -637,7 +681,7 @@ export default function App() {
                 <div className="section-heading">
                   <div>
                     <h2>Employee register</h2>
-                    <p>Recent records within your access scope</p>
+                    <p>Records within your access scope</p>
                   </div>
                   <a href="#employees">
                     View all
@@ -647,7 +691,7 @@ export default function App() {
                 <EmployeeTable
                   rows={rows.slice(0, 5)}
                   fields={fields}
-                  layout={tableLayout}
+                  layout={{ ...layout, filter: defaultFilter }}
                   rowNumbersAllowed={ctx.register_settings.row_numbers_allowed}
                   onOpen={(r) => {
                     setEditing(r);
@@ -752,13 +796,18 @@ export default function App() {
                     <button
                       disabled={!total || total > 100}
                       onClick={async () => {
-                        const r = await query("employees", {
-                          ...filter,
-                          limit: 100,
-                          offset: 0,
-                        });
-                        setRows(r.items);
-                        setSelected(r.items.map((e: Employee) => e.id));
+                        try {
+                          const r = await query("employees", {
+                            ...filter,
+                            limit: 100,
+                            offset: 0,
+                          });
+                          if (currentSelectionScope.current === selectionScope)
+                            setSelectedRows(r.items);
+                        } catch (e) {
+                          if (currentSelectionScope.current === selectionScope)
+                            setError((e as Error).message);
+                        }
                       }}
                     >
                       Select all {total} matching
@@ -871,7 +920,12 @@ export default function App() {
           {ctx &&
             page === "sync" &&
             (can("sync_manage") ? (
-              <Sync context={ctx} options={options} onSaved={refresh} />
+              <Sync
+                context={ctx}
+                options={options}
+                refreshKey={version}
+                onSaved={refresh}
+              />
             ) : (
               <p>Sync administration access is required.</p>
             ))}
@@ -954,9 +1008,9 @@ export default function App() {
           onSaved={refresh}
         />
       )}
-      {dialog === "bulk" && (
+      {ctx && dialog === "bulk" && (
         <BulkEditor
-          rows={rows.filter((r) => selected.includes(r.id))}
+          rows={selectedRows}
           fields={fields}
           onClose={() => setDialog(null)}
           onSaved={refresh}

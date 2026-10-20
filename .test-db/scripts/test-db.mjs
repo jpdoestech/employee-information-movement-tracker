@@ -1,4 +1,5 @@
 import { testEmploymentRules } from "./test-employment-rules.mjs";
+import { testAuditFixes } from "./test-audit-fixes.mjs";
 import EmbeddedPostgres from "embedded-postgres";
 import { employeeFixture, identityPolicyGrantSql } from "./employee-fixtures.mjs";
 import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
@@ -3331,6 +3332,7 @@ try {
     );
   });
   await testEmploymentRules({ owner, test, q, m, as, concurrent, revision, id, today, date });
+  await testAuditFixes({ owner, test, q, m, worker, revision, id });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
     ".test-db/reports/verification/database.json",

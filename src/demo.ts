@@ -567,15 +567,20 @@ export async function demoQuery(op: string, q: any = {}) {
           : f.default_value,
     }));
   if (op === "options")
-    return org.filter(
-      (o) =>
-        `${o.label} ${o.context}`
-          .toLowerCase()
-          .includes((q.search || "").toLowerCase()) &&
-        (!q.branches?.length ||
-          o.kind !== "client" ||
-          q.branches.includes(o.branch_id)),
-    );
+    return org
+      .filter(
+        (o) =>
+          `${o.label} ${o.context}`
+            .toLowerCase()
+            .includes((q.search || "").toLowerCase()) &&
+          (!q.branches?.length ||
+            o.kind !== "client" ||
+            q.branches.includes(o.branch_id)),
+      )
+      .sort(
+        (a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id),
+      )
+      .slice(q.offset || 0, (q.offset || 0) + 100);
   if (op === "export") {
     const r: any = await demoQuery("employees", {
       ...q,

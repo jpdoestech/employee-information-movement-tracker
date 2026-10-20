@@ -88,6 +88,10 @@ export function EmployeeEditor({
     [confirmArchive, setConfirmArchive] = useState(false),
     [addressValid, setAddressValid] = useState<Record<string, boolean>>({}),
     [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
+  const dirtyDraft = useRef(false);
+  dirtyDraft.current =
+    Object.keys(changed).length > 0 ||
+    Object.values(addressValid).includes(false);
   const initialClient = options.find(
     (option) => option.id === target && option.kind === "client",
   );
@@ -102,7 +106,17 @@ export function EmployeeEditor({
       query("employee", { id: row.id })
         .then((d) => {
           if (active) {
-            setDetail(d);
+            setDetail((current: any) =>
+              dirtyDraft.current && current?.employee.id === d.employee.id
+                ? {
+                    ...d,
+                    employee: {
+                      ...d.employee,
+                      row_version: current.employee.row_version,
+                    },
+                  }
+                : d,
+            );
             setValues(d.employee.values);
             setFields(d.fields);
           }

@@ -5,14 +5,17 @@ import { useEffect, useState } from "react";
 import { isDemo, mutate, query, supabase } from "../api";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import type { Context, Option } from "../domain";
+import { refreshContext } from "../refreshContext";
 export function Sync({
   context,
   options,
   onSaved,
+  refreshKey,
 }: {
   context: Context;
   options: Option[];
   onSaved: () => void;
+  refreshKey: number;
 }) {
   const [data, setData] = useState<any>(),
     [error, setError] = useState(""),
@@ -20,10 +23,26 @@ export function Sync({
     [reason, setReason] = useState(""),
     [busy, setBusy] = useState(false);
   useEffect(() => {
-    query("sync")
-      .then(setData)
-      .catch((e) => setError(e.message));
-  }, [context.revision]);
+    let active = true;
+    const stop = refreshContext(async () => {
+      try {
+        const result = await query("sync");
+        if (active) {
+          setData(result);
+          setError("");
+        }
+      } catch (e) {
+        if (active) {
+          setData(undefined);
+          setError((e as Error).message);
+        }
+      }
+    });
+    return () => {
+      active = false;
+      stop();
+    };
+  }, [context.revision, refreshKey]);
   async function run(fn: () => Promise<void>) {
     setBusy(true);
     setError("");

@@ -29,6 +29,8 @@ Review all Superadmins. Enroll ordinary accounts and explicitly grant organizati
 
 ## Frontend
 
+The audit fixes require migration `20261020000100_audit_options_and_exports.sql` before deploying the updated frontend. It repairs and pages organization options, marks Head Office active, and excludes inactive field groups from workbook headers and values. Earlier migrations remain unchanged. Run a successful reconciliation after applying it to remove previously exported inactive-group cells; stored employee values are retained.
+
 Vercel: import this repository, build `npm run build`, output `dist`, Node 24. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`; set `VITE_DEMO_MODE=false`. `vercel.json` supplies browser security headers and a Supabase-compatible CSP. Hash routes work without a server rewrite. Preview deployment must point to staging.
 
 GitHub Pages: enable Actions as the Pages source, configure the same two repository variables, review `.github/workflows/pages.yml` and manually dispatch after approval. Its `BASE_PATH` matches this repository name; change it if the repository/custom domain changes. Pages cannot apply Vercel response headers; use a hosting proxy if equivalent headers are required. Worker secrets belong exclusively in Supabase. Frontend source maps are not published.

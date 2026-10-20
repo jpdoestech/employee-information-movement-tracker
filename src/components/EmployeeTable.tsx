@@ -137,7 +137,13 @@ export function EmployeeTable({
                         !rows.every((r) => selected.includes(r.id));
                   }}
                   onChange={(e) =>
-                    onSelect(e.target.checked ? rows.map((r) => r.id) : [])
+                    onSelect(
+                      e.target.checked
+                        ? [...new Set([...selected, ...rows.map((r) => r.id)])]
+                        : selected.filter(
+                            (id) => !rows.some((r) => r.id === id),
+                          ),
+                    )
                   }
                 />
               </th>

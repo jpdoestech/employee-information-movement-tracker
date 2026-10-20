@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { demoQuery, demoMutate, demoIdentityPreview } from "./demo";
 import { requireConfirmation } from "./components/TransactionConfirmation";
 import { trackTransaction } from "./transactions";
+import type { Option } from "./domain";
 const url = import.meta.env.VITE_SUPABASE_URL,
   key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const elevatedKey = key?.startsWith("eyJ")
@@ -71,6 +72,15 @@ export async function preview(operation: string, p: unknown) {
     if (error) throw new Error(error.message);
     return data;
   });
+}
+export async function organizationOptions(): Promise<Option[]> {
+  const options: Option[] = [];
+  let page: Option[];
+  do {
+    page = await query<Option[]>("options", { offset: options.length });
+    options.push(...page);
+  } while (page.length === 100);
+  return options;
 }
 const pendingRequests = new Map<string, string>();
 export async function mutate<T = any>(
