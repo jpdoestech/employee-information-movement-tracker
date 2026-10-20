@@ -9,6 +9,39 @@ export async function testAuditFixes({
   revision,
   id,
 }) {
+  await test("dashboard aggregates only the caller's authorized employee projections", async () => {
+    for (const principal of [id.sa, id.admin, id.viewer, id.client]) {
+      const rows = [];
+      let page;
+      do {
+        page = await q(principal, "employees", {
+          sort: "id",
+          limit: 100,
+          offset: rows.length,
+        });
+        rows.push(...page.items);
+      } while (rows.length < page.total);
+      const dashboard = await q(principal, "dashboard");
+      assert.equal(dashboard.total, page.total);
+      for (const [field, key] of [
+        ["status", "statuses"],
+        ["branch", "placements"],
+      ]) {
+        const counts = {};
+        for (const row of rows)
+          if (Object.hasOwn(row.values, field)) {
+            const value = row.values[field];
+            counts[value] = (counts[value] || 0) + 1;
+          }
+        assert.deepEqual(dashboard[key], counts);
+      }
+    }
+    await assert.rejects(
+      q(null, "dashboard"),
+      (error) => error.code === "42501",
+    );
+  });
+
   await test("organization options search, paging and Head Office retain scope boundaries", async () => {
     for (let i = 0; i < 105; i++)
       await owner.query(
