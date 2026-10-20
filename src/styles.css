@@ -3905,6 +3905,23 @@ dialog.employee-edit-dialog[open] {
   flex-basis: min(var(--field-width), calc((100% - 20px) / 2));
   width: min(var(--field-width), calc((100% - 20px) / 2));
 }
+@media (min-width: 481px) {
+  /* Keep the employment pair together across installed font widths. */
+  .employee-edit-dialog .field-entry-grid:has(> [data-field="department"]):has(> [data-field="position"]) {
+    display: grid;
+  }
+  .field-entry-grid > .field-slot[data-field="department"] {
+    grid-column: 1;
+    width: min(100%, var(--field-width));
+  }
+  .field-entry-grid > .field-slot[data-field="position"] {
+    grid-column: 2;
+    width: min(100%, var(--field-width));
+  }
+  .field-entry-grid > .field-slot:has(textarea) {
+    grid-column: 1 / -1;
+  }
+}
 .employee-edit-dialog .field > label {
   color: var(--muted);
   font-size: var(--text-label);

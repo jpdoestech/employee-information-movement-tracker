@@ -1,15 +1,22 @@
 import { test, expect } from "@playwright/test";
 
-for (const [width, height] of [
+for (const [width, height, font] of [
   [375, 740],
   [768, 1024],
   [1366, 600],
   [812, 375],
-]) {
-  test(`profile edit styling and atomic department/position save at ${width}x${height}`, async ({
+  [768, 1024, "Verdana"],
+] as const) {
+  test(`profile edit styling and atomic department/position save at ${width}x${height}${font ? ` with ${font}` : ""}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height });
+    if (font)
+      await page.addInitScript((family) => {
+        document.addEventListener("DOMContentLoaded", () =>
+          document.documentElement.style.setProperty("--font-sans", family),
+        );
+      }, font);
     await page.goto("/");
     await page.getByRole("button", { name: "Explore synthetic demo" }).click();
     await page.goto("/#employees");
