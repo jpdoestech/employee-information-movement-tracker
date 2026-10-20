@@ -178,7 +178,7 @@ test("reset request uses the current app URL and requires confirmation", async (
   const request = writes[0] as { body: { email: string }; url: string };
   expect(request.body.email).toBe(user.email);
   expect(new URL(request.url).searchParams.get("redirect_to")).toBe(
-    "http://127.0.0.1:5173/",
+    "http://127.0.0.1:5173/?auth=recovery",
   );
 });
 
@@ -192,10 +192,43 @@ test("expired recovery link exposes the error and a way to request another", asy
   await expect(page.getByRole("alert")).toContainText(
     "Email link is invalid or has expired",
   );
-  await page.getByRole("button", { name: "Forgot password?" }).click();
   await expect(
     page.getByRole("heading", { name: "Reset password", exact: true }),
   ).toBeVisible();
+});
+
+test("explicit recovery redirect works after the token fragment was consumed", async ({
+  page,
+}) => {
+  await authMock(page);
+  await page.goto(recoveryUrl());
+  await expect(page.getByLabel("New password", { exact: true })).toBeVisible();
+  await page.evaluate(() =>
+    sessionStorage.removeItem("eimt-password-recovery"),
+  );
+  await page.goto("/?auth=recovery");
+  await expect(
+    page.getByRole("heading", { name: "Set a new password" }),
+  ).toBeVisible();
+  await page
+    .getByLabel("New password", { exact: true })
+    .fill("Synthetic-password-123!");
+  await page
+    .getByLabel("Confirm new password", { exact: true })
+    .fill("Synthetic-password-123!");
+  await page
+    .getByRole("button", { name: "Save password", exact: true })
+    .click();
+  await page
+    .getByRole("dialog", { name: "Change password?" })
+    .getByRole("button", { name: "Continue", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("Password updated");
+  expect(new URL(page.url()).searchParams.has("auth")).toBe(false);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Set a new password" }),
+  ).toHaveCount(0);
 });
 
 test("leaving an edited recovery form requires discard and never changes the password", async ({

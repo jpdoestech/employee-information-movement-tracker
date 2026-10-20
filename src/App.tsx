@@ -59,9 +59,16 @@ import { Security } from "./screens/Security";
 import { Sync } from "./screens/Sync";
 import { PasswordRecovery } from "./components/PasswordRecovery";
 const authLink = new URLSearchParams(location.hash.slice(1));
+const recoveryRedirect =
+  new URLSearchParams(location.search).get("auth") === "recovery";
+const recoveryExpired =
+  authLink.get("error_code") === "otp_expired" ||
+  (recoveryRedirect && authLink.has("error"));
 const recoveryPending =
-  authLink.get("type") === "recovery" ||
-  sessionStorage.getItem("eimt-password-recovery") === "true";
+  !recoveryExpired &&
+  (recoveryRedirect ||
+    authLink.get("type") === "recovery" ||
+    sessionStorage.getItem("eimt-password-recovery") === "true");
 const nav = [
   { id: "dashboard", label: "Overview", icon: LayoutDashboard },
   { id: "employees", label: "Employees", icon: Users },
@@ -79,7 +86,7 @@ export default function App() {
   const navigation = useRef<HTMLElement>(null);
   const [authenticated, setAuthenticated] = useState(isDemo()),
     [authMode, setAuthMode] = useState<"signin" | "request" | "recovery">(
-      recoveryPending ? "recovery" : "signin",
+      recoveryExpired ? "request" : recoveryPending ? "recovery" : "signin",
     ),
     [ctx, setCtx] = useState<Context>(),
     [page, setPage] = useState(location.hash.slice(1) || "dashboard"),
@@ -108,6 +115,19 @@ export default function App() {
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false);
   const loadedUser = useRef<string | null>(null);
+  function clearRecovery() {
+    sessionStorage.removeItem("eimt-password-recovery");
+    const route = new URL(location.href);
+    route.searchParams.delete("auth");
+    history.replaceState(
+      null,
+      "",
+      route.pathname + route.search + "#dashboard",
+    );
+    setAuthMode("signin");
+    setPage("dashboard");
+    setError("");
+  }
   const fetchedSearch = useRef(filter.search);
   const selectionScope = JSON.stringify([
     ctx?.profile.id,
@@ -217,7 +237,7 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
-    if (!authenticated || authMode === "recovery") return;
+    if (!authenticated || authMode !== "signin") return;
     let active = true;
     async function fetch() {
       try {
@@ -356,7 +376,7 @@ export default function App() {
       setBusy(false);
     }
   }
-  if (!authenticated || authMode === "recovery")
+  if (!authenticated || authMode !== "signin")
     return (
       <div className="login-shell">
         <section className="login-brand">
@@ -394,23 +414,13 @@ export default function App() {
             <PasswordRecovery
               recovery={authMode === "recovery"}
               initialEmail={email}
+              initialError={authLink.get("error_description") || ""}
               onComplete={() => {
-                sessionStorage.removeItem("eimt-password-recovery");
+                clearRecovery();
                 setPassword("");
-                setAuthMode("signin");
-                setPage("dashboard");
-                history.replaceState(
-                  null,
-                  "",
-                  location.pathname + location.search + "#dashboard",
-                );
                 setNotice("Password updated.");
               }}
-              onBack={() => {
-                sessionStorage.removeItem("eimt-password-recovery");
-                setAuthMode("signin");
-                setError("");
-              }}
+              onBack={clearRecovery}
             />
           ) : (
             <>

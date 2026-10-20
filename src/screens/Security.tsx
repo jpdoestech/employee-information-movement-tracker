@@ -1,7 +1,7 @@
 import { FloatingNotification } from "../components/FloatingNotification";
 import { FieldTypeIcon } from "../components/FieldTypeIcon";
 import { useEffect, useState } from "react";
-import { query, mutate } from "../api";
+import { query, mutate, createAccount } from "../api";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import type { Context, Option } from "../domain";
 export function Security({
@@ -31,6 +31,10 @@ export function Security({
     ),
     [preview, setPreview] = useState<any>(),
     [newId, setNewId] = useState(""),
+    [accountSource, setAccountSource] = useState("new"),
+    [newEmail, setNewEmail] = useState(""),
+    [initialPassword, setInitialPassword] = useState(""),
+    [notice, setNotice] = useState(""),
     [displayName, setDisplayName] = useState(""),
     [role, setRole] = useState("viewer"),
     [startsOn, setStartsOn] = useState(context.today),
@@ -64,6 +68,7 @@ export function Security({
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       await fn();
       onSaved();
@@ -399,24 +404,75 @@ export function Security({
         )}
         {tab === "accounts" && (
           <div className="panel account-form">
-            <h3>Account and capabilities</h3>
+            <h3>User accounts</h3>
             <p>
-              Create the Auth account through trusted Supabase administration,
-              then enroll its UUID here. New accounts have no data access until
-              granted.
+              Create a sign-in account here. Admin and viewer accounts need
+              organization and field permissions before accessing employee data.
             </p>
             <div className="form-grid">
-              <label>
-                Auth user UUID
-                <input
-                  value={newId}
-                  onChange={(e) => setNewId(e.target.value)}
+              <div className="form-control">
+                <span>Account source</span>
+                <SearchFilterPicker
+                  mode="single"
+                  label="Account source"
+                  disabled={busy}
+                  options={[
+                    { id: "new", label: "Create new user" },
+                    { id: "existing", label: "Enroll existing account" },
+                  ]}
+                  value={[accountSource]}
+                  onChange={(value) => setAccountSource(value[0] || "new")}
                 />
-              </label>
+              </div>
+              {accountSource === "existing" ? (
+                <label>
+                  Auth user UUID
+                  <input
+                    value={newId}
+                    disabled={busy}
+                    onChange={(e) => setNewId(e.target.value)}
+                  />
+                </label>
+              ) : (
+                <>
+                  <label>
+                    Email address
+                    <span className="value-control has-type-icon">
+                      <span className="value-type-icon">
+                        <FieldTypeIcon type="email" />
+                      </span>
+                      <input
+                        type="email"
+                        autoComplete="off"
+                        maxLength={254}
+                        value={newEmail}
+                        onChange={(event) => setNewEmail(event.target.value)}
+                        disabled={busy}
+                      />
+                    </span>
+                  </label>
+                  <label>
+                    Initial password
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={8}
+                      maxLength={256}
+                      value={initialPassword}
+                      onChange={(event) =>
+                        setInitialPassword(event.target.value)
+                      }
+                      disabled={busy}
+                    />
+                  </label>
+                </>
+              )}
               <label>
                 Display name
                 <input
                   value={displayName}
+                  maxLength={120}
+                  disabled={busy}
                   onChange={(e) => setDisplayName(e.target.value)}
                 />
               </label>
@@ -425,6 +481,7 @@ export function Security({
                 <SearchFilterPicker
                   mode="single"
                   label="Role template"
+                  disabled={busy}
                   options={["admin", "viewer", "superadmin"].map((id) => ({
                     id,
                     label: id,
@@ -433,23 +490,74 @@ export function Security({
                   onChange={(v) => setRole(v[0] || "viewer")}
                 />
               </div>
+              <label>
+                Reason for account change
+                <input
+                  value={reason}
+                  maxLength={500}
+                  onChange={(event) => setReason(event.target.value)}
+                  disabled={busy}
+                />
+              </label>
             </div>
             <button
-              disabled={!reason || !newId || !displayName || busy}
+              disabled={
+                !reason.trim() ||
+                !displayName.trim() ||
+                busy ||
+                (accountSource === "existing"
+                  ? !newId
+                  : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim()) ||
+                    initialPassword.length < 8)
+              }
               onClick={() =>
-                run(() =>
-                  mutate("profile", {
+                run(async () => {
+                  if (accountSource === "new") {
+                    const account = await createAccount({
+                      email: newEmail.trim(),
+                      password: initialPassword,
+                      display_name: displayName.trim(),
+                      role,
+                      reason: reason.trim(),
+                    });
+                    setNewEmail("");
+                    setInitialPassword("");
+                    setDisplayName("");
+                    setRole("viewer");
+                    setUser(account.id);
+                    setNotice(
+                      "User account created. Configure its access rules as needed.",
+                    );
+                    return;
+                  }
+                  await mutate("profile", {
                     id: newId,
                     display_name: displayName,
                     role,
                     active: true,
                     reason,
-                  }),
-                )
+                  });
+                  setNotice("User account enrolled.");
+                })
               }
             >
-              Enroll account
+              {accountSource === "new" ? "Create user" : "Enroll account"}
             </button>
+            <hr />
+            <div className="form-control">
+              <span>Manage account</span>
+              <SearchFilterPicker
+                mode="single"
+                label="Manage account"
+                options={(data?.users || []).map((account: any) => ({
+                  id: account.id,
+                  label: account.display_name,
+                  context: account.role,
+                }))}
+                value={user ? [user] : []}
+                onChange={(value) => setUser(value[0] || "")}
+              />
+            </div>
             {(data?.users || [])
               .filter((u: any) => u.id === user)
               .map((u: any) => (
@@ -591,6 +699,11 @@ export function Security({
         {error && tab !== "rules" && (
           <FloatingNotification onDismiss={() => setError("")}>
             {error}
+          </FloatingNotification>
+        )}
+        {notice && (
+          <FloatingNotification kind="notice" onDismiss={() => setNotice("")}>
+            {notice}
           </FloatingNotification>
         )}
       </div>

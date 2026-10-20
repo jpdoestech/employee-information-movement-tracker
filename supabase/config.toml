@@ -20,3 +20,5 @@ sql_paths = ["./seed.sql"]
 verify_jwt = false
 [functions.google-oauth]
 verify_jwt = false
+[functions.manage-users]
+verify_jwt = false

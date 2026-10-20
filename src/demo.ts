@@ -463,6 +463,7 @@ for (const f of fields) {
   f.group_name =
     context.groups.find((g) => g.id === f.group_id)?.name || f.group_name;
 }
+const accounts = [{ ...context.profile, active: true, row_version: 1 }];
 export async function demoQuery(op: string, q: any = {}) {
   await new Promise((r) => setTimeout(r, 40));
   if (op === "context") return structuredClone(context);
@@ -701,7 +702,7 @@ export async function demoQuery(op: string, q: any = {}) {
   if (op === "schema") return { fields, groups: context.groups, targets: [] };
   if (op === "security")
     return {
-      users: [context.profile],
+      users: accounts,
       scopes: [],
       policies: [],
       capabilities: [],
@@ -1360,15 +1361,25 @@ export async function demoMutate(op: string, p: any) {
   } else if (op === "void_movement") {
     const m = history.find((m) => m.id === p.id);
     if (m) m.state = "Voided";
+  } else if (op === "profile") {
+    const current = accounts.find((account) => account.id === p.id);
+    if (current)
+      Object.assign(current, {
+        display_name: p.display_name,
+        role: p.role,
+        active: p.active,
+        row_version: current.row_version + 1,
+      });
+    else
+      accounts.push({
+        id: p.id,
+        display_name: p.display_name,
+        role: p.role,
+        active: p.active,
+        row_version: 1,
+      });
   } else if (
-    [
-      "profile",
-      "scope",
-      "policy",
-      "capability",
-      "workbook",
-      "sync_now",
-    ].includes(op)
+    ["scope", "policy", "capability", "workbook", "sync_now"].includes(op)
   ) {
     /* synthetic presentation only */
   } else throw new Error("Unknown demo mutation");

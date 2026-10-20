@@ -83,6 +83,60 @@ export async function organizationOptions(): Promise<Option[]> {
   return options;
 }
 const pendingRequests = new Map<string, string>();
+export async function createAccount(p: {
+  email: string;
+  display_name: string;
+  password: string;
+  role: string;
+  reason: string;
+}): Promise<{ id: string }> {
+  await requireConfirmation(
+    "Create user account",
+    "Create this sign-in account and enroll its selected role? Review the email and role before continuing.",
+  );
+  return trackTransaction("Creating user account", async () => {
+    if (demo) {
+      const id = crypto.randomUUID();
+      await demoMutate("profile", {
+        id,
+        display_name: p.display_name,
+        role: p.role,
+        active: true,
+        reason: p.reason,
+      });
+      return { id };
+    }
+    if (!supabase) throw new Error("Supabase is not configured.");
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(JSON.stringify(p)),
+    );
+    const fingerprint =
+      "account:" +
+      Array.from(new Uint8Array(digest), (value) =>
+        value.toString(16).padStart(2, "0"),
+      ).join("");
+    // shortcut: retry IDs live in memory; keep this draft open after an enrollment error.
+    const id = pendingRequests.get(fingerprint) || crypto.randomUUID();
+    pendingRequests.set(fingerprint, id);
+    const { data, error } = await supabase.functions.invoke("manage-users", {
+      body: { ...p, request_id: id },
+    });
+    if (error) {
+      const details =
+        error.context instanceof Response
+          ? await error.context.json().catch(() => null)
+          : null;
+      throw new Error(
+        typeof details?.error === "string"
+          ? details.error
+          : "Account creation failed. Your entries are preserved; try again.",
+      );
+    }
+    pendingRequests.delete(fingerprint);
+    return data;
+  });
+}
 export async function mutate<T = any>(
   operation: string,
   p: unknown,

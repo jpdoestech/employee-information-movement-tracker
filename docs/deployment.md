@@ -25,7 +25,17 @@ insert into public.user_profiles(id,display_name,role,active)
 values ('REPLACE_WITH_AUTH_USER_UUID'::uuid,'Initial administrator','superadmin',true);
 ```
 
-Review all Superadmins. Enroll ordinary accounts and explicitly grant organization actions and group/field policies; an Admin role alone grants no data. At least two independently controlled trusted administrators avoid lockout.
+Review all Superadmins. After bootstrap, use **Permissions → Accounts & capabilities → Create new user** to create sign-in accounts with email, display name, initial password and role. Explicitly grant organization actions and group/field policies; an Admin role alone grants no data. At least two independently controlled trusted administrators avoid lockout.
+
+Deploy the account-management function before the frontend:
+
+```powershell
+npx supabase@2.120.0 functions deploy manage-users --no-verify-jwt
+```
+
+It validates the caller's Auth token and active Superadmin profile itself, and enrolls profiles through the caller-authorized mutation RPC. Supabase supplies its URL, anon key and service-role key; never copy the service-role key into frontend variables. Set `FRONTEND_ORIGIN` to the frontend origin (default `https://strellas-employees.vercel.app`). Public signup stays disabled. Account creation confirms the email administratively and sends no invitation; provide the initial password securely. If enrollment fails, retry the unchanged form to complete the same request. The existing Auth UUID option remains available for previously created Auth accounts.
+
+Allow the frontend root and `/?auth=recovery` in Auth redirect URLs. Reset emails use this explicit marker so the new-password form opens even after Auth consumes the token fragment. Expired links open the reset-request form.
 
 ## Frontend
 

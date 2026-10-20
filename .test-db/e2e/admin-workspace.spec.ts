@@ -129,6 +129,15 @@ for (const [width, height] of [
     await page
       .getByRole("button", { name: "Accounts & capabilities", exact: true })
       .click();
+    await expect(
+      page.getByLabel("Email address", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Account source", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: "Enroll existing account", exact: true })
+      .click();
     await expect(page.getByLabel("Auth user UUID")).toBeVisible();
     await page
       .getByRole("button", { name: "Access rules", exact: true })

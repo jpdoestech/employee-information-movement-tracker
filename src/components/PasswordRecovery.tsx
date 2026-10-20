@@ -7,11 +7,13 @@ import { confirmTransaction } from "./TransactionConfirmation";
 export function PasswordRecovery({
   recovery,
   initialEmail,
+  initialError,
   onComplete,
   onBack,
 }: {
   recovery: boolean;
   initialEmail: string;
+  initialError: string;
   onComplete: () => void;
   onBack: () => void;
 }) {
@@ -19,7 +21,7 @@ export function PasswordRecovery({
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError);
   const [sent, setSent] = useState(false);
 
   async function back() {
@@ -83,7 +85,8 @@ export function PasswordRecovery({
                 const { error } = recovery
                   ? await supabase!.auth.updateUser({ password })
                   : await supabase!.auth.resetPasswordForEmail(email, {
-                      redirectTo: location.origin + location.pathname,
+                      redirectTo:
+                        location.origin + location.pathname + "?auth=recovery",
                     });
                 if (error) throw error;
               },
