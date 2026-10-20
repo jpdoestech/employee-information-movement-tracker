@@ -20,3 +20,4 @@ supabase/.branches/
 .test-db/reports/
 .test-db/cache/
 .vite/
+.vercel/

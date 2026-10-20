@@ -57,6 +57,11 @@ import { MovementEditor } from "./screens/MovementEditor";
 import { Organization, FieldBuilder } from "./screens/Configuration";
 import { Security } from "./screens/Security";
 import { Sync } from "./screens/Sync";
+import { PasswordRecovery } from "./components/PasswordRecovery";
+const authLink = new URLSearchParams(location.hash.slice(1));
+const recoveryPending =
+  authLink.get("type") === "recovery" ||
+  sessionStorage.getItem("eimt-password-recovery") === "true";
 const nav = [
   { id: "dashboard", label: "Overview", icon: LayoutDashboard },
   { id: "employees", label: "Employees", icon: Users },
@@ -73,6 +78,9 @@ export default function App() {
   );
   const navigation = useRef<HTMLElement>(null);
   const [authenticated, setAuthenticated] = useState(isDemo()),
+    [authMode, setAuthMode] = useState<"signin" | "request" | "recovery">(
+      recoveryPending ? "recovery" : "signin",
+    ),
     [ctx, setCtx] = useState<Context>(),
     [page, setPage] = useState(location.hash.slice(1) || "dashboard"),
     [menu, setMenu] = useState(false),
@@ -88,7 +96,7 @@ export default function App() {
     [selectedRows, setSelectedRows] = useState<Employee[]>([]),
     [activeViewId, setActiveViewId] = useState(""),
     [loading, setLoading] = useState(false),
-    [error, setError] = useState(""),
+    [error, setError] = useState(authLink.get("error_description") || ""),
     [notice, setNotice] = useState(""),
     [version, setVersion] = useState(0),
     [dialog, setDialog] = useState<
@@ -176,6 +184,8 @@ export default function App() {
     );
   };
   useEffect(() => {
+    if (recoveryPending)
+      sessionStorage.setItem("eimt-password-recovery", "true");
     const change = () => {
       setPage(location.hash.slice(1) || "dashboard");
       setMenu(false);
@@ -186,7 +196,13 @@ export default function App() {
     supabase.auth
       .getSession()
       .then(({ data }) => setAuthenticated(!!data.session || isDemo()));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        sessionStorage.setItem("eimt-password-recovery", "true");
+        setAuthMode("recovery");
+      }
+      if (event === "SIGNED_OUT")
+        sessionStorage.removeItem("eimt-password-recovery");
       setAuthenticated(!!session || isDemo());
       if (!session && !isDemo()) {
         setCtx(undefined);
@@ -201,7 +217,7 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
-    if (!authenticated) return;
+    if (!authenticated || authMode === "recovery") return;
     let active = true;
     async function fetch() {
       try {
@@ -237,7 +253,7 @@ export default function App() {
       active = false;
       stop();
     };
-  }, [authenticated, version]);
+  }, [authenticated, authMode, version]);
   useEffect(() => {
     if (!ctx || !["employees", "dashboard"].includes(page)) {
       setLoading(false);
@@ -340,7 +356,7 @@ export default function App() {
       setBusy(false);
     }
   }
-  if (!authenticated)
+  if (!authenticated || authMode === "recovery")
     return (
       <div className="login-shell">
         <section className="login-brand">
@@ -374,72 +390,108 @@ export default function App() {
             <Appearance />
           </div>
           <span className="eyebrow">ACCOUNT ACCESS</span>
-          <h2>Sign in</h2>
-          <p>Use your authorized company account.</p>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setBusy(true);
-              setError("");
-              try {
-                if (!supabase)
-                  throw new Error(
-                    "Add this project’s VITE_SUPABASE_URL and publishable key to .env.local.",
-                  );
-                const { error } = await supabase.auth.signInWithPassword({
-                  email,
-                  password,
-                });
-                if (error) throw error;
-              } catch (e) {
-                setError((e as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <label>
-              Email address
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="username"
-                required
-              />
-            </label>
-            <label>
-              Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
-            </label>
-            <button className="primary" disabled={busy}>
-              {busy ? "Signing in…" : "Sign in"}
-              <ArrowRight size={17} />
-            </button>
-          </form>
-          {error && (
-            <FloatingNotification onDismiss={() => setError("")}>
-              {error}
-            </FloatingNotification>
+          {authMode !== "signin" ? (
+            <PasswordRecovery
+              recovery={authMode === "recovery"}
+              initialEmail={email}
+              onComplete={() => {
+                sessionStorage.removeItem("eimt-password-recovery");
+                setPassword("");
+                setAuthMode("signin");
+                setPage("dashboard");
+                history.replaceState(
+                  null,
+                  "",
+                  location.pathname + location.search + "#dashboard",
+                );
+                setNotice("Password updated.");
+              }}
+              onBack={() => {
+                sessionStorage.removeItem("eimt-password-recovery");
+                setAuthMode("signin");
+                setError("");
+              }}
+            />
+          ) : (
+            <>
+              <h2>Sign in</h2>
+              <p>Use your authorized company account.</p>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setBusy(true);
+                  setError("");
+                  try {
+                    if (!supabase)
+                      throw new Error(
+                        "Add this project’s VITE_SUPABASE_URL and publishable key to .env.local.",
+                      );
+                    const { error } = await supabase.auth.signInWithPassword({
+                      email,
+                      password,
+                    });
+                    if (error) throw error;
+                  } catch (e) {
+                    setError((e as Error).message);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                <label>
+                  Email address
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="username"
+                    required
+                  />
+                </label>
+                <label>
+                  Password
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                </label>
+                <button className="primary" disabled={busy}>
+                  {busy ? "Signing in…" : "Sign in"}
+                  <ArrowRight size={17} />
+                </button>
+              </form>
+              <button
+                onClick={() => {
+                  setError("");
+                  setAuthMode("request");
+                }}
+                disabled={busy}
+              >
+                Forgot password?
+              </button>
+              {error && (
+                <FloatingNotification onDismiss={() => setError("")}>
+                  {error}
+                </FloatingNotification>
+              )}
+              <button
+                className="demo-button"
+                onClick={() => {
+                  enableDemo();
+                  setAuthenticated(true);
+                }}
+              >
+                Explore synthetic demo
+              </button>
+              <small>
+                Demo data is fictional and is not connected to Supabase or
+                Google.
+              </small>
+            </>
           )}
-          <button
-            className="demo-button"
-            onClick={() => {
-              enableDemo();
-              setAuthenticated(true);
-            }}
-          >
-            Explore synthetic demo
-          </button>
-          <small>
-            Demo data is fictional and is not connected to Supabase or Google.
-          </small>
         </section>
       </div>
     );
