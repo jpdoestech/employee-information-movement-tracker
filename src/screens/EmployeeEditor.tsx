@@ -1187,7 +1187,7 @@ export function EmployeeEditor({
             }
             onClick={() => void save()}
           >
-            {busy ? "Saving…" : "Save to Supabase"}
+            {busy ? "Saving…" : "Save"}
           </button>
         </footer>
       </Dialog>

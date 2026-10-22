@@ -11,13 +11,14 @@ test("separate name fields require first and last, preserve tab drafts, and save
   page,
 }) => {
   const editor = await start(page);
+  await expect(page.locator("body")).not.toContainText(/supabase/i);
   await expect(editor.getByLabel("Employee Name", { exact: true })).toHaveCount(
     0,
   );
   await editor
     .getByRole("textbox", { name: /^First Name(?: \*)?$/ })
     .fill("Ana");
-  await editor.getByRole("button", { name: "Save to Supabase" }).click();
+  await editor.getByRole("button", { name: "Save" }).click();
   await expect(
     editor.getByText("Last Name is required.", { exact: true }),
   ).toBeVisible();
@@ -40,7 +41,7 @@ test("separate name fields require first and last, preserve tab drafts, and save
   await expect(
     editor.getByRole("textbox", { name: /^Last Name(?: \*)?$/ }),
   ).toHaveValue("Cruz");
-  await editor.getByRole("button", { name: "Save to Supabase" }).click();
+  await editor.getByRole("button", { name: "Save" }).click();
   const confirm = page.getByRole("dialog", {
     name: "Create employee",
     exact: true,
@@ -49,7 +50,7 @@ test("separate name fields require first and last, preserve tab drafts, and save
   await expect(
     editor.getByRole("textbox", { name: /^First Name(?: \*)?$/ }),
   ).toHaveValue("Ana");
-  await editor.getByRole("button", { name: "Save to Supabase" }).click();
+  await editor.getByRole("button", { name: "Save" }).click();
   await confirm.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(editor).toHaveCount(0);
   await page
@@ -94,9 +95,7 @@ test("unresolved address entries remain invalid across tab changes until confirm
   await editor
     .getByRole("tab", { name: "Personal Information", exact: true })
     .click();
-  await expect(
-    editor.getByRole("button", { name: "Save to Supabase" }),
-  ).toBeDisabled();
+  await expect(editor.getByRole("button", { name: "Save" })).toBeDisabled();
   await editor
     .getByRole("tab", { name: "Personal Information", exact: true })
     .click();
@@ -106,9 +105,7 @@ test("unresolved address entries remain invalid across tab changes until confirm
   await editor
     .getByRole("tab", { name: "Personal Information", exact: true })
     .click();
-  await expect(
-    editor.getByRole("button", { name: "Save to Supabase" }),
-  ).toBeEnabled();
+  await expect(editor.getByRole("button", { name: "Save" })).toBeEnabled();
 });
 
 test("Superadmin configures standalone tabs while child tabs follow their parent", async ({

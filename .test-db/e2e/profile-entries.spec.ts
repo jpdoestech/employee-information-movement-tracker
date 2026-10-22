@@ -22,7 +22,7 @@ test("new employees can save without Government IDs", async ({ page }) => {
   await sss.fill("");
   await expect(sss).not.toHaveAttribute("aria-invalid", "true");
   await editor
-    .getByRole("button", { name: "Save to Supabase", exact: true })
+    .getByRole("button", { name: "Save", exact: true })
     .click();
   await page
     .getByRole("dialog", { name: "Create employee", exact: true })
@@ -53,7 +53,7 @@ test("new employees can save without Government IDs", async ({ page }) => {
     await expect(storedSss).toHaveValue(value ? "" : "09-1234567-8");
     await storedSss.fill(value);
     await profile
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Save employee changes", exact: true })
@@ -152,7 +152,7 @@ for (const [width, height] of [
       .getByLabel("Remarks", { exact: true })
       .fill("Synthetic verification profile");
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Create employee", exact: true })
@@ -166,7 +166,7 @@ for (const [width, height] of [
     await tin.fill("1234A");
     await expect(tin).toHaveAttribute("aria-invalid", "true");
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await expect(
       page.getByRole("dialog", { name: "Create employee", exact: true }),
@@ -175,7 +175,7 @@ for (const [width, height] of [
     await expect(tin).toHaveValue("012-345-678");
     await expect(tin).not.toHaveAttribute("aria-invalid", "true");
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     const confirm = page.getByRole("dialog", {
       name: "Create employee",
@@ -190,7 +190,7 @@ for (const [width, height] of [
       path: `.test-db/reports/verification/profile-entries-${width}x${height}.png`,
     });
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await confirm
       .getByRole("button", { name: "Continue", exact: true })

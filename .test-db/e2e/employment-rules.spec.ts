@@ -43,7 +43,7 @@ for (const [width, height] of [
       .getByRole("option", { name: "Replacement", exact: true })
       .click();
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await expect(
       editor.getByText("Select the employee being replaced.", { exact: true }),
@@ -73,7 +73,7 @@ for (const [width, height] of [
       .fill("Employee 09");
     await picker.getByRole("option", { name: /Synthetic Employee 09/ }).click();
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     const confirmation = page.getByRole("dialog", {
       name: "Create employee",
@@ -89,7 +89,7 @@ for (const [width, height] of [
       path: `.test-db/reports/verification/manpower-${width}.png`,
     });
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await confirmation
       .getByRole("button", { name: "Continue", exact: true })

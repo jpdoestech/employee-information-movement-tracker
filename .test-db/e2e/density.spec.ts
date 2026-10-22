@@ -126,7 +126,7 @@ test("long saved-view names wrap within their control instead of clipping", asyn
   );
 });
 
-test("slow transaction feedback floats inside the active editor and clears on settlement", async ({
+test("slow transaction feedback disappears after three seconds without cancelling the transaction", async ({
   page,
 }) => {
   await enter(page);
@@ -143,7 +143,11 @@ test("slow transaction feedback floats inside the active editor and clears on se
       .map((entry) => entry.name)
       .find((url) => new URL(url).pathname === "/src/transactions.ts");
     if (!moduleUrl) throw new Error("Transaction module was not loaded");
-    const { trackTransaction } = await import(/* @vite-ignore */ moduleUrl);
+    const { trackTransaction, pendingTransactions } = await import(
+      /* @vite-ignore */ moduleUrl
+    );
+    (window as any).pendingTransactionCount = () =>
+      pendingTransactions().length;
     void trackTransaction(
       "Saving employee",
       () =>
@@ -155,9 +159,13 @@ test("slow transaction feedback floats inside the active editor and clears on se
   const progress = editor.locator('.floating-notification[role="status"]');
   await expect(progress).toContainText("Saving employee");
   expect(await editor.boundingBox()).toEqual(before);
-  await expect(progress).toContainText("Still processing", {
-    timeout: 10000,
-  });
+  await expect(progress).toHaveCount(0, { timeout: 4000 });
+  expect(
+    await page.evaluate(() => (window as any).pendingTransactionCount()),
+  ).toBe(1);
   await page.evaluate(() => (window as any).finishSlowTransaction());
+  await expect
+    .poll(() => page.evaluate(() => (window as any).pendingTransactionCount()))
+    .toBe(0);
   await expect(progress).toHaveCount(0);
 });

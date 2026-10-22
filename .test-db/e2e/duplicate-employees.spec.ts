@@ -43,7 +43,7 @@ for (const [width, height] of [
     await first.getByLabel("Department", { exact: true }).fill("Quality");
     await first.getByLabel("Position", { exact: true }).fill("Analyst");
     await first
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Create employee", exact: true })
@@ -52,7 +52,7 @@ for (const [width, height] of [
     await expect(first).toHaveCount(0);
     const second = await entry(page, "Alexandrie");
     await second
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     const review = page.getByRole("dialog", {
       name: "Possible duplicate employee",
@@ -94,7 +94,7 @@ for (const [width, height] of [
       page.getByRole("dialog", { name: "Create employee", exact: true }),
     ).toHaveCount(0);
     await second
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await review.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(second).toHaveCount(0);
@@ -228,7 +228,7 @@ test("editing name parts reviews the new full name and retains the draft on canc
   await page.goto("/#employees");
   const first = await entry(page, "Alexandria");
   await first
-    .getByRole("button", { name: "Save to Supabase", exact: true })
+    .getByRole("button", { name: "Save", exact: true })
     .click();
   await page
     .getByRole("dialog", { name: "Create employee", exact: true })
@@ -240,7 +240,7 @@ test("editing name parts reviews the new full name and retains the draft on canc
     .getByLabel("Last Name *", { exact: true })
     .fill("DifferentSurname");
   await second
-    .getByRole("button", { name: "Save to Supabase", exact: true })
+    .getByRole("button", { name: "Save", exact: true })
     .click();
   await page
     .getByRole("dialog", { name: "Create employee", exact: true })
@@ -263,7 +263,7 @@ test("editing name parts reviews the new full name and retains the draft on canc
     .click();
   await editor.getByLabel("Last Name", { exact: true }).fill("Duplicate");
   await editor
-    .getByRole("button", { name: "Save to Supabase", exact: true })
+    .getByRole("button", { name: "Save", exact: true })
     .click();
   const review = page.getByRole("dialog", {
     name: "Possible duplicate employee",
@@ -277,7 +277,7 @@ test("editing name parts reviews the new full name and retains the draft on canc
     "Duplicate",
   );
   await editor
-    .getByRole("button", { name: "Save to Supabase", exact: true })
+    .getByRole("button", { name: "Save", exact: true })
     .click();
   await review.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(editor).toHaveCount(0);

@@ -374,7 +374,7 @@ for (const width of [375, 1440]) {
       .getByRole("textbox", { name: "Mobile", exact: true })
       .fill("bad");
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     const error = editor.locator(".floating-notification.error");
     await expect(error).toContainText("09");
@@ -423,7 +423,7 @@ for (const width of [375, 1440]) {
     await last.fill("Reviewed");
     await name.fill("employee");
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     const confirmation = page.getByRole("dialog", {
       name: "Save employee changes",
@@ -455,7 +455,7 @@ for (const width of [375, 1440]) {
       .click();
     await expect(name).toHaveValue("employee");
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await confirmation
       .getByRole("button", { name: "Continue", exact: true })

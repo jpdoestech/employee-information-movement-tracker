@@ -22,7 +22,7 @@ test("category edits do not require filling unrelated legacy inactive employment
     .getByRole("option", { name: "Admin", exact: true })
     .click();
   await editor
-    .getByRole("button", { name: "Save to Supabase", exact: true })
+    .getByRole("button", { name: "Save", exact: true })
     .click();
   await page
     .getByRole("dialog", { name: "Save employee changes", exact: true })
@@ -97,7 +97,7 @@ for (const [width, height, organization, category] of [
     });
     await picker.getByRole("option", { name: category, exact: true }).click();
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     const confirm = page.getByRole("dialog", {
       name: "Create employee",
@@ -108,7 +108,7 @@ for (const [width, height, organization, category] of [
       editor.getByRole("button", { name: "Employee Category", exact: true }),
     ).toContainText(category);
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await confirm
       .getByRole("button", { name: "Continue", exact: true })

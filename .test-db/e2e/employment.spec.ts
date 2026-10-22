@@ -64,7 +64,7 @@ for (const width of [375, 1366]) {
     }
     await choose("Employment Status", "Inactive");
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await expect(
       editor.getByText(
@@ -85,7 +85,7 @@ for (const width of [375, 1366]) {
     await choose("Separation Category", "VOLUNTARY");
     await choose("Reason for Separation", "Others (specify)");
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await expect(
       editor.getByText("Specify the other reason.", { exact: true }),
@@ -104,7 +104,7 @@ for (const width of [375, 1366]) {
       await editor.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Create employee", exact: true })
@@ -130,7 +130,7 @@ test("typo correction keeps the draft on cancellation and creates no movement", 
     .click();
   await editor.getByLabel("Position", { exact: true }).fill("Team Leader");
   await editor
-    .getByRole("button", { name: "Save to Supabase", exact: true })
+    .getByRole("button", { name: "Save", exact: true })
     .click();
   const choice = page.getByRole("dialog", {
     name: "Classify employment changes",
@@ -141,7 +141,7 @@ test("typo correction keeps the draft on cancellation and creates no movement", 
     "Team Leader",
   );
   await editor
-    .getByRole("button", { name: "Save to Supabase", exact: true })
+    .getByRole("button", { name: "Save", exact: true })
     .click();
   await choice
     .getByRole("button", { name: "Typo correction", exact: true })

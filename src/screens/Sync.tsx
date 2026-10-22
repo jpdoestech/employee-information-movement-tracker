@@ -76,7 +76,7 @@ export function Sync({
             : "Google account not connected"}
         </strong>
         <p>
-          {data?.pending || 0} pending events. Saves to Supabase continue during
+          {data?.pending || 0} pending events. Changes can still be saved during
           Google outages.
         </p>
         <button
@@ -87,7 +87,8 @@ export function Sync({
                 "Connect Google account",
                 "Continue to Google to authorize this account connection?",
               );
-              if (!supabase) throw new Error("Configure Supabase first");
+              if (!supabase)
+                throw new Error("The application connection is unavailable.");
               const { data, error } = await supabase.functions.invoke(
                 "google-oauth",
                 { body: { action: "start" } },

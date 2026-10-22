@@ -144,7 +144,7 @@ for (const width of [375, 1366]) {
     await editor.getByLabel("Last Name", { exact: true }).fill("TEST");
     await editor.getByLabel("First Name", { exact: true }).fill("JUAN");
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Save employee changes", exact: true })
@@ -159,7 +159,7 @@ for (const width of [375, 1366]) {
       .click();
     await editor.getByLabel("First Name", { exact: true }).fill("JUANA");
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Save employee changes", exact: true })

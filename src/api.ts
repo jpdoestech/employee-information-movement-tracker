@@ -28,7 +28,9 @@ export async function query<T = any>(
 ): Promise<T> {
   if (demo) return demoQuery(operation, q) as T;
   if (!supabase)
-    throw new Error("Configure this application’s Supabase connection.");
+    throw new Error(
+      "The application connection is unavailable. Contact your administrator.",
+    );
   const special = [
     "client_settings",
     "filter_values",
@@ -63,7 +65,7 @@ export async function preview(operation: string, p: unknown) {
     if (operation === "movement") demoIdentityPreview(p);
     return { valid: true };
   }
-  if (!supabase) throw new Error("Supabase is not configured");
+  if (!supabase) throw new Error("The application connection is unavailable.");
   return trackTransaction("Validating transaction", async () => {
     const { data, error } = await supabase!.rpc("transaction_preview", {
       operation,
@@ -106,7 +108,8 @@ export async function createAccount(p: {
       });
       return { id };
     }
-    if (!supabase) throw new Error("Supabase is not configured.");
+    if (!supabase)
+      throw new Error("The application connection is unavailable.");
     const digest = await crypto.subtle.digest(
       "SHA-256",
       new TextEncoder().encode(JSON.stringify(p)),
@@ -173,7 +176,8 @@ export async function mutate<T = any>(
   }
   return trackTransaction(labels[operation] || "Saving changes", async () => {
     if (demo) return demoMutate(operation, p) as T;
-    if (!supabase) throw new Error("Supabase is not configured.");
+    if (!supabase)
+      throw new Error("The application connection is unavailable.");
     const fingerprint = operation + JSON.stringify(p);
     const id =
       requestId || pendingRequests.get(fingerprint) || crypto.randomUUID();

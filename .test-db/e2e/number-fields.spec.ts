@@ -65,7 +65,7 @@ for (const width of [375, 1366]) {
     await expect(number).toHaveValue("1,000.00");
     await number.fill("1,00");
     await form
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await expect(number).toHaveAttribute("aria-invalid", "true");
     await expect(
@@ -88,7 +88,7 @@ for (const width of [375, 1366]) {
     );
     await expect(form.getByText("Clear value", { exact: true })).toHaveCount(0);
     await form
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Create employee", exact: true })
@@ -128,7 +128,7 @@ for (const width of [375, 1366]) {
       .click();
     await expect(existing).toHaveValue("");
     await profile
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     const confirm = page.getByRole("dialog", {
       name: "Save employee changes",
@@ -137,7 +137,7 @@ for (const width of [375, 1366]) {
     await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(existing).toHaveValue("");
     await profile
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await confirm
       .getByRole("button", { name: "Continue", exact: true })

@@ -136,6 +136,9 @@ describe("secondary Google projections", () => {
     expect(JSON.stringify(a)).toContain("'=bad");
     expect(JSON.stringify(a)).not.toContain("formulaValue");
     expect(tabs[0].rows[0]).toContain("Renamed [name]");
+    expect(tabs.find((tab) => tab.title === "Sync_Metadata")!.rows[1][0]).toBe(
+      "Employee tracker",
+    );
   });
   it("requires all canonical tabs before writing", () =>
     expect(() =>

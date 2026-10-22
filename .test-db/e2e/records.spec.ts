@@ -217,7 +217,7 @@ test("client creation prefix produces separate System and Client-based IDs", asy
     await employee.getByLabel("Last Name", { exact: false }).fill("Test");
     await fillGovernmentIds(employee);
     await employee
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Create employee", exact: true })

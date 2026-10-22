@@ -174,6 +174,7 @@ test("reset request uses the current app URL and requires confirmation", async (
   await expect(page.getByRole("status")).toContainText(
     "a reset link has been sent",
   );
+  await expect(page.getByRole("status")).toHaveCount(0, { timeout: 4000 });
   expect(writes).toHaveLength(1);
   const request = writes[0] as { body: { email: string }; url: string };
   expect(request.body.email).toBe(user.email);
@@ -192,6 +193,7 @@ test("expired recovery link exposes the error and a way to request another", asy
   await expect(page.getByRole("alert")).toContainText(
     "Email link is invalid or has expired",
   );
+  await expect(page.getByRole("alert")).toHaveCount(0, { timeout: 4000 });
   await expect(
     page.getByRole("heading", { name: "Reset password", exact: true }),
   ).toBeVisible();

@@ -91,7 +91,7 @@ for (const [width, height, font] of [
       path: `.test-db/reports/verification/profile-edit-ui-styling-${width}x${height}.png`,
     });
     const save = editor.getByRole("button", {
-      name: "Save to Supabase",
+      name: "Save",
       exact: true,
     });
     await save.click();

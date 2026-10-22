@@ -197,11 +197,7 @@ export default function App() {
     [correctionReason, setCorrectionReason] = useState("");
   const refresh = () => {
     setVersion((v) => v + 1);
-    setNotice(
-      isDemo()
-        ? "Saved in synthetic demo memory."
-        : "Saved to Supabase. Google Sheets sync is asynchronous.",
-    );
+    setNotice(isDemo() ? "Saved (demo only)." : "Saved.");
   };
   useEffect(() => {
     if (recoveryPending)
@@ -426,7 +422,7 @@ export default function App() {
                   try {
                     if (!supabase)
                       throw new Error(
-                        "Add this project’s VITE_SUPABASE_URL and publishable key to .env.local.",
+                        "Sign-in is unavailable. Contact your administrator.",
                       );
                     const { error } = await supabase.auth.signInWithPassword({
                       email,
@@ -489,8 +485,7 @@ export default function App() {
                 Explore synthetic demo
               </button>
               <small>
-                Demo data is fictional and is not connected to Supabase or
-                Google.
+                Demo data is fictional and is not connected to live services.
               </small>
             </>
           )}

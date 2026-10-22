@@ -49,7 +49,7 @@ for (const width of [375, 1366]) {
       .getByLabel("Email", { exact: true })
       .fill("edited-row@example.invalid");
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     const confirmation = page.getByRole("dialog", {
       name: "Save employee changes",
@@ -63,7 +63,7 @@ for (const width of [375, 1366]) {
       "edited-row@example.invalid",
     );
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await confirmation
       .getByRole("button", { name: "Continue", exact: true })

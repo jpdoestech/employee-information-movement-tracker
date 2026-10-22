@@ -238,7 +238,7 @@ test("unresolved address drafts survive Overview and expansion to all details wi
     home.getByLabel("Street / building", { exact: true }),
   ).toHaveValue("Manual draft street");
   await expect(
-    editor.getByRole("button", { name: "Save to Supabase", exact: true }),
+    editor.getByRole("button", { name: "Save", exact: true }),
   ).toBeDisabled();
   await expect(
     home.getByLabel("City / municipality", { exact: true }),
@@ -248,7 +248,7 @@ test("unresolved address drafts survive Overview and expansion to all details wi
   ).toHaveCount(0);
   await home.getByLabel("City / municipality", { exact: true }).fill("");
   await editor
-    .getByRole("button", { name: "Save to Supabase", exact: true })
+    .getByRole("button", { name: "Save", exact: true })
     .click();
   const confirm = page.getByRole("dialog", {
     name: "Save employee changes",

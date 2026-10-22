@@ -84,7 +84,7 @@ export function snapshotTabs(snapshot: any) {
       rows: [
         ["canonical_source", "revision", "sync_time", "membership_policy"],
         [
-          "Supabase",
+          "Employee tracker",
           snapshot.revision,
           new Date().toISOString(),
           "Effective primary only; rows removed when no longer in approved roster",

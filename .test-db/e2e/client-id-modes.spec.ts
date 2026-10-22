@@ -106,7 +106,7 @@ for (const [width, height] of [
       path: `.test-db/reports/verification/manual-id-${width}.png`,
     });
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Create employee", exact: true })

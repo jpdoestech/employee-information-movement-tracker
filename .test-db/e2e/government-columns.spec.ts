@@ -33,7 +33,7 @@ for (const [width, height] of [
     for (const [label, value] of Object.entries(values))
       await editor.getByLabel(label, { exact: true }).fill(value);
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Save employee changes", exact: true })

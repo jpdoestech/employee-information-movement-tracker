@@ -42,7 +42,7 @@ test("background refresh preserves the draft revision until explicit conflict re
   );
   const save = async () => {
     await editor
-      .getByRole("button", { name: "Save to Supabase", exact: true })
+      .getByRole("button", { name: "Save", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Save employee changes", exact: true })

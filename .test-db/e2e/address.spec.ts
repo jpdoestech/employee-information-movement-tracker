@@ -105,7 +105,7 @@ test("unconfirmed typed text blocks saving and Escape closes only suggestions", 
     home.getByText("Choose a province from the official list."),
   ).toBeVisible();
   await expect(
-    dialog.getByRole("button", { name: "Save to Supabase" }),
+    dialog.getByRole("button", { name: "Save" }),
   ).toBeDisabled();
   await input.focus();
   await input.press("Escape");
@@ -113,7 +113,7 @@ test("unconfirmed typed text blocks saving and Escape closes only suggestions", 
   await expect(dialog).toBeVisible();
   await input.fill("");
   await expect(
-    dialog.getByRole("button", { name: "Save to Supabase" }),
+    dialog.getByRole("button", { name: "Save" }),
   ).toBeEnabled();
 });
 test("load failure supports retry without retyping and stale searches cannot replace results", async ({
@@ -186,7 +186,7 @@ test("addresses and emergency contact save through confirmation and edit existin
     })
     .click();
   await page.getByRole("option", { name: "Guardian", exact: true }).click();
-  await dialog.getByRole("button", { name: "Save to Supabase" }).click();
+  await dialog.getByRole("button", { name: "Save" }).click();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await page
