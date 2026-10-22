@@ -1,5 +1,7 @@
 # Employee groups and scoped editing
 
+Employee Category is an editable Admin/Agency choice in Employment information. It is independent of login roles, employment type and placement: Head Office staff can be Admin, while branch/client employees can be Agency. It follows the existing field permissions and confirmed, versioned saves. Existing records stay blank until classified; changing an assignment does not overwrite the selected category. The default register includes it; saved personal column layouts remain unchanged.
+
 Existing records open with horizontal Overview and Record history tabs.
 Overview contains the complete authorized summary; Employment Details and
 Additional Information are summary sections, not duplicate view-mode tabs.

@@ -468,6 +468,7 @@ export function EmployeeEditor({
           (key) =>
             ![
               "remarks",
+              "employee_category",
               "manpower_classification",
               "replaced_employee_id",
             ].includes(key) && Object.hasOwn(changed, key),

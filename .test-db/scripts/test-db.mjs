@@ -1,6 +1,7 @@
 import { testEmploymentRules } from "./test-employment-rules.mjs";
 import { testAuditFixes } from "./test-audit-fixes.mjs";
 import { testFunctionFixes } from "./test-function-fixes.mjs";
+import { testEmployeeCategory } from "./test-employee-category.mjs";
 import EmbeddedPostgres from "embedded-postgres";
 import { employeeFixture, identityPolicyGrantSql } from "./employee-fixtures.mjs";
 import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
@@ -241,6 +242,7 @@ try {
     return d.toISOString().slice(0, 10);
   };
   await test("create profiles allocates permanent IDs and atomic outbox", async () => {
+    const initialOutbox = Number((await owner.query("select count(*) n from public.sync_outbox")).rows[0].n);
     e1 = (
       await m(id.sa, "employee_create", {
         target_level: "branch",
@@ -257,9 +259,8 @@ try {
       })
     ).id;
     assert.equal(
-      (await owner.query("select count(*) n from public.sync_outbox")).rows[0]
-        .n,
-      "2",
+      Number((await owner.query("select count(*) n from public.sync_outbox")).rows[0].n),
+      initialOutbox + 2,
     );
   });
   await test("REST identity grants survive display-group renames and expose exactly the scoped employee", async () => {
@@ -3336,6 +3337,7 @@ try {
   await testEmploymentRules({ owner, test, q, m, as, concurrent, revision, id, today, date });
   await testAuditFixes({ owner, test, q, m, worker, revision, id });
   await testFunctionFixes({ owner, test, m, worker, id });
+  await testEmployeeCategory({ owner, test, m, q, revision, id });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
     ".test-db/reports/verification/database.json",

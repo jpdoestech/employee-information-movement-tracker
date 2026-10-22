@@ -93,6 +93,7 @@ export const defaultFilter: Filter = {
 export const defaultColumns = [
   "employee_number",
   "name",
+  "employee_category",
   "client_employee_number",
   "status",
   "position",

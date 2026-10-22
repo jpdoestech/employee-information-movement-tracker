@@ -4,6 +4,7 @@ export const employmentDisplayOrder = [
   "client_employee_number",
   "branch",
   "client",
+  "employee_category",
   "manpower_classification",
   "replaced_employee_id",
   "department",
@@ -19,6 +20,7 @@ export const employmentDisplayOrder = [
   "remarks",
 ];
 export const employmentOrder = [
+  "employee_category",
   "manpower_classification",
   "replaced_employee_id",
   "department",
@@ -81,6 +83,13 @@ export const separationReasons = [
 ];
 // These are editable metadata defaults, not a separate HR module or authorization path.
 export const profileDefinitions = [
+  {
+    key: "employee_category",
+    label: "Employee Category",
+    type: "select",
+    group: "employment",
+    options: ["Admin", "Agency"],
+  },
   {
     key: "manpower_classification",
     label: "Employment Manpower Classification",
