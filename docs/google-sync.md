@@ -1,5 +1,9 @@
 # Google Sheets operating guide
 
+The account connection is bound to Google's stable account ID. Reconnect the same account; switching owners requires a separate, reviewed workbook migration. Legacy connections verify ownership of their existing root folder before binding that ID. Existing folder IDs, workbook IDs and approvals are preserved.
+
+Before publishing, the worker rejects snapshots whose field definitions, field groups, applicability targets or workbook approval changed during external reads. Ordinary employee edits can still sync asynchronously without starving publication. Retry rebuilds the projection from current authorization. Google remains outside the database transaction; existing downloaded copies and sharing still need the operational controls below.
+
 Use a personal Google account with a Google Cloud OAuth **Web application** client, Sheets/Drive APIs enabled, exact callback URL and external consent/test users as appropriate. This implementation requests offline `drive.file` access and creates its own root folder in that user's My Drive. Existing arbitrary folders are not assumed accessible; a future folder chooser must use Google's Picker/access flow before supporting them. Do not assume a service account can own files in consumer My Drive.
 
 Connect from the Superadmin Sync screen. A ten-minute, hashed, single-use state is bound to the initiating active Superadmin. Refresh tokens are AES-GCM encrypted in a private schema; the 32-byte key and OAuth client secret exist only in backend secrets. Access tokens are short-lived and never returned to the browser. Consent in Google's external Testing status commonly expires offline refresh authorization after seven days; complete the required publishing/verification process for continued production operation. Reconnect after revocation or expiry.

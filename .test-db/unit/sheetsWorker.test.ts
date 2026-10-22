@@ -18,7 +18,7 @@ const compiled = ts.transpileModule(source, {
     target: ts.ScriptTarget.ES2022,
   },
 }).outputText;
-function worker(failure: "network" | "sharing" | "none") {
+function worker(failure: "network" | "sharing" | "schema" | "none") {
   const calls: { operation?: string; p?: any; url?: string }[] = [];
   const books = ["bad", "healthy"].map((id) => ({
     id,
@@ -44,6 +44,11 @@ function worker(failure: "network" | "sharing" | "none") {
     createClient: () => ({
       rpc: async (_name: string, { operation, p }: any) => {
         calls.push({ operation, p });
+        if (operation === "publish_guard" && failure === "schema")
+          return {
+            data: null,
+            error: { message: "Snapshot or export policy changed" },
+          };
         const data =
           operation === "claim"
             ? {
@@ -64,6 +69,7 @@ function worker(failure: "network" | "sharing" | "none") {
                         assignments: [],
                         movements: [],
                         revision: 2,
+                        schema_signature: "synthetic-schema",
                       }
                     : {};
         if (operation === "book_status" && p.status === "Synced")
@@ -108,6 +114,13 @@ function worker(failure: "network" | "sharing" | "none") {
       ),
   };
 }
+it("never publishes an old snapshot after a schema change", async () => {
+  const w = worker("schema");
+  expect((await w.run()).status).toBe(503);
+  expect(w.calls.some((c) => c.operation === "publish_guard")).toBe(true);
+  expect(w.calls.some((c) => c.url?.includes(":batchUpdate"))).toBe(false);
+  expect(w.calls.some((c) => c.operation === "complete")).toBe(false);
+});
 it("syncs healthy branches after a failing workbook and avoids rewriting them on retry", async () => {
   const w = worker("network");
   expect((await w.run()).status).toBe(503);

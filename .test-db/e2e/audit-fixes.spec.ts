@@ -188,7 +188,7 @@ for (const [width, height] of [
   [768, 1024],
   [812, 375],
 ]) {
-  test(`dashboard preview and Head Office picker remain usable at ${width}x${height}`, async ({
+  test(`dashboard summaries and Head Office picker remain usable at ${width}x${height}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height });
@@ -196,7 +196,7 @@ for (const [width, height] of [
     await enter(page, "dashboard");
     await expect(
       page.getByLabel("Scrollable employee table").locator("tbody tr"),
-    ).toHaveCount(5);
+    ).toHaveCount(0);
     await page.goto("/#employees");
     await page
       .getByRole("button", { name: "Add employee", exact: true })

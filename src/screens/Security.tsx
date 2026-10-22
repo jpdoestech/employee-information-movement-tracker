@@ -280,18 +280,17 @@ export function Security({
                   !reason
                 }
                 onClick={() =>
-                  run(async () => {
-                    for (const action of actions)
-                      await mutate("policy", {
-                        user_id: user,
-                        [isGroup ? "group_id" : "field_id"]: subject,
-                        action,
-                        effect,
-                        inherit_new: isGroup && inherit,
-                        ...scopePayload(),
-                        reason,
-                      });
-                  })
+                  run(() =>
+                    mutate("policy_batch", {
+                      user_id: user,
+                      [isGroup ? "group_id" : "field_id"]: subject,
+                      actions,
+                      effect,
+                      inherit_new: isGroup && inherit,
+                      ...scopePayload(),
+                      reason,
+                    }),
+                  )
                 }
               >
                 Save field policy

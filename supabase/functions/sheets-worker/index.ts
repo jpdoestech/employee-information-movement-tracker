@@ -168,6 +168,11 @@ Deno.serve(async (req) => {
         );
         if (!latest?.approved || latest.row_version !== book.row_version)
           throw new Error("Workbook policy changed during sync");
+        await rpc("publish_guard", {
+          id: book.id,
+          schema_signature: snapshot.schema_signature,
+          row_version: book.row_version,
+        });
         await google(
           `https://sheets.googleapis.com/v4/spreadsheets/${sheet}:batchUpdate`,
           token,

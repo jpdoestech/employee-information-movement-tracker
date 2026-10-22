@@ -1379,7 +1379,14 @@ export async function demoMutate(op: string, p: any) {
         row_version: 1,
       });
   } else if (
-    ["scope", "policy", "capability", "workbook", "sync_now"].includes(op)
+    [
+      "scope",
+      "policy",
+      "policy_batch",
+      "capability",
+      "workbook",
+      "sync_now",
+    ].includes(op)
   ) {
     /* synthetic presentation only */
   } else throw new Error("Unknown demo mutation");

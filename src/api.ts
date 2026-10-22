@@ -159,6 +159,7 @@ export async function mutate<T = any>(
     client_settings: "Save client entry settings",
     scope: "Change access scope",
     policy: "Change access policy",
+    policy_batch: "Change access policy",
     profile: "Change user account",
     capability: "Change user capability",
     workbook: "Change workbook settings",

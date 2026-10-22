@@ -62,10 +62,12 @@ export function SearchFilterPicker({
     [position, setPosition] = useState<CSSProperties>({});
   const available = load ? remote : options;
   const visible = available
-    .filter((o) =>
-      `${o.label} ${o.context || ""}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
+    .filter(
+      (o) =>
+        load ||
+        `${o.label} ${o.context || ""}`
+          .toLowerCase()
+          .includes(search.toLowerCase()),
     )
     .slice(0, 100);
   function close() {

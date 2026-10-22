@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { cryptToken } from "../_shared/google.ts";
+import { cryptToken, google } from "../_shared/google.ts";
 const url = Deno.env.get("SUPABASE_URL")!,
   service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   clientId = Deno.env.get("GOOGLE_CLIENT_ID")!,
@@ -48,10 +48,38 @@ Deno.serve(async (req) => {
       const data = await r.json();
       if (!r.ok || !data.refresh_token)
         throw new Error("Offline authorization was not granted");
+      const account = await google(
+        "https://www.googleapis.com/drive/v3/about?fields=user(permissionId,emailAddress)",
+        data.access_token,
+      );
+      const previous = await admin.rpc("worker_command", {
+        operation: "connection",
+        p: {},
+      });
+      if (previous.error) throw previous.error;
+      let verifiedFolder: string | undefined;
+      if (previous.data?.folder_id && !previous.data.owner_permission_id) {
+        const folder = await google(
+          `https://www.googleapis.com/drive/v3/files/${previous.data.folder_id}?fields=owners(permissionId)`,
+          data.access_token,
+        );
+        if (
+          !account.user?.permissionId ||
+          !folder.owners?.some(
+            (owner: { permissionId: string }) =>
+              owner.permissionId === account.user.permissionId,
+          )
+        )
+          throw new Error("Reconnect the original Google account");
+        verifiedFolder = previous.data.folder_id;
+      }
       const stored = await admin.rpc("worker_command", {
         operation: "store_connection",
         p: {
           encrypted_refresh_token: await cryptToken(data.refresh_token, true),
+          owner_email: account.user?.emailAddress,
+          owner_permission_id: account.user?.permissionId,
+          verified_folder_id: verifiedFolder,
         },
       });
       if (stored.error) throw stored.error;

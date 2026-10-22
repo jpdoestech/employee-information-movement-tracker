@@ -1,5 +1,6 @@
 import { testEmploymentRules } from "./test-employment-rules.mjs";
 import { testAuditFixes } from "./test-audit-fixes.mjs";
+import { testFunctionFixes } from "./test-function-fixes.mjs";
 import EmbeddedPostgres from "embedded-postgres";
 import { employeeFixture, identityPolicyGrantSql } from "./employee-fixtures.mjs";
 import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
@@ -2160,9 +2161,10 @@ try {
       assert.equal(page.items.length, 100);
       timings.push(Math.round(performance.now() - t));
     }
-    const plan = await owner.query(
-      "explain (analyze,format json) select id from public.employees where deleted_at is null order by updated_at,id limit 100",
-    );
+    const plan = await as(id.sa, (connection) => connection.query(
+      "explain (analyze,buffers,format json) select public.tracker_query('employees',$1::jsonb)",
+      [{ search: "Synthetic Load", limit: 100, sort: "name" }],
+    ));
     results.push({
       name: "query profile observation",
       syntheticRows: 1000,
@@ -3333,6 +3335,7 @@ try {
   });
   await testEmploymentRules({ owner, test, q, m, as, concurrent, revision, id, today, date });
   await testAuditFixes({ owner, test, q, m, worker, revision, id });
+  await testFunctionFixes({ owner, test, m, worker, id });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
     ".test-db/reports/verification/database.json",

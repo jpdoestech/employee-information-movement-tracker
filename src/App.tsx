@@ -331,7 +331,7 @@ export default function App() {
       active = false;
       clearTimeout(timer);
     };
-  }, [ctx?.revision, page, JSON.stringify(filter), version]);
+  }, [ctx?.revision, ctx?.today, page, JSON.stringify(filter), version]);
   const fields = ctx?.fields || [];
   const can = (c: string) => ctx?.capabilities.includes(c);
   const readable = fields.filter((f) => f.actions.includes("R") && f.active);
@@ -965,7 +965,7 @@ export default function App() {
             <RecordExplorer
               kind="movements"
               options={options}
-              revision={`${ctx.revision}:${version}`}
+              revision={`${ctx.revision}:${ctx.today}:${version}`}
               onCreate={
                 can("movement_create") ? () => setDialog("movement") : undefined
               }
@@ -992,7 +992,7 @@ export default function App() {
           {ctx && page === "audit" && (
             <RecordExplorer
               kind="audit"
-              revision={`${ctx.revision}:${version}`}
+              revision={`${ctx.revision}:${ctx.today}:${version}`}
             />
           )}
           {!ctx && !loading && (

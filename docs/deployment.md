@@ -39,6 +39,8 @@ Allow the frontend root and `/?auth=recovery` in Auth redirect URLs. Reset email
 
 ## Frontend
 
+The function audit fixes require `20261022055927_audit_function_fixes.sql` before the updated frontend and Google functions. It adds atomic `policy_batch` saves, a service-only snapshot publication guard, and a private Google owner ID. Existing single-policy callers remain supported. Deploy the updated Google handlers only when enabling Sheets; no scheduler or Google connection is enabled by this migration. To roll back the frontend, retain the additive migration; do not drop stored account bindings or rewrite released migrations.
+
 The audit fixes require migration `20261020000100_audit_options_and_exports.sql` before deploying the updated frontend. It repairs and pages organization options, marks Head Office active, and excludes inactive field groups from workbook headers and values. Earlier migrations remain unchanged. Run a successful reconciliation after applying it to remove previously exported inactive-group cells; stored employee values are retained.
 
 Vercel: import this repository, build `npm run build`, output `dist`, Node 24. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`; set `VITE_DEMO_MODE=false`. `vercel.json` supplies browser security headers and a Supabase-compatible CSP. Hash routes work without a server rewrite. Preview deployment must point to staging.
