@@ -85,7 +85,6 @@ export function EmployeeEditor({
     [target, setTarget] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [confirmArchive, setConfirmArchive] = useState(false),
     [addressValid, setAddressValid] = useState<Record<string, boolean>>({}),
     [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
   const dirtyDraft = useRef(false);
@@ -1136,43 +1135,41 @@ export function EmployeeEditor({
               )}
             </FloatingNotification>
           )}
-          {confirmArchive && (
-            <div className="notice">
-              <p>
-                Archive this employee? The identity and authoritative history
-                are retained.
-              </p>
-              <button
-                className="danger"
-                disabled={busy}
-                onClick={async () => {
-                  try {
-                    setBusy(true);
-                    await mutate("employee_delete", {
-                      id: row!.id,
-                      expected_version:
-                        detail?.employee.row_version ?? row!.row_version,
-                    });
-                    onSaved();
-                    onClose();
-                  } catch (e) {
-                    setError((e as Error).message);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                Confirm archive
-              </button>
-              <button onClick={() => setConfirmArchive(false)}>
-                Keep employee
-              </button>
-            </div>
-          )}
         </div>
         <footer>
           {row && context.capabilities.includes("employee_delete") && (
-            <button className="danger" onClick={() => setConfirmArchive(true)}>
+            <button
+              className="danger"
+              disabled={busy}
+              onClick={async () => {
+                try {
+                  setBusy(true);
+                  if (
+                    !(await confirmTransaction(
+                      "Archive employee",
+                      "Archive this employee? The identity and authoritative history are retained.",
+                    ))
+                  )
+                    return;
+                  await mutate(
+                    "employee_delete",
+                    {
+                      id: row.id,
+                      expected_version:
+                        detail?.employee.row_version ?? row.row_version,
+                    },
+                    undefined,
+                    true,
+                  );
+                  onSaved();
+                  onClose();
+                } catch (e) {
+                  setError((e as Error).message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
               Archive employee
             </button>
           )}

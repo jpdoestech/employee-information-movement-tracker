@@ -26,9 +26,6 @@ test("archiving the last page returns to the last valid page with correct ordina
     await editor
       .getByRole("button", { name: "Archive employee", exact: true })
       .click();
-    await editor
-      .getByRole("button", { name: "Confirm archive", exact: true })
-      .click();
     await page
       .getByRole("dialog", { name: "Archive employee", exact: true })
       .getByRole("button", { name: "Continue", exact: true })
