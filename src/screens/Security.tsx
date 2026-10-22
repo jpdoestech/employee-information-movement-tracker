@@ -131,7 +131,7 @@ export function Security({
           </button>
         ))}
       </nav>
-      <div className="admin-scroll-region">
+      <div className="admin-scroll-region data-scroll-region">
         {tab === "rules" && (
           <div className="security-grid">
             <div className="panel security-form">
