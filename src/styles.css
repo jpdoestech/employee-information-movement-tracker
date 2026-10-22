@@ -3309,11 +3309,6 @@ textarea:focus {
   min-height: 0;
   padding: 8px 0;
 }
-.security-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
-  gap: 12px;
-}
 .security-workspace .panel {
   padding: 12px;
   margin: 0;
@@ -3422,11 +3417,6 @@ dialog.transaction-confirmation[open]:has(.access-change-review) {
 .table-region .selection {
   left: var(--row-number-width, 0px);
 }
-@media (max-width: 1100px) {
-  .security-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 @media (max-width: 760px) {
   .admin-workspace .record-heading {
     padding: 6px 8px;
@@ -3478,9 +3468,6 @@ dialog.transaction-confirmation[open]:has(.access-change-review) {
 }
 .security-workspace .form-control > .picker {
   width: 100%;
-}
-.security-grid {
-  align-items: start;
 }
 @media (min-width: 761px) {
   .security-workspace label:has(> input[type="checkbox"]),
@@ -4450,3 +4437,53 @@ dialog.employee-edit-dialog[open] {
 .duplicate-policy { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
 .duplicate-policy .field { max-width: 220px; margin-bottom: 8px; }
 .duplicate-policy input { width: 100px; }
+/* User access follows the compact user list and focused editors in coop-sys. */
+.security-users-heading,
+.security-access-heading,
+.security-row-actions,
+.access-section-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.security-users-heading {
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.security-users-heading > span { color: var(--muted); font-size: var(--text-detail); }
+.security-workspace .admin-scroll-region:has(.security-users-table) { padding: 0; }
+.security-users-table { min-width: 0; }
+.security-users-table table { width: max-content; min-width: 100%; table-layout: auto; }
+.security-users-table th { white-space: nowrap; }
+.security-users-table td { height: 44px; max-width: 300px; vertical-align: middle; }
+.security-users-table td:nth-child(3) { white-space: normal; overflow-wrap: anywhere; }
+.security-users-table td:first-child { min-width: 180px; }
+.security-row-actions { white-space: nowrap; }
+.security-row-actions button { font-size: var(--text-compact); }
+.access-account-status { display: inline-flex; padding: 2px 7px; border-radius: 4px; background: var(--paper); font-size: var(--text-detail); }
+.access-account-status.active { color: var(--success-ink); background: var(--success-bg); }
+.security-access-layout { max-width: 960px; }
+.security-access-heading { padding: 0 12px 8px; flex-wrap: wrap; }
+.security-access-heading .form-control { width: min(300px, 100%); margin: 0; }
+.security-access-heading > .muted { font-size: var(--text-detail); }
+.access-section-tabs { overflow-x: auto; padding: 0 12px 8px; border-bottom: 1px solid var(--line); }
+.access-section-tabs button { flex: none; white-space: nowrap; background: transparent; border-color: transparent; }
+.access-section-tabs button[aria-current] { color: var(--primary); background: var(--tint); }
+.security-access-layout .panel { border: 0; box-shadow: none; border-radius: 0; }
+.security-form > .form-control { max-width: 360px; }
+.security-account-dialog[open] { display: flex; flex-direction: column; width: min(680px, calc(100vw - 24px)); overflow: hidden; }
+.security-account-dialog > header,
+.security-account-dialog > footer { flex-shrink: 0; }
+.security-account-dialog > .dialog-body { overflow: auto; min-height: 0; max-width: none; }
+.security-account-dialog .checks { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+@media(max-width: 760px) {
+  .security-users-table td { height: 50px; }
+  .security-access-heading { align-items: end; }
+  .security-access-heading > .form-control { flex: 1; min-width: 170px; }
+  .security-account-dialog .checks { grid-template-columns: minmax(0,1fr); }
+}
+
+.security-users-table td:first-child { position: sticky; left: 0; z-index: 2; }
+.security-users-table th:first-child { left: 0; z-index: 4; }
+.security-user-name { border: 0; background: transparent; color: var(--primary); padding: 0; font-weight: 600; text-align: left; }

@@ -126,9 +126,7 @@ for (const [width, height] of [
       .getByRole("button", { name: "Close dialog", exact: true })
       .click();
     await page.goto("/#permissions");
-    await page
-      .getByRole("button", { name: "Accounts & capabilities", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Add user", exact: true }).click();
     await expect(
       page.getByLabel("Email address", { exact: true }),
     ).toBeVisible();
@@ -139,6 +137,13 @@ for (const [width, height] of [
       .getByRole("option", { name: "Enroll existing account", exact: true })
       .click();
     await expect(page.getByLabel("Auth user UUID")).toBeVisible();
+    await page
+      .getByRole("button", { name: "Close dialog", exact: true })
+      .click();
+    await page
+      .getByRole("dialog", { name: "Discard unsaved changes?", exact: true })
+      .getByRole("button", { name: "Discard changes", exact: true })
+      .click();
     await page
       .getByRole("button", { name: "Access rules", exact: true })
       .click();

@@ -203,6 +203,10 @@ test("permission actions use one confirmed atomic request and cancellation sends
 }) => {
   const state = await connected(page);
   await page.goto("/#permissions");
+  await page
+    .getByRole("navigation", { name: "Access configuration" })
+    .getByRole("button", { name: "Access rules", exact: true })
+    .click();
   await page.getByRole("button", { name: "User", exact: true }).click();
   await page.getByRole("option", { name: /Synthetic administrator/ }).click();
   await page
@@ -211,9 +215,12 @@ test("permission actions use one confirmed atomic request and cancellation sends
   await page
     .getByRole("option", { name: "All organization scopes", exact: true })
     .click();
+  await page
+    .getByRole("button", { name: "Field permissions", exact: true })
+    .click();
   await page.getByRole("button", { name: "Group", exact: true }).click();
   await page.getByRole("option").first().click();
-  await page.getByLabel("U — Update values", { exact: true }).check();
+  await page.getByLabel("Update values", { exact: true }).check();
   await page
     .getByLabel("Reason for policy change", { exact: true })
     .fill("Synthetic atomic batch");
@@ -254,12 +261,22 @@ for (const [width, height] of [
     await page.emulateMedia({ reducedMotion: "reduce" });
     const state = await connected(page);
     await page.goto("/#permissions");
+    await page
+      .getByRole("navigation", { name: "Access configuration" })
+      .getByRole("button", { name: "Access rules", exact: true })
+      .click();
     await page.getByRole("button", { name: "User", exact: true }).click();
     await page.getByRole("option", { name: /Synthetic administrator/ }).click();
+    await page
+      .getByRole("button", { name: "Current access", exact: true })
+      .click();
     await expect(
       page.getByRole("heading", { name: "Access overview" }),
     ).toBeVisible();
     await expect(page.getByText(/Trusted Superadmin override/)).toBeVisible();
+    await page
+      .getByRole("button", { name: "Scope & assignments", exact: true })
+      .click();
     await page
       .getByRole("button", { name: "Access preset", exact: true })
       .click();
@@ -286,7 +303,7 @@ for (const [width, height] of [
       page.getByLabel("Include branch clients explicitly"),
     ).toBeChecked();
     await expect(
-      page.getByLabel("D — Clear values", { exact: true }),
+      page.getByLabel("Clear values", { exact: true }),
     ).not.toBeChecked();
     expect(state.writes).toHaveLength(0);
     expect(state.reviews).toHaveLength(0);
@@ -344,6 +361,10 @@ test("failed access review never opens confirmation or sends a mutation", async 
   const state = await connected(page);
   state.failReview = true;
   await page.goto("/#permissions");
+  await page
+    .getByRole("navigation", { name: "Access configuration" })
+    .getByRole("button", { name: "Access rules", exact: true })
+    .click();
   await page.getByRole("button", { name: "User", exact: true }).click();
   await page.getByRole("option", { name: /Synthetic administrator/ }).click();
   await page
@@ -374,6 +395,10 @@ test("large access reviews scroll internally while keeping Cancel and Continue v
   const state = await connected(page);
   state.changeCount = 80;
   await page.goto("/#permissions");
+  await page
+    .getByRole("navigation", { name: "Access configuration" })
+    .getByRole("button", { name: "Access rules", exact: true })
+    .click();
   await page.getByRole("button", { name: "User", exact: true }).click();
   await page.getByRole("option", { name: /Synthetic administrator/ }).click();
   await page

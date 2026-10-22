@@ -1,6 +1,6 @@
 # Access management
 
-Permissions → Access rules now combines an account overview, draft presets and a database-backed change review. Existing role codes, grants, scope matching, field precedence, applicability, capabilities and trusted administrator boundaries are unchanged.
+Permissions opens on the Users table, following the coop-sys reference. Add user opens a shared, viewport-bound dialog; Account manages status and capabilities. Select a user name or Edit access to open Scope & assignments, Field permissions, or Current access. These sections retain their drafts while switching; each save still has its own database-backed change review. Account change reasons are separate from permission-rule drafts. The current-access section shows inherited policies and revocation controls; Field permissions retains the effective-access preview. The shared scroll region keeps the navigation and user-list actions stationary, including on narrow screens. Existing role codes, grants, scope matching, field precedence, applicability, capabilities and trusted administrator boundaries are unchanged.
 
 ## Draft presets
 

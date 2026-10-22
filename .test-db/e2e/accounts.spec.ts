@@ -4,9 +4,7 @@ async function accounts(page: Page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Explore synthetic demo" }).click();
   await page.goto("/#permissions");
-  await page
-    .getByRole("button", { name: "Accounts & capabilities", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Add user", exact: true }).click();
 }
 
 for (const [width, height] of [
@@ -64,17 +62,32 @@ for (const [width, height] of [
       .getByRole("button", { name: "Continue", exact: true })
       .click();
     await expect(
+      page.getByRole("dialog", { name: "Add user", exact: true }),
+    ).toHaveCount(0);
+    const row = page.getByRole("row").filter({ hasText: "New colleague" });
+    await expect(row).toContainText("Viewer");
+    await row
+      .getByRole("button", {
+        name: "Manage account for New colleague",
+        exact: true,
+      })
+      .click();
+    await expect(
       page.getByRole("button", { name: "Deactivate account", exact: true }),
     ).toBeVisible();
-    await expect(page.locator(".account-form")).toContainText(
-      "New colleague · viewer · Active",
-    );
+    await page
+      .getByRole("button", { name: "Close dialog", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Add user", exact: true }).click();
     await expect(
       page.getByLabel("Initial password", { exact: true }),
     ).toHaveValue("");
     await expect(page.getByLabel("Email address", { exact: true })).toHaveValue(
       "",
     );
+    await page
+      .getByRole("button", { name: "Close dialog", exact: true })
+      .click();
     await page.screenshot({
       path: `.test-db/reports/release/accounts-${width}x${height}.png`,
     });

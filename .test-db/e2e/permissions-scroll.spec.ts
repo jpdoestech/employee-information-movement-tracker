@@ -14,11 +14,7 @@ for (const viewport of [
     await page.goto("/#permissions");
     const tabs = page.getByRole("navigation", { name: "Access configuration" });
     const region = page.locator(".admin-scroll-region");
-    for (const name of [
-      "Access rules",
-      "Accounts & capabilities",
-      "Register settings",
-    ]) {
+    for (const name of ["Access rules", "Users", "Register settings"]) {
       await tabs.getByRole("button", { name, exact: true }).click();
       const before = await tabs.boundingBox();
       const bounds = await region.boundingBox();
