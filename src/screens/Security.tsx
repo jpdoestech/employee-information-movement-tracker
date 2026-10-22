@@ -1,8 +1,16 @@
 import { FloatingNotification } from "../components/FloatingNotification";
 import { FieldTypeIcon } from "../components/FieldTypeIcon";
 import { useEffect, useState } from "react";
-import { query, mutate, createAccount } from "../api";
+import { query, mutate, createAccount, reviewAccessChange } from "../api";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
+import { AccessChangeReview } from "../components/AccessChangeReview";
+import { requireConfirmation } from "../components/TransactionConfirmation";
+import {
+  accessPresets,
+  grantStatus,
+  permissionExplanation,
+  scopeLabel,
+} from "../accessReview";
 import type { Context, Option } from "../domain";
 export function Security({
   context,
@@ -49,20 +57,22 @@ export function Security({
       String(context.register_settings.duplicate_name_threshold ?? 90),
     );
   }, [context.register_settings.row_version]);
-  const target = options.find((o) => o.id === scope);
+  const account = data?.users?.find((u: any) => u.id === user);
   const scopes = [
     { id: "all", label: "All organization scopes", kind: "all" },
+    { id: "head_office", label: "Head Office", kind: "head_office" },
     { id: "unassigned", label: "Unassigned employees", kind: "unassigned" },
-    ...options,
+    ...options.filter((o) => o.kind !== "head_office"),
   ];
+  const target = scopes.find((o) => o.id === scope);
   const scopePayload = () => {
     const o = scopes.find((o) => o.id === scope)!;
     return {
-      scope_type: o.kind,
+      scope_type: o.kind!,
       scope_id: ["all", "head_office", "unassigned"].includes(o.kind!)
         ? null
         : o.id,
-      include_descendants: descendants,
+      include_descendants: o.kind === "branch" && descendants,
     };
   };
   async function run(fn: () => Promise<unknown>) {
@@ -78,6 +88,32 @@ export function Security({
       setBusy(false);
     }
   }
+  async function saveAccess(
+    operation: string,
+    payload: Record<string, unknown>,
+    summary: string,
+  ) {
+    const impact = await reviewAccessChange(operation, payload);
+    await requireConfirmation(
+      operation === "scope" ? "Change access scope" : "Change access policy",
+      <AccessChangeReview impact={impact} summary={summary} />,
+    );
+    await mutate(
+      operation,
+      {
+        ...payload,
+        ...(impact.revision === null
+          ? {}
+          : { review_revision: impact.revision, review_date: impact.today }),
+      },
+      undefined,
+      true,
+    );
+    setPreview(undefined);
+  }
+  useEffect(() => {
+    setPreview(undefined);
+  }, [user, scope, context.revision]);
   return (
     <section className="admin-workspace security-workspace data-panel">
       <nav className="admin-tabs" aria-label="Access configuration">
@@ -129,10 +165,53 @@ export function Security({
                   />
                 </div>
               </div>
+              <div className="form-control">
+                <span>Access preset</span>
+                <SearchFilterPicker
+                  mode="single"
+                  label="Access preset"
+                  value={[]}
+                  disabled={busy}
+                  options={accessPresets.map((p) => ({
+                    id: p.id,
+                    label: p.label,
+                  }))}
+                  onChange={(values) => {
+                    const preset = accessPresets.find(
+                      (p) => p.id === values[0],
+                    );
+                    if (!preset) return;
+                    setActions([...preset.actions]);
+                    setDescendants(preset.descendants);
+                    setEffect("allow");
+                    setIsGroup(true);
+                    setSubject("");
+                    setInherit(true);
+                    setStartsOn(context.today);
+                    setEndsOn("");
+                    setScope(
+                      ["all", "head_office"].includes(preset.kind)
+                        ? preset.kind
+                        : target?.kind === preset.kind
+                          ? scope
+                          : "",
+                    );
+                    setNotice(
+                      `${preset.label} draft ready. Choose its scope and access group, then review and save each rule. Roles and capabilities are not changed.`,
+                    );
+                  }}
+                />
+              </div>
+              <p>
+                Head Office covers Head Office employees only. Company-wide
+                access requires All organization scopes. Presets fill this
+                draft; they do not save grants.
+              </p>
               <label>
                 <input
                   type="checkbox"
-                  checked={descendants}
+                  checked={target?.kind === "branch" && descendants}
+                  disabled={target?.kind !== "branch" || busy}
                   onChange={(e) => setDescendants(e.target.checked)}
                 />
                 Include branch clients explicitly
@@ -189,17 +268,29 @@ export function Security({
                 </label>
               </div>
               <button
-                disabled={busy || !user || !scope || !reason}
+                disabled={
+                  busy ||
+                  !user ||
+                  !scope ||
+                  !reason.trim() ||
+                  !actions.length ||
+                  !startsOn ||
+                  Boolean(endsOn && endsOn <= startsOn)
+                }
                 onClick={() =>
                   run(() =>
-                    mutate("scope", {
-                      user_id: user,
-                      ...scopePayload(),
-                      actions,
-                      starts_on: startsOn,
-                      ends_on: endsOn || null,
-                      reason,
-                    }),
+                    saveAccess(
+                      "scope",
+                      {
+                        user_id: user,
+                        ...scopePayload(),
+                        actions,
+                        starts_on: startsOn,
+                        ends_on: endsOn || null,
+                        reason,
+                      },
+                      `${account?.display_name}: grant ${actions.join("/")} at ${scopeLabel(scopePayload(), options)} from ${startsOn}${endsOn ? ` until ${endsOn} (exclusive)` : " with no end date"}. Field grants and separate capabilities are still required.`,
+                    ),
                   )
                 }
               >
@@ -281,22 +372,26 @@ export function Security({
                 }
                 onClick={() =>
                   run(() =>
-                    mutate("policy_batch", {
-                      user_id: user,
-                      [isGroup ? "group_id" : "field_id"]: subject,
-                      actions,
-                      effect,
-                      inherit_new: isGroup && inherit,
-                      ...scopePayload(),
-                      reason,
-                    }),
+                    saveAccess(
+                      "policy_batch",
+                      {
+                        user_id: user,
+                        [isGroup ? "group_id" : "field_id"]: subject,
+                        actions,
+                        effect,
+                        inherit_new: isGroup && inherit,
+                        ...scopePayload(),
+                        reason,
+                      },
+                      `${account?.display_name}: ${effect} ${actions.join("/")} on ${isGroup ? context.groups.find((g) => g.id === subject)?.name : context.fields.find((f) => f.id === subject)?.label} at ${scopeLabel(scopePayload(), options)}. ${effect === "deny" ? "A group deny can be overridden by an explicit field allow; a direct field deny takes precedence." : isGroup && inherit ? "Normal fields inherit dynamically; restricted fields still need explicit field allows." : "No new group inheritance is added."}`,
+                    ),
                   )
                 }
               >
                 Save field policy
               </button>
               <button
-                disabled={!user || !scope || scope === "all"}
+                disabled={busy || !user || !scope || scope === "all"}
                 onClick={() =>
                   run(async () =>
                     setPreview(
@@ -338,7 +433,13 @@ export function Security({
                               {p.actions.includes(a) ? "Allowed" : "Denied"}
                             </td>
                           ))}
-                          <td>{p.explanation}</td>
+                          <td>
+                            {["C", "R", "U", "D"].map((a) => (
+                              <small key={a}>
+                                {a}: {permissionExplanation(p, a, account)}
+                              </small>
+                            ))}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -352,13 +453,47 @@ export function Security({
               )}
             </div>
             <div className="panel">
+              <h3>Access overview</h3>
+              {account ? (
+                <>
+                  <p>
+                    <strong>{account.display_name}</strong> · {account.role} ·{" "}
+                    {account.active
+                      ? "Active account"
+                      : "Inactive account — employee access is denied"}
+                  </p>
+                  <p>
+                    {account.role === "superadmin"
+                      ? "Trusted Superadmin override within active field applicability. A missing ordinary grant does not remove this override."
+                      : account.role === "viewer"
+                        ? "Read-only employee access. Mutation capabilities and C/U/D grants cannot override the Viewer role."
+                        : "No blanket data access. Scope, field permissions and any required capability must all allow the action."}
+                  </p>
+                  <p>
+                    <strong>Capabilities:</strong>{" "}
+                    {(data?.capabilities || [])
+                      .filter((c: any) => c.user_id === user)
+                      .map((c: any) => c.capability.replaceAll("_", " "))
+                      .join(", ") || "No explicit capability grants"}
+                    . Permission administration and movement correction remain
+                    Superadmin-only.
+                  </p>
+                </>
+              ) : (
+                <p>
+                  Select a user to review their scopes, field exceptions and
+                  capabilities.
+                </p>
+              )}
               <h3>Current scope and field policies</h3>
               {![...(data?.scopes || []), ...(data?.policies || [])].some(
-                (p: any) => !user || p.user_id === user,
+                (p: any) =>
+                  user && (p.user_id === user || p.role === account?.role),
               ) && (
                 <p>
-                  No policies for this selection. Access is denied until
-                  explicitly granted.
+                  No explicit policies for this selection. Ordinary accounts
+                  require scope and field grants; Superadmin retains its trusted
+                  override.
                 </p>
               )}
               {[
@@ -371,26 +506,54 @@ export function Security({
                   kind: "policy",
                 })),
               ]
-                .filter((p) => !user || p.user_id === user)
+                .filter(
+                  (p) =>
+                    user && (p.user_id === user || p.role === account?.role),
+                )
                 .map((p: any) => (
                   <div className="field-row" key={p.id}>
                     <span>
-                      {p.kind} · {p.scope_type} ·{" "}
+                      {p.kind} · {scopeLabel(p, options)} ·{" "}
                       {p.action || p.actions.join("/")} · {p.effect || "grant"}
                       <small>
+                        {p.role
+                          ? `Role policy (${p.role}) · `
+                          : "User policy · "}
                         {p.field_id
                           ? context.fields.find((f) => f.id === p.field_id)
                               ?.label
                           : context.groups.find((g) => g.id === p.group_id)
                               ?.name}
                       </small>
+                      {p.kind === "scope" ? (
+                        <small>
+                          {grantStatus(p, context.today)} · {p.starts_on} →{" "}
+                          {p.ends_on
+                            ? `${p.ends_on} (exclusive)`
+                            : "No end date"}
+                        </small>
+                      ) : (
+                        <small>
+                          {p.group_id
+                            ? p.effect === "deny"
+                              ? "Group deny; an explicit field allow can override it."
+                              : p.inherit_new
+                                ? "Normal fields inherit this group allow; restricted fields require explicit allows."
+                                : "Group allow does not inherit to new fields."
+                            : "Individual field exception"}
+                        </small>
+                      )}
                     </span>
                     <button
                       className="danger"
-                      disabled={!reason || busy}
+                      disabled={!reason.trim() || busy}
                       onClick={() =>
                         run(() =>
-                          mutate(p.kind, { id: p.id, remove: true, reason }),
+                          saveAccess(
+                            p.kind,
+                            { id: p.id, remove: true, reason },
+                            `${p.role ? `All ${p.role} accounts` : account?.display_name}: revoke this ${p.kind} at ${scopeLabel(p, options)}. Overlapping grants may retain access; revoking a deny may restore access.`,
+                          ),
                         )
                       }
                     >
@@ -595,16 +758,26 @@ export function Security({
                             (c: any) =>
                               c.user_id === user && c.capability === cap,
                           )}
-                          onChange={(e) =>
-                            run(() =>
-                              mutate("capability", {
-                                user_id: user,
-                                capability: cap,
-                                remove: !e.target.checked,
-                                reason,
-                              }),
-                            )
-                          }
+                          onChange={(e) => {
+                            const remove = !e.target.checked;
+                            void run(async () => {
+                              await requireConfirmation(
+                                "Change user capability",
+                                `${u.display_name}: ${remove ? "revoke" : "grant"} ${cap.replaceAll("_", " ")}. ${u.role === "admin" ? "Scope and field permissions remain required. Movement correction remains Superadmin-only." : u.role === "viewer" ? "Viewer accounts cannot use employee mutation capabilities." : "Superadmin already has a trusted capability override."}`,
+                              );
+                              await mutate(
+                                "capability",
+                                {
+                                  user_id: user,
+                                  capability: cap,
+                                  remove,
+                                  reason,
+                                },
+                                undefined,
+                                true,
+                              );
+                            });
+                          }}
                         />
                         {cap.replaceAll("_", " ")}
                       </label>

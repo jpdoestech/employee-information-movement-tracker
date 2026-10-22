@@ -473,6 +473,28 @@ try {
       policies,
     );
   });
+  await test("real-JWT access review denies ordinary callers and rolls back every preview write", async () => {
+    const p={user_id:uid[2],scope_type:"head_office",actions:["R"],reason:"Synthetic REST access review"};
+    const review=(client)=>client.rpc("access_change_preview",{operation:"scope",p});
+    for (const client of [...publicClients.slice(1),createClient(url,key,{auth:{persistSession:false}})])
+      assert.equal((await review(client)).error?.code,"42501");
+    const snapshot=async()=> (await owner.query(`select revision,
+      (select count(*) from public.user_scope_grants) scopes,
+      (select count(*) from public.audit_log) audit,
+      (select count(*) from public.sync_outbox) outbox,
+      (select count(*) from public.write_requests) requests from public.system_state`)).rows[0];
+    const before=await snapshot();
+    const result=await review(publicClients[0]);
+    assert.ifError(result.error);
+    assert.deepEqual(result.data.targets.map(t=>t.id),["head_office"]);
+    assert(result.data.changes.some(c=>c.key==="_scope" && c.action==="R" && c.after));
+    assert.deepEqual(await snapshot(),before);
+    const denied=await request(publicClients[1],"scope",{...p,review_revision:result.data.revision});
+    assert.equal(denied.error?.code,"42501");
+    await owner.query("update public.system_state set revision=revision+1 where id=true");
+    const stale=await request(publicClients[0],"scope",{...p,review_revision:result.data.revision});
+    assert.equal(stale.error?.code,"40001");
+  });
   await test("revocation takes effect with the same JWT without re-login", async () => {
     await owner.query(
       "update public.user_profiles set active=false where id=$1",

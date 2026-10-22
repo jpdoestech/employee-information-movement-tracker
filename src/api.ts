@@ -3,6 +3,7 @@ import { demoQuery, demoMutate, demoIdentityPreview } from "./demo";
 import { requireConfirmation } from "./components/TransactionConfirmation";
 import { trackTransaction } from "./transactions";
 import type { Option } from "./domain";
+import type { AccessImpact } from "./accessReview";
 const url = import.meta.env.VITE_SUPABASE_URL,
   key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const elevatedKey = key?.startsWith("eyJ")
@@ -71,6 +72,15 @@ export async function preview(operation: string, p: unknown) {
       operation,
       p,
     });
+    if (error) throw new Error(error.message);
+    return data;
+  });
+}
+export async function reviewAccessChange(operation: string, p: unknown): Promise<AccessImpact> {
+  if (demo) return { demo: true, revision: null, targets: [], changes: [] };
+  if (!supabase) throw new Error("The application connection is unavailable.");
+  return trackTransaction("Reviewing access changes", async () => {
+    const { data, error } = await supabase!.rpc("access_change_preview", { operation, p });
     if (error) throw new Error(error.message);
     return data;
   });

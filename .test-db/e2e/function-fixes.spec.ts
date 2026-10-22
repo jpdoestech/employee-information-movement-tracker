@@ -22,6 +22,9 @@ async function connected(page: Page) {
     revision: 1,
     count: 1,
     recordReads: 0,
+    reviews: [] as any[],
+    failReview: false,
+    changeCount: 1,
     writes: [] as any[],
   };
   const employee = () => ({
@@ -40,6 +43,35 @@ async function connected(page: Page) {
     if (request.url().includes("/auth/v1/user"))
       return route.fulfill({ json: user });
     const body = request.method() === "POST" ? request.postDataJSON() : {};
+    if (request.url().includes("/access_change_preview")) {
+      state.reviews.push(body);
+      if (state.failReview)
+        return route.fulfill({
+          status: 403,
+          json: {
+            code: "42501",
+            message: "Only a Superadmin can review permission changes",
+          },
+        });
+      return route.fulfill({
+        json: {
+          revision: state.revision,
+          today: state.day,
+          targets: [{ id: "branch-one", label: "North" }],
+          changes: Array.from({ length: state.changeCount }, (_, i) => ({
+            target_id: "branch-one",
+            target: "North / Client One",
+            key: `phone_${i}`,
+            label: "Phone",
+            action: "R",
+            before: false,
+            after: true,
+            restricted: false,
+            reason: "Group allow",
+          })),
+        },
+      });
+    }
     if (request.url().includes("/tracker_mutate")) {
       state.writes.push(body);
       state.revision++;
@@ -55,7 +87,16 @@ async function connected(page: Page) {
       body.operation === "context"
         ? { ...context, today: state.day, revision: state.revision }
         : body.operation === "options"
-          ? []
+          ? [
+              { id: "branch-one", label: "North", kind: "branch" },
+              {
+                id: "client-one",
+                label: "Client One",
+                kind: "client",
+                branch_id: "branch-one",
+                context: "North",
+              },
+            ]
           : body.operation === "employees"
             ? { items: [employee()], total: 1 }
             : body.operation === "employee"
@@ -81,7 +122,16 @@ async function connected(page: Page) {
                         },
                       ],
                       scopes: [],
-                      policies: [],
+                      policies: [
+                        {
+                          id: "user-policy",
+                          user_id: user.id,
+                          scope_type: "all",
+                          group_id: context.groups[0].id,
+                          action: "R",
+                          effect: "deny",
+                        },
+                      ],
                       capabilities: [],
                     }
                   : [];
@@ -94,7 +144,7 @@ async function connected(page: Page) {
     `/#access_token=${token}&refresh_token=synthetic-refresh&expires_in=3600&token_type=bearer&type=signup`,
   );
   await page.reload();
-  await expect(page.getByText("Workspace", { exact: true })).toBeVisible();
+  await expect(page.getByText("Workspace", { exact: true })).toBeAttached();
   await page.goto("/#dashboard");
   await expect(page.locator(".stats .stat strong").first()).toHaveText("1");
   return state;
@@ -176,6 +226,9 @@ test("permission actions use one confirmed atomic request and cancellation sends
     exact: true,
   });
   await save.click();
+  await expect(confirm).toContainText("1 permissions gained");
+  await expect(confirm).toContainText("North / Client One");
+  expect(state.reviews).toHaveLength(1);
   await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
   expect(state.writes).toHaveLength(0);
   await save.click();
@@ -183,7 +236,173 @@ test("permission actions use one confirmed atomic request and cancellation sends
   await expect.poll(() => state.writes.length).toBe(1);
   expect(state.writes[0]).toMatchObject({
     operation: "policy_batch",
-    p: { actions: ["R", "U"] },
+    p: { actions: ["R", "U"], review_revision: 1 },
   });
   await expect(confirm).toHaveCount(0);
+});
+
+for (const [width, height] of [
+  [1366, 768],
+  [320, 740],
+  [768, 1024],
+  [812, 375],
+]) {
+  test(`access presets remain drafts and review fits ${width}x${height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const state = await connected(page);
+    await page.goto("/#permissions");
+    await page.getByRole("button", { name: "User", exact: true }).click();
+    await page.getByRole("option", { name: /Synthetic administrator/ }).click();
+    await expect(
+      page.getByRole("heading", { name: "Access overview" }),
+    ).toBeVisible();
+    await expect(page.getByText(/Trusted Superadmin override/)).toBeVisible();
+    await page
+      .getByRole("button", { name: "Access preset", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: "Head Office editor", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Organization scope", exact: true }),
+    ).toContainText("Head Office");
+    await expect(
+      page.getByLabel("Include branch clients explicitly"),
+    ).toBeDisabled();
+    await page
+      .getByRole("button", { name: "Access preset", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: "Branch and clients editor", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Organization scope", exact: true })
+      .click();
+    await page.getByRole("option", { name: "North", exact: true }).click();
+    await expect(
+      page.getByLabel("Include branch clients explicitly"),
+    ).toBeChecked();
+    await expect(
+      page.getByLabel("D — Clear values", { exact: true }),
+    ).not.toBeChecked();
+    expect(state.writes).toHaveLength(0);
+    expect(state.reviews).toHaveLength(0);
+    await page
+      .getByLabel("Reason for policy change", { exact: true })
+      .fill("Synthetic branch review");
+    await page
+      .getByRole("button", { name: "Grant organization actions", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog", {
+      name: "Change access scope",
+      exact: true,
+    });
+    await expect(dialog).toContainText("including branch clients");
+    await expect(dialog).toContainText("North / Client One");
+    const bounds = (await dialog.boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width + 1);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(height + 1);
+    await page.screenshot({
+      path: `.test-db/reports/screenshots/access-review-${width}.png`,
+    });
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    expect(state.writes).toHaveLength(0);
+    await expect(
+      page.getByLabel("Reason for policy change", { exact: true }),
+    ).toHaveValue("Synthetic branch review");
+    await page
+      .getByRole("button", { name: "Grant organization actions", exact: true })
+      .click();
+    await dialog.getByRole("button", { name: "Continue", exact: true }).click();
+    await expect.poll(() => state.writes.length).toBe(1);
+    expect(state.writes[0]).toMatchObject({
+      operation: "scope",
+      p: {
+        scope_type: "branch",
+        scope_id: "branch-one",
+        include_descendants: true,
+        actions: ["C", "R", "U"],
+        review_revision: 1,
+      },
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+  });
+}
+
+test("failed access review never opens confirmation or sends a mutation", async ({
+  page,
+}) => {
+  const state = await connected(page);
+  state.failReview = true;
+  await page.goto("/#permissions");
+  await page.getByRole("button", { name: "User", exact: true }).click();
+  await page.getByRole("option", { name: /Synthetic administrator/ }).click();
+  await page
+    .getByRole("button", { name: "Organization scope", exact: true })
+    .click();
+  await page.getByRole("option", { name: "Head Office", exact: true }).click();
+  await page
+    .getByLabel("Reason for policy change", { exact: true })
+    .fill("Synthetic denial");
+  await page
+    .getByRole("button", { name: "Grant organization actions", exact: true })
+    .click();
+  await expect(
+    page.getByText("Only a Superadmin can review permission changes", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "Change access scope", exact: true }),
+  ).toHaveCount(0);
+  expect(state.writes).toHaveLength(0);
+});
+
+test("large access reviews scroll internally while keeping Cancel and Continue visible", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 812, height: 375 });
+  const state = await connected(page);
+  state.changeCount = 80;
+  await page.goto("/#permissions");
+  await page.getByRole("button", { name: "User", exact: true }).click();
+  await page.getByRole("option", { name: /Synthetic administrator/ }).click();
+  await page
+    .getByRole("button", { name: "Organization scope", exact: true })
+    .click();
+  await page.getByRole("option", { name: "Head Office", exact: true }).click();
+  await page
+    .getByLabel("Reason for policy change", { exact: true })
+    .fill("Synthetic long review");
+  await page
+    .getByRole("button", { name: "Grant organization actions", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Change access scope",
+    exact: true,
+  });
+  await expect(dialog).toContainText("80 permissions gained");
+  const body = dialog.locator(".dialog-body");
+  expect(await body.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(
+    true,
+  );
+  const continueButton = dialog.getByRole("button", {
+    name: "Continue",
+    exact: true,
+  });
+  await expect(continueButton).toBeInViewport();
+  const before = await continueButton.boundingBox();
+  await body.evaluate((el) => (el.scrollTop = el.scrollHeight));
+  expect(await continueButton.boundingBox()).toEqual(before);
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  expect(state.writes).toHaveLength(0);
 });

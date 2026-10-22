@@ -3363,6 +3363,35 @@ textarea:focus {
 .security-workspace hr {
   margin: 14px 0;
 }
+.transaction-confirmation .access-change-review p + p,
+.access-change-review details {
+  margin-top: 10px;
+}
+.access-change-review ul {
+  padding-left: 18px;
+}
+.access-change-review li {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.access-change-review small,
+.security-workspace td small {
+  display: block;
+}
+dialog.transaction-confirmation[open]:has(.access-change-review) {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
+}
+.transaction-confirmation:has(.access-change-review) > header,
+.transaction-confirmation:has(.access-change-review) > footer {
+  flex-shrink: 0;
+}
+.transaction-confirmation:has(.access-change-review) > .dialog-body {
+  min-height: 0;
+  overflow: auto;
+}
 .security-workspace .account-form,
 .security-workspace .register-policy {
   max-width: 920px;

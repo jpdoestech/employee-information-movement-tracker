@@ -2,6 +2,7 @@ import { testEmploymentRules } from "./test-employment-rules.mjs";
 import { testAuditFixes } from "./test-audit-fixes.mjs";
 import { testFunctionFixes } from "./test-function-fixes.mjs";
 import { testEmployeeCategory } from "./test-employee-category.mjs";
+import { testAccessReview } from "./test-access-review.mjs";
 import EmbeddedPostgres from "embedded-postgres";
 import { employeeFixture, identityPolicyGrantSql } from "./employee-fixtures.mjs";
 import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
@@ -3338,6 +3339,7 @@ try {
   await testAuditFixes({ owner, test, q, m, worker, revision, id });
   await testFunctionFixes({ owner, test, m, worker, id });
   await testEmployeeCategory({ owner, test, m, q, revision, id });
+  await testAccessReview({ owner, test, m, as, id, today, date });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
     ".test-db/reports/verification/database.json",
