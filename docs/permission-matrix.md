@@ -79,6 +79,26 @@ drafts are excluded. Inspection and administration remain Superadmin-only.
 
 ## Migration and rollback order
 
+Apply `20261023143337_employee_text_and_initial_category.sql` after the form-section
+catalog migration, before its frontend. Submitted text is trimmed and repeated
+horizontal spaces collapse; case and paragraph breaks are retained. Credentials,
+opaque review tokens and saved filter configurations remain exact. The same
+normalization runs before client confirmation/fingerprinting and at the secured
+mutation endpoints. Existing untouched values are not rewritten.
+
+New Head Office employees receive Admin; new branch/client employees receive
+Agency. Initial category is generated inside the authorized creation transaction,
+including for creators without a category-field Create grant. It is read-only in
+the creation form; category Read permissions still govern visibility. Existing
+record edits retain normal field authorization, and movements do not silently
+reclassify existing employees. Unassigned creation retains its current behavior.
+No login roles or existing employee categories are changed by deployment.
+
+Frontend rollback may retain this migration; older creation forms remain usable
+and the server applies the required initial category. Reversing the business rule
+requires a reviewed forward migration restoring the previous function bodies;
+do not drop the normalizer while those bodies reference it.
+
 Apply `20261023141014_form_section_catalog.sql` after the profile/target-field
 loading migrations and before publishing its frontend. It restores presentation
 sections and their parent names from the authorized field catalog. It does not

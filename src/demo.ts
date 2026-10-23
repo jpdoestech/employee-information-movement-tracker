@@ -3,6 +3,7 @@ import {
   bulkDuplicateEmployees,
 } from "./duplicateEmployees";
 import { mobileError, normalizeIdentifier } from "./identifiers";
+import { normalizeInputs } from "./inputNormalization";
 import { fieldConfigurationError } from "./fieldConfiguration";
 import { manpowerError, uniqueValuesError } from "./employmentValidation";
 import { requiredForEdit } from "./governmentIds";
@@ -788,6 +789,20 @@ export async function demoQuery(op: string, q: any = {}) {
   throw new Error("Unknown demo query");
 }
 export async function demoMutate(op: string, p: any) {
+  p = normalizeInputs(p);
+  if (
+    op === "employee_create" &&
+    ["head_office", "branch", "client"].includes(p.target_level)
+  ) {
+    p = {
+      ...p,
+      values: {
+        ...p.values,
+        employee_category:
+          p.target_level === "head_office" ? "Admin" : "Agency",
+      },
+    };
+  }
   if (op === "access_role") {
     demoAccess.roles.push({ code: p.code, name: p.name });
     context.revision++;

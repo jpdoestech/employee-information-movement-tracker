@@ -5,6 +5,7 @@ import { testEmploymentRules } from "./test-employment-rules.mjs";
 import { testAuditFixes } from "./test-audit-fixes.mjs";
 import { testFunctionFixes } from "./test-function-fixes.mjs";
 import { testEmployeeCategory } from "./test-employee-category.mjs";
+import { testInputNormalization } from "./test-input-normalization.mjs";
 import { testAccessReview } from "./test-access-review.mjs";
 import EmbeddedPostgres from "embedded-postgres";
 import { employeeFixture, identityPolicyGrantSql } from "./employee-fixtures.mjs";
@@ -245,7 +246,10 @@ try {
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
-  if (process.env.TEST_RBAC_ONLY === "true") {
+  if (process.env.TEST_INPUT_ONLY === "true") {
+    await testInputNormalization({owner,test,m,q,revision,id});
+    await testEmployeeCategory({owner,test,m,q,revision,id});
+  } else if (process.env.TEST_RBAC_ONLY === "true") {
     await testPermissionMatrix({ owner, test, m, q, as, id, revision });
   } else {
   await test("create profiles allocates permanent IDs and atomic outbox", async () => {
@@ -3345,6 +3349,7 @@ try {
   await testAuditFixes({ owner, test, q, m, worker, revision, id });
   await testFunctionFixes({ owner, test, m, worker, id });
   await testEmployeeCategory({ owner, test, m, q, revision, id });
+  await testInputNormalization({owner,test,m,q,revision,id});
   await testAccessReview({ owner, test, m, as, id, today, date });
   await testEmergencyAddress({ owner, test, m, q, revision, id, today });
   await testPasswordReceipts({ owner, test, as, id });

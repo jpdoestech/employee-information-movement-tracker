@@ -109,6 +109,15 @@ export function EmployeeEditor({
   const initialClient = options.find(
     (option) => option.id === target && option.kind === "client",
   );
+  const initialOrganization = options.find((option) => option.id === target);
+  const automaticCategory =
+    !row && initialOrganization
+      ? initialOrganization.kind === "head_office"
+        ? "Admin"
+        : ["branch", "client"].includes(initialOrganization.kind || "")
+          ? "Agency"
+          : undefined
+      : undefined;
   const idConfig = useClientIdMode(
     !row ? initialClient?.id : undefined,
     context.revision,
@@ -166,6 +175,7 @@ export function EmployeeEditor({
   const editable = fields.filter(
     (f) =>
       f.active &&
+      !(automaticCategory && f.key === "employee_category") &&
       (f.key === "name" ||
         nameKeys.includes(f.key as (typeof nameKeys)[number]) ||
         f.type !== "system" ||
@@ -193,6 +203,7 @@ export function EmployeeEditor({
     ...defaults,
     ...values,
     ...changed,
+    ...(automaticCategory ? { employee_category: automaticCategory } : {}),
   } as Record<string, unknown>;
   const inactive = employmentStatus(draft.status) !== "Active";
   const department = fields.find(
@@ -272,6 +283,9 @@ export function EmployeeEditor({
       (f) =>
         f.active &&
         (f.actions.includes("R") ||
+          (automaticCategory &&
+            f.key === "employee_category" &&
+            f.actions.includes("C")) ||
           (!row &&
             idConfig.mode === "manual" &&
             f.key === "client_employee_number" &&
@@ -571,7 +585,12 @@ export function EmployeeEditor({
           throw new Error(clientIdError(manualId));
         }
       }
-      const createValues = { ...changed };
+      const createValues: Record<string, unknown> = {
+        ...changed,
+        ...(!row && automaticCategory
+          ? { employee_category: automaticCategory }
+          : {}),
+      };
       delete createValues.position;
       delete createValues.status;
       const employment = {

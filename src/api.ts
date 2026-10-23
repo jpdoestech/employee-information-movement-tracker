@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { demoQuery, demoMutate, demoIdentityPreview } from "./demo";
 import { requireConfirmation } from "./components/TransactionConfirmation";
 import { trackTransaction } from "./transactions";
+import { normalizeInputs } from "./inputNormalization";
 import type { Option } from "./domain";
 import type { AccessImpact } from "./accessReview";
 const url = import.meta.env.VITE_SUPABASE_URL,
@@ -27,6 +28,7 @@ export async function query<T = any>(
   operation: string,
   q: unknown = {},
 ): Promise<T> {
+  if (operation === "employee_duplicates") q = normalizeInputs(q);
   if (demo) return demoQuery(operation, q) as T;
   if (!supabase)
     throw new Error(
@@ -68,6 +70,7 @@ export async function query<T = any>(
   return data as T;
 }
 export async function preview(operation: string, p: unknown) {
+  p = normalizeInputs(p);
   if (demo) {
     if (operation === "movement") demoIdentityPreview(p);
     return { valid: true };
@@ -86,6 +89,7 @@ export async function reviewAccessChange(
   operation: string,
   p: unknown,
 ): Promise<AccessImpact> {
+  p = normalizeInputs(p);
   if (demo) return { demo: true, revision: null, targets: [], changes: [] };
   if (!supabase) throw new Error("The application connection is unavailable.");
   return trackTransaction("Reviewing access changes", async () => {
@@ -114,6 +118,7 @@ export async function createAccount(p: {
   role: string;
   reason: string;
 }): Promise<{ id: string }> {
+  p = normalizeInputs(p);
   await requireConfirmation(
     "Create user account",
     "Create this sign-in account and enroll its selected role? Review the email and role before continuing.",
@@ -137,6 +142,7 @@ export async function setAccountPassword(
   p: { user_id: string; password: string; reason: string },
   name: string,
 ): Promise<{ id: string }> {
+  p = normalizeInputs(p);
   await requireConfirmation(
     "Set account password",
     `Set a new password for ${name}? Their role, account status and permissions will stay the same.`,
@@ -188,6 +194,7 @@ export async function mutate<T = any>(
   requestId?: string,
   confirmed = false,
 ): Promise<T> {
+  p = normalizeInputs(p);
   const labels: Record<string, string> = {
     employee_create: "Create employee",
     employee_update: "Save employee changes",

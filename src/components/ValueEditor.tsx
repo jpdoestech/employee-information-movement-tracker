@@ -9,6 +9,7 @@ import { governmentIdError, normalizeGovernmentId } from "../governmentIds";
 import { valueWidth } from "../controlSizing";
 import { FieldTypeIcon, fieldTypeIcons } from "./FieldTypeIcon";
 import { fieldTextRole } from "../typography";
+import { normalizeText } from "../inputNormalization";
 
 function NumberInput({
   id,
@@ -124,6 +125,10 @@ export function ValueEditor({
             maxLength={f.validation?.max_length ?? 10000}
             value={String(value ?? "")}
             onChange={(e) => onChange(e.target.value)}
+            onBlur={(e) => {
+              const clean = normalizeText(e.target.value);
+              if (clean !== e.target.value) onChange(clean);
+            }}
           />
         ) : identifierGroups(f) ? (
           <IdentifierInput
@@ -138,6 +143,12 @@ export function ValueEditor({
           <input
             id={id}
             min={f.type === "integer" ? f.validation?.min : undefined}
+            onBlur={(e) => {
+              if (!["integer", "decimal", "date"].includes(f.type)) {
+                const clean = normalizeText(e.target.value);
+                if (clean !== e.target.value) onChange(clean);
+              }
+            }}
             max={f.type === "integer" ? f.validation?.max : undefined}
             type={
               f.type === "integer" || f.type === "decimal"

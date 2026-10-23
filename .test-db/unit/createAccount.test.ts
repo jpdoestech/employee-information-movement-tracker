@@ -35,6 +35,23 @@ it("sends no write when shared confirmation is cancelled", async () => {
   await expect(createAccount(input)).rejects.toThrow();
   expect(mocks.invoke).not.toHaveBeenCalled();
 });
+it("cleans account text while keeping the password exact", async () => {
+  mocks.invoke.mockResolvedValue({ data: { id: "created" }, error: null });
+  const { createAccount } = await import("../../src/api");
+  await createAccount({
+    ...input,
+    display_name: "  New   colleague  ",
+    email: " colleague@example.test ",
+    reason: "  New   user ",
+    password: "  exact  password  ",
+  });
+  expect(mocks.invoke.mock.calls[0][1].body).toMatchObject({
+    ...input,
+    display_name: "New colleague",
+    reason: "New user",
+    password: "  exact  password  ",
+  });
+});
 it("preserves the request ID on explicit retry, returns backend errors, and never retries automatically", async () => {
   mocks.invoke.mockResolvedValueOnce({
     error: {

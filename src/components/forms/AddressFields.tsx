@@ -1,6 +1,7 @@
 import { Search, MapPin } from "lucide-react";
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
+import { normalizeText } from "../../inputNormalization";
 import {
   cities,
   provinces,
@@ -467,6 +468,9 @@ export function AddressFields({
             required={rights.address.required}
             value={value.address ?? ""}
             onChange={(e) => patch({ address: e.target.value || null })}
+            onBlur={(e) =>
+              patch({ address: normalizeText(e.target.value) || null })
+            }
           />
         </label>
       )}
@@ -606,6 +610,9 @@ export function AddressFields({
             inputMode="numeric"
             value={value.postal_code ?? ""}
             onChange={(e) => patch({ postal_code: e.target.value || null })}
+            onBlur={(e) =>
+              patch({ postal_code: normalizeText(e.target.value) || null })
+            }
           />
         </label>
       )}

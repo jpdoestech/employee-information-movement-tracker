@@ -2,6 +2,7 @@ import type { Context, Field } from "./domain";
 import { profileDefinitions } from "./profileFields";
 import { governmentDefinitions } from "./governmentIds";
 import { addressDefinitions } from "./address/addressFields";
+import { normalizeText } from "./inputNormalization";
 
 const profileKeys = new Set([
   "employee_number",
@@ -40,10 +41,10 @@ export const nameKeys = [
 export const nameLabels = ["Last Name", "First Name", "Middle Name", "Suffix"];
 export function combinedName(values: Record<string, unknown>) {
   return [
-    typeof values.last_name === "string" ? values.last_name.trim() : "",
+    typeof values.last_name === "string" ? normalizeText(values.last_name) : "",
     [values.first_name, values.middle_name, values.suffix]
       .filter((v) => typeof v === "string" && v.trim())
-      .map((v) => String(v).trim())
+      .map((v) => normalizeText(String(v)))
       .join(" "),
   ]
     .filter(Boolean)
