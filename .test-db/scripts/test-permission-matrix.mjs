@@ -239,7 +239,9 @@ export async function testPermissionMatrix({
     });
   });
   await test("matrix reviews module restorations and scope revocations beyond the selected placement", async () => {
-    const sensitive = (await owner.query("select id,key from public.field_definitions where sensitivity='restricted' and active order by key limit 1")).rows[0];
+    const sensitive = { id: randomUUID(), key: "matrix_review_restricted" }, group = randomUUID();
+    await owner.query("insert into public.field_groups(id,name) values($1,'Matrix review restricted fixture')", [group]);
+    await owner.query("insert into public.field_definitions(id,group_id,key,label,type,sensitivity,scope_mode) values($1,$2,$3,'Matrix review restricted fixture','short_text','restricted','all')", [sensitive.id,group,sensitive.key]);
     await m(id.sa, "policy", { user_id: user, field_id: sensitive.id, action: "R", effect: "allow", reason: "Synthetic explicit restricted allow" });
     await saved({ modules: [{ module: "employees", action: "view", effect: "deny" }] });
     const preview = p => as(id.sa, c => c.query("select public.access_change_preview('access_matrix',$1) r", [{ user_id: user, reason: "Synthetic complete impact review", ...p }]).then(r => r.rows[0].r));
