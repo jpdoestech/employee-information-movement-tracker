@@ -15,7 +15,7 @@ branches. New roles start without permissions. Assigning an additional role does
 not change the native account role or bypass its restrictions.
 
 Admin is shown as **Administrator** in Role template. It is assigned through
-Accounts, not Additional roles; the latter lists HR Staff, Manager, Employee and
+Users through the account editor, not Additional roles; the latter lists HR Staff, Manager, Employee and
 custom supplemental roles. Keep a normal administrator as Admin with only the
 organization grants, module actions and fields their job needs. Reserve
 Superadmin for trusted access administration. HR Staff/Manager templates start
@@ -45,13 +45,13 @@ within active field applicability.
 
 Record restrictions intersect organization grants; they never replace them.
 
-| Record scope | Requirement |
-| --- | --- |
-| Organization grants | Existing organization boundaries |
-| Own employee record | Account linked to that employee |
-| Direct reports | Explicit employee-to-manager relationship |
-| Selected departments | Exact current department membership |
-| Assigned records | Explicit employee IDs selected for the account |
+| Record scope         | Requirement                                    |
+| -------------------- | ---------------------------------------------- |
+| Organization grants  | Existing organization boundaries               |
+| Own employee record  | Account linked to that employee                |
+| Direct reports       | Explicit employee-to-manager relationship      |
+| Selected departments | Exact current department membership            |
+| Assigned records     | Explicit employee IDs selected for the account |
 
 An assigned record in another unauthorized branch stays unavailable. Empty
 department/assignment selections allow no records. Record-restricted accounts

@@ -605,7 +605,7 @@ export function PermissionMatrix({
                   Account role:{" "}
                   {config?.roles.find((r) => r.code === account?.role)?.name ||
                     title(account?.role || "")}
-                  . Change it in Accounts; additional roles supplement it.
+                  . Change it in Users; additional roles supplement it.
                 </small>
                 <span>Additional roles</span>
                 <SearchFilterPicker
