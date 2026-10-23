@@ -139,3 +139,5 @@ Use the shared `FieldTypeIcon` registry for type choices, leading input icons an
 Main visual styling follows the installed `ui-styling` skill. Field type icons sit at the start of input controls, with compact accessible field labels retained above; do not add large type descriptions to entries.
 
 Data-list search, filters and page actions share one stationary toolbar row, following AMS. Keep compact desktop controls and 44px touch targets; narrow screens scroll the toolbar horizontally without creating page-level overflow. Dropdowns remain viewport-bound, and pagination stays below the data region.
+
+All current and future data tables keep column headers sticky at the top of their bounded data scroll region, including permission matrices and modal tables. The table region owns both scroll axes; do not put an unbounded horizontal overflow wrapper between sticky headers and the vertical scroller. Row headers scroll vertically with their records; pinned identity cells remain fixed horizontally. Keep the header/pinned-column intersection above both layers with an opaque semantic surface.

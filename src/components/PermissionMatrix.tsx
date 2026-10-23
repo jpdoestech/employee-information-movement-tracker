@@ -403,7 +403,13 @@ export function PermissionMatrix({
           label="Role template"
           options={(config?.roles || [])
             .filter((r) => r.code !== "superadmin")
-            .map((r) => ({ id: r.code, label: r.name }))}
+            .map((r) => ({
+              id: r.code,
+              label: r.name,
+              context: ["admin", "viewer"].includes(r.code)
+                ? `${title(r.code)} account role`
+                : "Additional role",
+            }))}
           value={role ? [role] : []}
           onChange={(v) => void changeSubject("", v[0] || "")}
         />
@@ -422,6 +428,34 @@ export function PermissionMatrix({
           <Eye size={14} aria-hidden />
           View Effective Access
         </button>
+        {section === "fields" && (
+          <>
+            <SearchFilterPicker
+              mode="single"
+              label="Organization scope"
+              options={scopes}
+              value={[scope]}
+              onChange={(v) => {
+                if (dirty) {
+                  setError(
+                    "Save or discard your draft before changing its organization scope.",
+                  );
+                  return;
+                }
+                setScope(v[0] || "all");
+              }}
+            />
+            <label>
+              <input
+                type="checkbox"
+                checked={descendants}
+                disabled={target?.kind !== "branch" || dirty}
+                onChange={(e) => setDescendants(e.target.checked)}
+              />
+              Include branch clients
+            </label>
+          </>
+        )}
       </div>
       <nav className="access-section-tabs" aria-label="User access sections">
         {[
@@ -449,12 +483,20 @@ export function PermissionMatrix({
         )}
         {section === "modules" && (
           <>
-            <p className="muted">
-              Inherit uses roles and existing grants. Allow grants only this
-              action. Deny overrides ordinary grants. Record scopes and field
-              policies still apply.
-            </p>
-            <div className="permission-table-scroll">
+            <details className="permission-help">
+              <summary>Permission rules</summary>
+              <p className="muted">
+                Inherit uses roles and existing grants. Allow grants only this
+                action. Deny overrides ordinary grants. Record scopes and field
+                policies still apply.
+              </p>
+            </details>
+            <div
+              className="permission-table-scroll"
+              tabIndex={0}
+              role="region"
+              aria-label="Module permissions"
+            >
               <table className="permission-matrix">
                 <caption className="sr-only">Module permission matrix</caption>
                 <thead>
@@ -494,23 +536,6 @@ export function PermissionMatrix({
                 </tbody>
               </table>
             </div>
-            {user && (
-              <div className="form-control">
-                <span>Additional roles</span>
-                <SearchFilterPicker
-                  mode="multiple"
-                  label="Additional roles"
-                  options={(config?.roles || [])
-                    .filter(
-                      (r) =>
-                        !["superadmin", "admin", "viewer"].includes(r.code),
-                    )
-                    .map((r) => ({ id: r.code, label: r.name }))}
-                  value={memberships || config?.memberships || []}
-                  onChange={setMemberships}
-                />
-              </div>
-            )}
             {account?.role === "superadmin" && (
               <p>
                 Superadmin retains the trusted override. Ordinary role or user
@@ -521,39 +546,21 @@ export function PermissionMatrix({
         )}
         {section === "fields" && (
           <>
-            <div className="permission-toolbar">
-              <SearchFilterPicker
-                mode="single"
-                label="Organization scope"
-                options={scopes}
-                value={[scope]}
-                onChange={(v) => {
-                  if (dirty) {
-                    setError(
-                      "Save or discard your draft before changing its organization scope.",
-                    );
-                    return;
-                  }
-                  setScope(v[0] || "all");
-                }}
-              />
-              <label>
-                <input
-                  type="checkbox"
-                  checked={descendants}
-                  disabled={target?.kind !== "branch" || dirty}
-                  onChange={(e) => setDescendants(e.target.checked)}
-                />
-                Include branch clients
-              </label>
-            </div>
-            <p className="muted">
-              Edit any number of groups together. Expand a group for individual
-              fields. Group allows cover normal fields; restricted fields
-              require an individual allow. Clear value does not archive an
-              employee.
-            </p>
-            <div className="permission-table-scroll">
+            <details className="permission-help">
+              <summary>Field permission rules</summary>
+              <p className="muted">
+                Edit any number of groups together. Expand a group for
+                individual fields. Group allows cover normal fields; restricted
+                fields require an individual allow. Clear value does not archive
+                an employee.
+              </p>
+            </details>
+            <div
+              className="permission-table-scroll"
+              tabIndex={0}
+              role="region"
+              aria-label="Field permissions"
+            >
               <table className="permission-matrix">
                 <thead>
                   <tr>
@@ -592,6 +599,29 @@ export function PermissionMatrix({
         )}
         {section === "scope" && (
           <>
+            {user && (
+              <div className="form-control">
+                <small>
+                  Account role:{" "}
+                  {config?.roles.find((r) => r.code === account?.role)?.name ||
+                    title(account?.role || "")}
+                  . Change it in Accounts; additional roles supplement it.
+                </small>
+                <span>Additional roles</span>
+                <SearchFilterPicker
+                  mode="multiple"
+                  label="Additional roles"
+                  options={(config?.roles || [])
+                    .filter(
+                      (r) =>
+                        !["superadmin", "admin", "viewer"].includes(r.code),
+                    )
+                    .map((r) => ({ id: r.code, label: r.name }))}
+                  value={memberships || config?.memberships || []}
+                  onChange={setMemberships}
+                />
+              </div>
+            )}
             {role ? (
               <p>
                 Organization and record scopes belong to user accounts. Role

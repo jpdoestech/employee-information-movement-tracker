@@ -480,10 +480,13 @@ const demoAccess = {
     { code: "sync", name: "Workbook synchronization", actions: ["manage"] },
     { code: "access", name: "Access administration", actions: ["manage"] },
   ],
-  roles: ["admin", "viewer", "hr_staff", "manager", "employee"].map((code) => ({
-    code,
-    name: code.replaceAll("_", " "),
-  })),
+  roles: [
+    { code: "admin", name: "Administrator" },
+    { code: "viewer", name: "Viewer" },
+    { code: "hr_staff", name: "HR Staff" },
+    { code: "manager", name: "Manager" },
+    { code: "employee", name: "Employee" },
+  ],
   memberships: [] as string[],
   overrides: [] as any[],
   role_permissions: [] as any[],

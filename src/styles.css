@@ -1159,14 +1159,16 @@ td {
 th {
   padding: 10px 16px;
   background: var(--paper);
-  position: sticky;
-  top: 0;
-  z-index: 3;
   font-size: 12px;
   font-weight: 700;
   text-transform: none;
   letter-spacing: 0.025em;
   color: var(--muted);
+}
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
 }
 th > button {
   font-size: 12px;
@@ -4492,15 +4494,25 @@ dialog.employee-edit-dialog[open] {
 .permission-toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; overflow-x: auto; flex: none; }
 .permission-toolbar > * { flex: none; }
 .permission-toolbar button, .permission-toolbar label { white-space: nowrap; }
+.permission-toolbar > label { display: flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; }
 .permission-workspace .access-section-tabs { flex: none; }
 .permission-body { flex: 1; min-height: 0; padding: 8px 12px; overflow: auto; }
 .permission-body > p { margin: 6px 0 12px; }
-.permission-table-scroll { max-width: 100%; overflow: auto; margin-bottom: 12px; }
-.permission-matrix { width: max-content; min-width: 100%; border-collapse: collapse; }
+.permission-table-scroll { max-width: 100%; max-height: 55dvh; overflow: auto; margin-bottom: 12px; position: relative; isolation: isolate; overscroll-behavior: contain; }
+/* The table owns both scroll axes so sticky headers cannot attach to an unbounded wrapper. */
+.permission-body:has(> .permission-table-scroll) { display: flex; flex-direction: column; overflow: hidden; }
+.permission-body:has(> .permission-table-scroll) > * { flex-shrink: 0; }
+.permission-body > .permission-table-scroll { flex: 1; min-height: 0; max-height: none; }
+.permission-table-scroll:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.permission-help { margin: 4px 0 8px; max-height: 35%; overflow: auto; color: var(--muted); }
+.permission-help summary { cursor: pointer; font-size: 12px; }
+.permission-help summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.permission-matrix { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; }
 .permission-matrix th, .permission-matrix td { padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-.permission-matrix th[scope="row"] { text-align: left; font-size: 12px; text-transform: none; letter-spacing: normal; min-width: 190px; background: var(--paper); }
+.permission-matrix th[scope="row"] { position: static; text-align: left; font-size: 12px; text-transform: none; letter-spacing: normal; min-width: 190px; background: var(--paper); }
 .permission-matrix th:first-child { position: sticky; left: 0; z-index: 1; background: var(--paper); }
-.permission-matrix thead th { white-space: nowrap; }
+.permission-matrix thead th { position: sticky; top: 0; z-index: 3; white-space: nowrap; background: var(--section-surface); }
+.permission-matrix thead th:first-child { z-index: 4; }
 .permission-matrix td { text-align: center; }
 .permission-matrix .permission-cell { width: 88px; min-height: 32px; font-size: 12px; padding: 4px 6px; }
 .permission-cell.deny { color: var(--danger); font-weight: 600; }
@@ -4511,6 +4523,15 @@ dialog.employee-edit-dialog[open] {
 .permission-save-bar { display: flex; flex: none; align-items: end; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--paper); overflow-x: auto; }
 .permission-save-bar > label { flex: 1; min-width: 180px; margin: 0; }
 .permission-save-bar > button { flex: none; white-space: nowrap; }
+@media (max-height: 500px) {
+  .permission-toolbar { padding-top: 4px; padding-bottom: 4px; }
+  .permission-workspace .access-section-tabs { padding-bottom: 4px; }
+  .permission-body { padding-top: 4px; padding-bottom: 4px; }
+  .permission-help { margin: 0 0 4px; }
+  .permission-save-bar { padding-top: 4px; padding-bottom: 4px; }
+  .permission-save-bar > label { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+  .permission-save-bar > label > input { margin: 0; }
+}
 .effective-access-dialog[open] { display: flex; flex-direction: column; overflow: hidden; width: min(1100px, calc(100vw - 24px)); }
 .dialog-scroll { min-height: 0; overflow: auto; padding: 12px; }
 .effective-access-dialog > header, .effective-access-dialog > footer { flex: none; }

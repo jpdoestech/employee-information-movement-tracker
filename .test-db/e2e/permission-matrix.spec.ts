@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function setup(page: Page) {
+async function setup(page: Page, largeMatrix = false) {
   await page.goto("/");
   const fixture = await page.evaluate(async () => {
     const path = "/src/demo.ts";
@@ -10,6 +10,14 @@ async function setup(page: Page) {
       config: await demo.demoQuery("access_configuration"),
     };
   });
+  if (largeMatrix)
+    fixture.config.modules.push(
+      ...Array.from({ length: 20 }, (_, i) => ({
+        code: `example_${i}`,
+        name: `Example module ${i}`,
+        actions: ["view"],
+      })),
+    );
   const user = {
     id: "11111111-1111-4111-8111-111111111111",
     aud: "authenticated",
@@ -112,6 +120,27 @@ async function setup(page: Page) {
     else if (body.operation === "employees") result = { items: [], total: 0 };
     else if (body.operation === "dashboard")
       result = { total: 0, statuses: {}, placements: {} };
+    if (largeMatrix && path.endsWith("/effective_access")) {
+      result.modules.push(
+        ...Array.from({ length: 24 }, (_, i) => ({
+          ...result.modules[0],
+          module: `example_${i}`,
+        })),
+      );
+      result.fields = fixture.context.fields.map((f: any) => ({
+        key: f.key,
+        label: f.label,
+        actions: Object.fromEntries(
+          ["R", "C", "U", "D"].map((a) => [
+            a,
+            {
+              allowed: false,
+              reason: "Synthetic denied field",
+            },
+          ]),
+        ),
+      }));
+    }
     return route.fulfill({ json: result });
   });
   const encode = (v: unknown) =>
@@ -209,11 +238,25 @@ test("switching role templates reloads the matrix and saves to the selected role
   page,
 }) => {
   const { state } = await setup(page);
-  for (const role of ["admin", "viewer"]) {
+  await page
+    .getByRole("button", { name: "Scope & assignments", exact: true })
+    .click();
+  await expect(page.getByText(/Account role: Administrator/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Additional roles", exact: true })
+    .click();
+  await expect(page.getByRole("option", { name: /Administrator/ })).toHaveCount(
+    0,
+  );
+  await page.keyboard.press("Escape");
+  await page
+    .getByRole("button", { name: "Permission matrix", exact: true })
+    .click();
+  for (const role of ["Administrator", "Viewer"]) {
     await page
       .getByRole("button", { name: "Role template", exact: true })
       .click();
-    await page.getByRole("option", { name: role, exact: true }).click();
+    await page.getByRole("option", { name: new RegExp(`^${role}`) }).click();
     await expect(
       page.getByLabel("Employees Export", { exact: true }),
     ).toBeVisible();
@@ -270,7 +313,44 @@ for (const viewport of [
   }) => {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: "reduce" });
-    const { state } = await setup(page);
+    const { state } = await setup(page, true);
+    for (const section of ["Permission matrix", "Field permissions"]) {
+      await page.getByRole("button", { name: section, exact: true }).click();
+      if (section === "Field permissions") {
+        await page.screenshot({
+          path: `.test-db/reports/release/header-fields-before-${viewport.width}.png`,
+        });
+        for (const button of await page
+          .locator(".permission-group-row button")
+          .all())
+          await button.click();
+      }
+      const scroller = page.locator(
+        ".permission-body > .permission-table-scroll",
+      );
+      await scroller.evaluate((el) => {
+        el.scrollTop = 0;
+        el.scrollLeft = 0;
+      });
+      await page.screenshot({
+        path: `.test-db/reports/release/header-${section}-${viewport.width}.png`,
+      });
+      const header = scroller.locator("thead th").first();
+      const row = scroller.locator("tbody tr").first();
+      const beforeHeader = await header.boundingBox();
+      const beforeRow = await row.boundingBox();
+      await scroller.evaluate((el) => {
+        el.scrollTop = el.scrollHeight;
+        el.scrollLeft = el.scrollWidth;
+      });
+      await expect
+        .poll(async () => (await header.boundingBox())?.y)
+        .toBeCloseTo(beforeHeader!.y, 0);
+      expect((await header.boundingBox())!.x).toBeCloseTo(beforeHeader!.x, 0);
+      expect((await row.boundingBox())!.y).toBeLessThan(beforeRow!.y);
+      await expect(header).toBeInViewport();
+      await expect(page.locator(".permission-save-bar")).toBeInViewport();
+    }
     await page.screenshot({
       path: `.test-db/reports/release/matrix-modules-${viewport.width}.png`,
     });
@@ -306,6 +386,19 @@ for (const viewport of [
     await expect(dialog).toContainText("Explicit DENY overrides grants");
     await expect(dialog).toContainText("Role manager: allow");
     await expect(dialog).toContainText("Direct override: deny");
+    for (const name of ["Effective module access", "Effective field access"]) {
+      const region = dialog.getByRole("region", { name, exact: true });
+      await region.scrollIntoViewIfNeeded();
+      const header = region.locator("thead th").first();
+      const row = region.locator("tbody tr").first();
+      const headerY = (await header.boundingBox())!.y;
+      const rowY = (await row.boundingBox())!.y;
+      await region.evaluate((el) => {
+        el.scrollTop = el.scrollHeight;
+      });
+      expect((await header.boundingBox())!.y).toBeCloseTo(headerY, 0);
+      expect((await row.boundingBox())!.y).toBeLessThan(rowY);
+    }
     const bounds = (await dialog.boundingBox())!;
     expect(bounds.x).toBeGreaterThanOrEqual(0);
     expect(bounds.y).toBeGreaterThanOrEqual(0);

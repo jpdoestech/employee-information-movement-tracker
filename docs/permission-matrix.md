@@ -14,6 +14,18 @@ employee data. Additional roles are database records, not new application role
 branches. New roles start without permissions. Assigning an additional role does
 not change the native account role or bypass its restrictions.
 
+Admin is shown as **Administrator** in Role template. It is assigned through
+Accounts, not Additional roles; the latter lists HR Staff, Manager, Employee and
+custom supplemental roles. Keep a normal administrator as Admin with only the
+organization grants, module actions and fields their job needs. Reserve
+Superadmin for trusted access administration. HR Staff/Manager templates start
+empty and need explicit configuration before assignment.
+
+Additional roles and the account-role explanation are under Scope & assignments.
+Field organization controls share the stationary top toolbar. Permission tables
+own their vertical and horizontal scroll; column headers and the first identity
+column remain visible. Help stays available in compact expandable sections.
+
 Any matching ordinary module deny overrides role, direct and legacy capability
 grants. Employee View does not imply Create, Update, Delete or Export. Each
 operation still requires its existing organization actions, field permissions,
