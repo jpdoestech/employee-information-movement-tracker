@@ -52,3 +52,32 @@ it("preserves the request ID on explicit retry, returns backend errors, and neve
   expect(mocks.invoke.mock.calls[1][1].body).toEqual(first);
   expect(mocks.confirm).toHaveBeenCalledTimes(2);
 });
+
+it("password changes require confirmation and reuse one request only on explicit retry", async () => {
+  const { setAccountPassword } = await import("../../src/api");
+  const p = {
+    user_id: "20000000-0000-4000-8000-000000000002",
+    password: input.password,
+    reason: input.reason,
+  };
+  mocks.confirm.mockRejectedValueOnce(new Error(""));
+  await expect(setAccountPassword(p, "Colleague")).rejects.toThrow();
+  expect(mocks.invoke).not.toHaveBeenCalled();
+  mocks.invoke.mockResolvedValueOnce({
+    error: {
+      context: new Response(
+        JSON.stringify({ error: "Keep the draft and retry" }),
+      ),
+    },
+  });
+  await expect(setAccountPassword(p, "Colleague")).rejects.toThrow(
+    "Keep the draft",
+  );
+  expect(mocks.invoke).toHaveBeenCalledTimes(1);
+  const first = mocks.invoke.mock.calls[0][1].body;
+  expect(first).toMatchObject({ ...p, action: "set_password" });
+  expect(JSON.stringify(mocks.confirm.mock.calls)).not.toContain(p.password);
+  mocks.invoke.mockResolvedValueOnce({ data: { id: p.user_id }, error: null });
+  await setAccountPassword(p, "Colleague");
+  expect(mocks.invoke.mock.calls[1][1].body.request_id).toBe(first.request_id);
+});

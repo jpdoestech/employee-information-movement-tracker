@@ -76,11 +76,17 @@ export async function preview(operation: string, p: unknown) {
     return data;
   });
 }
-export async function reviewAccessChange(operation: string, p: unknown): Promise<AccessImpact> {
+export async function reviewAccessChange(
+  operation: string,
+  p: unknown,
+): Promise<AccessImpact> {
   if (demo) return { demo: true, revision: null, targets: [], changes: [] };
   if (!supabase) throw new Error("The application connection is unavailable.");
   return trackTransaction("Reviewing access changes", async () => {
-    const { data, error } = await supabase!.rpc("access_change_preview", { operation, p });
+    const { data, error } = await supabase!.rpc("access_change_preview", {
+      operation,
+      p,
+    });
     if (error) throw new Error(error.message);
     return data;
   });
@@ -118,38 +124,58 @@ export async function createAccount(p: {
       });
       return { id };
     }
-    if (!supabase)
-      throw new Error("The application connection is unavailable.");
-    const digest = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(JSON.stringify(p)),
-    );
-    const fingerprint =
-      "account:" +
-      Array.from(new Uint8Array(digest), (value) =>
-        value.toString(16).padStart(2, "0"),
-      ).join("");
-    // shortcut: retry IDs live in memory; keep this draft open after an enrollment error.
-    const id = pendingRequests.get(fingerprint) || crypto.randomUUID();
-    pendingRequests.set(fingerprint, id);
-    const { data, error } = await supabase.functions.invoke("manage-users", {
-      body: { ...p, request_id: id },
-    });
-    if (error) {
-      const details =
-        error.context instanceof Response
-          ? await error.context.json().catch(() => null)
-          : null;
-      throw new Error(
-        typeof details?.error === "string"
-          ? details.error
-          : "Account creation failed. Your entries are preserved; try again.",
-      );
-    }
-    pendingRequests.delete(fingerprint);
-    return data;
+    return invokeAccountChange(p, "account");
   });
 }
+export async function setAccountPassword(
+  p: { user_id: string; password: string; reason: string },
+  name: string,
+): Promise<{ id: string }> {
+  await requireConfirmation(
+    "Set account password",
+    `Set a new password for ${name}? Their role, account status and permissions will stay the same.`,
+  );
+  return trackTransaction("Setting password", async () => {
+    if (demo) return { id: p.user_id };
+    return invokeAccountChange({ ...p, action: "set_password" }, "password");
+  });
+}
+async function invokeAccountChange(
+  p: object,
+  namespace: string,
+): Promise<{ id: string }> {
+  if (!supabase) throw new Error("The application connection is unavailable.");
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify(p)),
+  );
+  const fingerprint =
+    namespace +
+    ":" +
+    Array.from(new Uint8Array(digest), (value) =>
+      value.toString(16).padStart(2, "0"),
+    ).join("");
+  // shortcut: retry IDs live in memory; keep this draft open after an interrupted account change.
+  const id = pendingRequests.get(fingerprint) || crypto.randomUUID();
+  pendingRequests.set(fingerprint, id);
+  const { data, error } = await supabase.functions.invoke("manage-users", {
+    body: { ...p, request_id: id },
+  });
+  if (error) {
+    const details =
+      error.context instanceof Response
+        ? await error.context.json().catch(() => null)
+        : null;
+    throw new Error(
+      typeof details?.error === "string"
+        ? details.error
+        : "The account change failed. Your entries are preserved; try again.",
+    );
+  }
+  pendingRequests.delete(fingerprint);
+  return data;
+}
+
 export async function mutate<T = any>(
   operation: string,
   p: unknown,

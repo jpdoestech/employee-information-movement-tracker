@@ -10,7 +10,14 @@ import { Dialog } from "../components/Dialog";
 import { FloatingNotification } from "../components/FloatingNotification";
 import { FieldTypeIcon } from "../components/FieldTypeIcon";
 import { useEffect, useState } from "react";
-import { query, mutate, createAccount, reviewAccessChange } from "../api";
+import {
+  query,
+  mutate,
+  createAccount,
+  reviewAccessChange,
+  setAccountPassword,
+  isDemo,
+} from "../api";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import { AccessChangeReview } from "../components/AccessChangeReview";
 import { requireConfirmation } from "../components/TransactionConfirmation";
@@ -35,6 +42,14 @@ export function Security({
     [ruleSection, setRuleSection] = useState("scope"),
     [accountDialog, setAccountDialog] = useState<"new" | "manage" | null>(null),
     [accountReason, setAccountReason] = useState(""),
+    [passwordTarget, setPasswordTarget] = useState<{
+      id: string;
+      name: string;
+    } | null>(null),
+    [newPassword, setNewPassword] = useState(""),
+    [repeatPassword, setRepeatPassword] = useState(""),
+    [passwordReason, setPasswordReason] = useState(""),
+    [showPassword, setShowPassword] = useState(false),
     [user, setUser] = useState(""),
     [scope, setScope] = useState(""),
     [subject, setSubject] = useState(""),
@@ -87,6 +102,13 @@ export function Security({
       include_descendants: o.kind === "branch" && descendants,
     };
   };
+  function closePassword() {
+    setPasswordTarget(null);
+    setNewPassword("");
+    setRepeatPassword("");
+    setPasswordReason("");
+    setShowPassword(false);
+  }
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
     setError("");
@@ -841,7 +863,7 @@ export function Security({
             {error}
           </FloatingNotification>
         )}
-        {notice && (
+        {notice && !accountDialog && (
           <FloatingNotification kind="notice" onDismiss={() => setNotice("")}>
             {notice}
           </FloatingNotification>
@@ -998,6 +1020,16 @@ export function Security({
                       >
                         {u.active ? "Deactivate account" : "Reactivate account"}
                       </button>
+                      <button
+                        disabled={busy}
+                        onClick={() => {
+                          closePassword();
+                          setError("");
+                          setPasswordTarget({ id: u.id, name: u.display_name });
+                        }}
+                      >
+                        Set password
+                      </button>
                       <div className="checks">
                         {[
                           "employee_create",
@@ -1047,12 +1079,17 @@ export function Security({
                   ))}
               </>
             )}
-            {error && (
+            {error && !passwordTarget && (
               <FloatingNotification onDismiss={() => setError("")}>
                 {error}
               </FloatingNotification>
             )}
           </div>
+          {notice && !passwordTarget && (
+            <FloatingNotification kind="notice" onDismiss={() => setNotice("")}>
+              {notice}
+            </FloatingNotification>
+          )}
           <footer>
             <button disabled={busy}>Cancel</button>
             {accountDialog === "new" && (
@@ -1104,6 +1141,104 @@ export function Security({
                 </button>
               </>
             )}
+          </footer>
+        </Dialog>
+      )}
+      {passwordTarget && (
+        <Dialog
+          title="Set password"
+          className="security-account-dialog"
+          isDirty={Boolean(newPassword || repeatPassword || passwordReason)}
+          onClose={() => {
+            if (!busy) closePassword();
+          }}
+        >
+          <div className="dialog-body">
+            <p>
+              Choose a new password for <strong>{passwordTarget.name}</strong>.
+              Use at least 8 characters.
+            </p>
+            <label>
+              New password
+              <input
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={256}
+                disabled={busy}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </label>
+            <label>
+              Confirm password
+              <input
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                maxLength={256}
+                disabled={busy}
+                value={repeatPassword}
+                onChange={(e) => setRepeatPassword(e.target.value)}
+              />
+            </label>
+            {repeatPassword && repeatPassword !== newPassword && (
+              <p role="alert">Passwords must match.</p>
+            )}
+            <label>
+              <input
+                type="checkbox"
+                checked={showPassword}
+                onChange={(e) => setShowPassword(e.target.checked)}
+              />
+              Show password
+            </label>
+            <label>
+              Reason for password change
+              <input
+                value={passwordReason}
+                maxLength={500}
+                disabled={busy}
+                onChange={(e) => setPasswordReason(e.target.value)}
+              />
+            </label>
+            {error && (
+              <FloatingNotification onDismiss={() => setError("")}>
+                {error}
+              </FloatingNotification>
+            )}
+          </div>
+          <footer>
+            <button disabled={busy}>Cancel</button>
+            <button
+              className="primary"
+              disabled={
+                busy ||
+                newPassword.length < 8 ||
+                newPassword.length > 256 ||
+                newPassword !== repeatPassword ||
+                !passwordReason.trim()
+              }
+              onClick={() =>
+                void run(async () => {
+                  await setAccountPassword(
+                    {
+                      user_id: passwordTarget.id,
+                      password: newPassword,
+                      reason: passwordReason.trim(),
+                    },
+                    passwordTarget.name,
+                  );
+                  setNotice(
+                    isDemo()
+                      ? "Demo only: no sign-in password was changed."
+                      : `Password updated for ${passwordTarget.name}. Use the new password to sign in.`,
+                  );
+                  closePassword();
+                })
+              }
+            >
+              Set password
+            </button>
           </footer>
         </Dialog>
       )}

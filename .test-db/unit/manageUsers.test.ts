@@ -29,9 +29,30 @@ function setup(role = "superadmin", active = true) {
     users.set(user.id, user);
     return { data: { user }, error: null };
   });
+  const updateUserById = vi.fn(async (id: string, attributes: any) => {
+    const previous = users.get(id);
+    const user = {
+      ...previous,
+      ...attributes,
+      app_metadata: { ...previous.app_metadata, ...attributes.app_metadata },
+    };
+    users.set(id, user);
+    return { data: { user }, error: null };
+  });
+  const receipts = new Map<string, any>();
+  const receipt = vi.fn(async (_name: string, p: any) => {
+    const key = `${p.p_actor}:${p.p_request}`;
+    const previous = receipts.get(key);
+    const payload = JSON.stringify([p.p_target, p.p_reason, p.p_fingerprint]);
+    if (previous && previous !== payload)
+      return { data: null, error: { code: "40001" } };
+    if (p.p_complete) receipts.set(key, payload);
+    return { data: { completed: p.p_complete || !!previous }, error: null };
+  });
   const single = vi.fn(async () => ({ data: { role, active }, error: null }));
   const admin = {
-    auth: { getUser, admin: { getUserById, createUser } },
+    auth: { getUser, admin: { getUserById, createUser, updateUserById } },
+    rpc: receipt,
     from: vi.fn(() => ({ select: () => ({ eq: () => ({ single }) }) })),
   };
   const rpc = vi.fn(async () => ({
@@ -61,7 +82,17 @@ function setup(role = "superadmin", active = true) {
       origin,
       "synthetic-backend-fingerprint-key",
     );
-  return { invoke, users, getUser, getUserById, createUser, single, rpc };
+  return {
+    invoke,
+    users,
+    getUser,
+    getUserById,
+    createUser,
+    updateUserById,
+    receipt,
+    single,
+    rpc,
+  };
 }
 describe("trusted account provisioning", () => {
   it("rejects other origins, unauthenticated callers and invalid sessions before any write", async () => {
@@ -198,5 +229,110 @@ describe("trusted account provisioning", () => {
     expect(await response.text()).not.toContain("PRIVATE");
     expect(s.createUser).toHaveBeenCalledTimes(1);
     expect(s.rpc).not.toHaveBeenCalled();
+  });
+});
+
+const passwordRequest = {
+  action: "set_password",
+  user_id: payload.request_id,
+  request_id: "30000000-0000-4000-8000-000000000003",
+  password: "Replacement-synthetic-password-123!",
+  reason: "Restore synthetic account access",
+};
+describe("trusted password changes", () => {
+  it("rejects non-superadmins, inactive administrators and malformed requests before any Auth update", async () => {
+    for (const [role, active] of [
+      ["admin", true],
+      ["viewer", true],
+      ["superadmin", false],
+    ] as const) {
+      const s = setup(role, active);
+      expect((await s.invoke(passwordRequest)).status).toBe(403);
+      expect(s.updateUserById).not.toHaveBeenCalled();
+    }
+    const s = setup();
+    for (const change of [
+      { user_id: "invalid" },
+      { password: "short" },
+      { reason: "" },
+      { request_id: "bad" },
+      { action: "unknown" },
+    ])
+      expect((await s.invoke({ ...passwordRequest, ...change })).status).toBe(
+        400,
+      );
+    expect(s.updateUserById).not.toHaveBeenCalled();
+  });
+  it("sets only the password and retry marker, records success, and never replays an older completed password change", async () => {
+    const s = setup();
+    await s.invoke();
+    const oldMetadata = s.users.get(payload.request_id).app_metadata;
+    const result = await s.invoke(passwordRequest);
+    expect(result.status).toBe(200);
+    expect(await result.json()).toEqual({ id: payload.request_id });
+    expect(s.updateUserById).toHaveBeenCalledWith(payload.request_id, {
+      password: passwordRequest.password,
+      app_metadata: {
+        eimt_password_change: expect.objectContaining({
+          request_id: passwordRequest.request_id,
+          actor,
+        }),
+      },
+    });
+    expect(
+      s.users.get(payload.request_id).app_metadata.eimt_provisioning,
+    ).toEqual(oldMetadata.eimt_provisioning);
+    expect(
+      JSON.stringify(s.users.get(payload.request_id).app_metadata),
+    ).not.toContain(passwordRequest.password);
+    expect(s.rpc).toHaveBeenCalledTimes(1);
+    await s.invoke({
+      ...passwordRequest,
+      request_id: "40000000-0000-4000-8000-000000000004",
+      password: "Later-synthetic-password-456!",
+    });
+    expect((await s.invoke(passwordRequest)).status).toBe(200);
+    expect(s.updateUserById).toHaveBeenCalledTimes(2);
+    expect(
+      (
+        await s.invoke({
+          ...passwordRequest,
+          password: "Altered-synthetic-password-789!",
+        })
+      ).status,
+    ).toBe(409);
+    expect(s.updateUserById).toHaveBeenCalledTimes(2);
+  });
+  it("reconciles an unfinished audit on explicit retry without resending the password", async () => {
+    const s = setup();
+    await s.invoke();
+    const original = s.receipt.getMockImplementation()!;
+    s.receipt
+      .mockImplementationOnce(original)
+      .mockResolvedValueOnce({ data: null, error: { code: "offline" } } as any);
+    const first = await s.invoke(passwordRequest);
+    expect(first.status).toBe(503);
+    expect((await first.json()).code).toBe("password_audit_pending");
+    expect(s.updateUserById).toHaveBeenCalledTimes(1);
+    expect((await s.invoke(passwordRequest)).status).toBe(200);
+    expect(s.updateUserById).toHaveBeenCalledTimes(1);
+  });
+  it("fails closed before Auth on receipt failures and redacts Auth rejection diagnostics without retrying", async () => {
+    const s = setup();
+    await s.invoke();
+    s.receipt.mockResolvedValueOnce({
+      data: null,
+      error: { code: "42501" },
+    } as any);
+    expect((await s.invoke(passwordRequest)).status).toBe(409);
+    expect(s.updateUserById).not.toHaveBeenCalled();
+    s.updateUserById.mockResolvedValueOnce({
+      data: { user: null },
+      error: { status: 422, message: "PRIVATE password diagnostic" },
+    } as any);
+    const failure = await s.invoke(passwordRequest);
+    expect(failure.status).toBe(400);
+    expect(await failure.text()).not.toContain("PRIVATE");
+    expect(s.updateUserById).toHaveBeenCalledTimes(1);
   });
 });

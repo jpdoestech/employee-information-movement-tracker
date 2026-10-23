@@ -23,10 +23,10 @@ export async function manageUsers(
   if (request.method === "OPTIONS")
     return new Response(null, { status: 204, headers });
   if (request.method !== "POST")
-    return reply(405, { error: "Use POST to create an account." });
+    return reply(405, { error: "Use POST to manage accounts." });
   const bearer = request.headers.get("authorization");
   if (!bearer?.startsWith("Bearer "))
-    return reply(401, { error: "Sign in before creating an account." });
+    return reply(401, { error: "Sign in before managing accounts." });
   try {
     const { data: identity, error: authError } = await admin.auth.getUser(
       bearer.slice(7),
@@ -40,7 +40,7 @@ export async function manageUsers(
       .single();
     if (profileError || !profile?.active || profile.role !== "superadmin")
       return reply(403, {
-        error: "Only an active superadmin can create accounts.",
+        error: "Only an active superadmin can manage accounts.",
       });
     const text = await request.text();
     if (text.length > 8192)
@@ -58,14 +58,23 @@ export async function manageUsers(
     const name =
       typeof body.display_name === "string" ? body.display_name.trim() : "";
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+    const passwordChange = body.action === "set_password";
+    if (body.action !== undefined && !passwordChange)
+      return reply(400, { error: "Unsupported account action." });
     if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-      email.length > 254 ||
-      !name ||
-      name.length > 120 ||
+      (!passwordChange &&
+        (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+          email.length > 254 ||
+          !name ||
+          name.length > 120 ||
+          !["viewer", "admin", "superadmin"].includes(body.role))) ||
+      (passwordChange &&
+        (typeof body.user_id !== "string" ||
+          !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(
+            body.user_id,
+          ))) ||
       !reason ||
       reason.length > 500 ||
-      !["viewer", "admin", "superadmin"].includes(body.role) ||
       typeof body.password !== "string" ||
       body.password.length < 8 ||
       body.password.length > 256 ||
@@ -75,8 +84,9 @@ export async function manageUsers(
       )
     )
       return reply(400, {
-        error:
-          "Enter a valid email, name, role, reason and an initial password of at least 8 characters.",
+        error: passwordChange
+          ? "Choose an existing account, enter a reason and a password of 8 to 256 characters."
+          : "Enter a valid email, name, role, reason and an initial password of at least 8 characters.",
       });
     // Bind retries to this administrator and exact input without storing a password digest that clients can brute-force.
     const key = await crypto.subtle.importKey(
@@ -97,12 +107,74 @@ export async function manageUsers(
           body.role,
           reason,
           body.password,
+          ...(passwordChange ? ["set_password", body.user_id] : []),
         ]),
       ),
     );
     const fingerprint = Array.from(new Uint8Array(signature), (value) =>
       value.toString(16).padStart(2, "0"),
     ).join("");
+    if (passwordChange) {
+      const receipt = (complete: boolean) =>
+        admin.rpc("password_change_receipt", {
+          p_actor: identity.user.id,
+          p_target: body.user_id,
+          p_request: body.request_id,
+          p_reason: reason,
+          p_fingerprint: fingerprint,
+          p_complete: complete,
+        });
+      const previous = await receipt(false);
+      if (previous.error || typeof previous.data?.completed !== "boolean")
+        return reply(409, {
+          error:
+            "This password request could not be verified. Refresh the account and try again.",
+        });
+      if (previous.data.completed) return reply(200, { id: body.user_id });
+      const target = await admin.auth.admin.getUserById(body.user_id);
+      if (target.error || !target.data.user)
+        return reply(404, { error: "The sign-in account could not be found." });
+      const marker = target.data.user.app_metadata?.eimt_password_change;
+      if (
+        marker?.request_id === body.request_id &&
+        (marker.actor !== identity.user.id ||
+          marker.fingerprint !== fingerprint)
+      )
+        return reply(409, {
+          error: "This request ID belongs to another password change.",
+        });
+      // Reconcile an interrupted audit without submitting the password write again.
+      if (marker?.request_id !== body.request_id) {
+        const updated = await admin.auth.admin.updateUserById(body.user_id, {
+          password: body.password,
+          app_metadata: {
+            eimt_password_change: {
+              actor: identity.user.id,
+              request_id: body.request_id,
+              fingerprint,
+            },
+          },
+        });
+        if (updated.error)
+          return reply(
+            updated.error.status && updated.error.status >= 500 ? 503 : 400,
+            {
+              error:
+                updated.error.code === "same_password"
+                  ? "Choose a different password."
+                  : "The password could not be set. Check the password requirements and try again.",
+            },
+          );
+      }
+      const recorded = await receipt(true);
+      if (recorded.error || !recorded.data?.completed)
+        return reply(503, {
+          code: "password_audit_pending",
+          error:
+            "The password was updated, but recording the change did not finish. Keep this form unchanged and retry to finish.",
+        });
+      return reply(200, { id: body.user_id });
+    }
     const matches = (
       user: { app_metadata?: Record<string, unknown> } | null,
     ) => {
@@ -172,7 +244,7 @@ export async function manageUsers(
   } catch {
     return reply(503, {
       error:
-        "Account creation could not be completed. Your entries are preserved; retry this form when the connection is available.",
+        "The account change could not be completed. Your entries are preserved; retry this form when the connection is available.",
     });
   }
 }
