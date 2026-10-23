@@ -205,6 +205,35 @@ test("failed matrix review sends no mutation and keeps the draft", async ({
   ).toHaveValue("deny");
 });
 
+test("switching role templates reloads the matrix and saves to the selected role", async ({
+  page,
+}) => {
+  const { state } = await setup(page);
+  for (const role of ["admin", "viewer"]) {
+    await page
+      .getByRole("button", { name: "Role template", exact: true })
+      .click();
+    await page.getByRole("option", { name: role, exact: true }).click();
+    await expect(
+      page.getByLabel("Employees Export", { exact: true }),
+    ).toBeVisible();
+  }
+  await page
+    .getByLabel("Employees Export", { exact: true })
+    .selectOption("deny");
+  await page
+    .getByLabel("Reason", { exact: true })
+    .fill("Selected Viewer template");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "Save access changes", exact: true })
+    .getByRole("button", { name: "Continue", exact: true })
+    .click();
+  await expect.poll(() => state.writes.length).toBe(1);
+  expect(state.writes[0].p.role_id).toBe("viewer");
+  expect(state.writes[0].p.user_id).toBeUndefined();
+});
+
 test("changing the selected account requires discard and cancellation preserves every cell", async ({
   page,
 }) => {
