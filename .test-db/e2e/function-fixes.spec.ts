@@ -26,6 +26,10 @@ async function connected(page: Page) {
     failReview: false,
     changeCount: 1,
     writes: [] as any[],
+    employeeReads: [] as any[],
+    historyReads: 0,
+    historyGate: null as Promise<void> | null,
+    failHistory: false,
   };
   const employee = () => ({
     id: user.id,
@@ -43,6 +47,29 @@ async function connected(page: Page) {
     if (request.url().includes("/auth/v1/user"))
       return route.fulfill({ json: user });
     const body = request.method() === "POST" ? request.postDataJSON() : {};
+    if (body.operation === "employee") state.employeeReads.push(body.q);
+    if (body.operation === "employee_history") {
+      state.historyReads++;
+      await state.historyGate;
+      if (state.failHistory)
+        return route.fulfill({
+          status: 403,
+          json: { message: "History access revoked" },
+        });
+      return route.fulfill({
+        json: {
+          assignments: [],
+          movements: [
+            {
+              id: "history-one",
+              type: "position",
+              effective_on: state.day,
+              state: "Effective",
+            },
+          ],
+        },
+      });
+    }
     if (request.url().includes("/access_change_preview")) {
       state.reviews.push(body);
       if (state.failReview)
@@ -149,6 +176,109 @@ async function connected(page: Page) {
   await expect(page.locator(".stats .stat strong").first()).toHaveText("1");
   return state;
 }
+
+test("employee overview does not wait for history and history is reused only inside the dialog", async ({
+  page,
+}) => {
+  const state = await connected(page);
+  await page.goto("/#employees");
+  await page.getByRole("button", { name: "EMP-00001", exact: true }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Employee profile",
+    exact: true,
+  });
+  await expect(dialog.locator(".employee-identity-strip")).toContainText(
+    "Employee 2026",
+  );
+  expect(state.employeeReads.length).toBeGreaterThan(0);
+  expect(
+    state.employeeReads.every(
+      (q) =>
+        q.id === "11111111-1111-4111-8111-111111111111" &&
+        q.include_history === false,
+    ),
+  ).toBe(true);
+  expect(state.historyReads).toBe(0);
+  let release!: () => void;
+  state.historyGate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  try {
+    await dialog
+      .getByRole("tab", { name: "Record history", exact: true })
+      .click();
+    await expect.poll(() => state.historyReads).toBe(1);
+    await expect(
+      dialog.getByText("Loading employee history…", { exact: true }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: ".test-db/reports/release/employee-history-on-demand.png",
+    });
+    await expect(
+      dialog.getByText("No accessible movement history.", { exact: true }),
+    ).toHaveCount(0);
+    release();
+    await expect(dialog.locator(".timeline-item")).toContainText("position");
+    await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
+    await dialog
+      .getByRole("tab", { name: "Record history", exact: true })
+      .click();
+    await expect(dialog.locator(".timeline-item")).toBeVisible();
+    expect(state.historyReads).toBe(1);
+    expect(state.writes).toHaveLength(0);
+  } finally {
+    release();
+  }
+});
+
+test("employee history invalidates on permission revision and retries reads without losing the overview", async ({
+  page,
+}) => {
+  await page.clock.install();
+  const state = await connected(page);
+  await page.goto("/#employees");
+  await page.getByRole("button", { name: "EMP-00001", exact: true }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Employee profile",
+    exact: true,
+  });
+  await dialog
+    .getByRole("tab", { name: "Record history", exact: true })
+    .click();
+  await expect(dialog.locator(".timeline-item")).toBeVisible();
+  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
+  state.revision++;
+  state.failHistory = true;
+  await page.clock.fastForward(31000);
+  await expect.poll(() => state.employeeReads.length).toBe(2);
+  await dialog
+    .getByRole("tab", { name: "Record history", exact: true })
+    .click();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "History access revoked",
+  );
+  await expect(dialog.locator(".timeline-item")).toHaveCount(0);
+  state.failHistory = false;
+  await dialog
+    .getByRole("button", { name: "Retry history", exact: true })
+    .click();
+  await expect(dialog.locator(".timeline-item")).toBeVisible();
+  expect(state.historyReads).toBe(3);
+  await dialog.getByRole("tab", { name: "Overview", exact: true }).click();
+  await expect(dialog.locator(".employee-identity-strip")).toContainText(
+    "Employee 2026",
+  );
+  const reads = state.employeeReads.length;
+  state.day = "2026-10-23";
+  await page.clock.fastForward(31000);
+  await expect.poll(() => state.employeeReads.length).toBe(reads + 1);
+  await dialog
+    .getByRole("tab", { name: "Record history", exact: true })
+    .click();
+  await expect(dialog.locator(".timeline-item")).toContainText("2026-10-23");
+  expect(state.historyReads).toBe(4);
+  expect(state.writes).toHaveLength(0);
+});
 
 test("business-date refresh reloads employees, dashboard and movements without a revision change", async ({
   page,

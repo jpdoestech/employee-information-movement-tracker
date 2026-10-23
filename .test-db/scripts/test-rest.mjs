@@ -539,8 +539,14 @@ try {
     await change({ record_rule: rule("self"), modules: [{ module: "employees", action: "export", effect: "deny" }] });
     let rows = await publicClients[1].rpc("tracker_query", { operation: "employees", q: {} });
     assert.ifError(rows.error); assert.deepEqual(rows.data.items.map(e => e.id), [first.data.id]);
+    const light = await publicClients[1].rpc("tracker_query", { operation: "employee", q: { id: first.data.id, include_history: false } });
+    assert.ifError(light.error); assert.equal(light.data.employee.id, first.data.id); assert(!Object.hasOwn(light.data,"movements"));
+    const history = await publicClients[1].rpc("tracker_query", { operation: "employee_history", q: { id: first.data.id } });
+    assert.ifError(history.error); assert(!Object.hasOwn(history.data,"employee")); assert(Array.isArray(history.data.movements));
     assert.equal((await publicClients[1].rpc("export_employees", { q: {} })).error?.code, "42501");
     assert.equal((await publicClients[1].rpc("tracker_query", { operation: "employee", q: { id: second.data.id } })).error?.code, "42501");
+    assert.equal((await publicClients[1].rpc("tracker_query", { operation: "employee", q: { id: second.data.id, include_history: false } })).error?.code, "42501");
+    assert.equal((await publicClients[1].rpc("tracker_query", { operation: "employee_history", q: { id: second.data.id } })).error?.code, "42501");
     await change({ record_rule: rule("assigned", [second.data.id]) });
     rows = await publicClients[1].rpc("tracker_query", { operation: "employees", q: {} });
     assert.ifError(rows.error); assert.equal(rows.data.total, 0, "Record assignment cannot override branch isolation");

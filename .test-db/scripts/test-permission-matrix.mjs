@@ -78,6 +78,29 @@ export async function testPermissionMatrix({
     assigned: [],
     ...more,
   });
+  await test("employee overview omits history work while legacy details and secured history stay compatible", async () => {
+    await owner.query("insert into public.employee_movements(employee_id,type,effective_on,reason,payload,previous_state,actor_id) select $1,'status',current_date-g,'Synthetic loading performance',jsonb_build_object('status','Active'),'{}'::jsonb,$2 from generate_series(1,20) g", [self,id.sa]);
+    const complete = await q(user, "employee", { id: self });
+    const lightweight = await q(user, "employee", { id: self, include_history: false });
+    const history = await q(user, "employee_history", { id: self });
+    assert.deepEqual(lightweight, { employee: complete.employee, fields: complete.fields });
+    assert.deepEqual(history, { assignments: complete.assignments, movements: complete.movements });
+    assert.equal(history.movements.length,20);
+    assert(history.movements.every(m => m.reason === null && Object.keys(m.payload).every(k => k === 'status')));
+    const times = {};
+    for (const include_history of [true,false]) {
+      const samples=[];
+      for (let n=0;n<3;n++) { const start=performance.now(); await q(user,'employee',{id:self,include_history}); samples.push(performance.now()-start); }
+      times[String(include_history)] = samples.sort((a,b)=>a-b)[1];
+    }
+    assert(times.false < times.true, `Lightweight ${times.false}ms; complete ${times.true}ms`);
+    console.log(`Employee overview median ${Math.round(times.false)}ms versus complete detail ${Math.round(times.true)}ms with 20 movements`);
+    await owner.query('update public.user_profiles set active=false where id=$1',[user]);
+    try {
+      await assert.rejects(q(user,'employee',{id:self,include_history:false}),{code:'42501'});
+      await assert.rejects(q(user,'employee_history',{id:self}),{code:'42501'});
+    } finally { await owner.query('update public.user_profiles set active=true where id=$1',[user]); }
+  });
   await test("Admin remains below Superadmin and Head Office and branch grants stay separate", async () => {
     const headOffice = (
       await m(id.sa, "employee_create", {
@@ -153,6 +176,8 @@ export async function testPermissionMatrix({
     await assert.rejects(q(user, "employee", { id: report }), {
       code: "42501",
     });
+    await assert.rejects(q(user,"employee",{id:report,include_history:false}),{code:"42501"});
+    await assert.rejects(q(user,"employee_history",{id:report}),{code:"42501"});
     await assert.rejects(
       m(user, "employee_update", {
         id: report,

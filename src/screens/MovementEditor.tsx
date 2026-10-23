@@ -459,7 +459,10 @@ export function MovementEditor({
               if (identityClient && manualId.trim() && clientIdError(manualId))
                 throw new Error(clientIdError(manualId));
               if (!preview) {
-                const d = await query("employee", { id: eid });
+                const d = await query("employee", {
+                  id: eid,
+                  include_history: false,
+                });
                 await validatePreview("movement", {
                   ...payload(),
                   expected_version: d.employee.row_version,

@@ -43,7 +43,7 @@ export function ReplacementEmployee({
     let active = true;
     setSelected([]);
     if (id)
-      query<{ employee: Employee }>("employee", { id })
+      query<{ employee: Employee }>("employee", { id, include_history: false })
         .then((r) => {
           if (active && r?.employee) setSelected([option(r.employee)]);
         })

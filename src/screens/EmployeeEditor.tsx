@@ -83,6 +83,9 @@ export function EmployeeEditor({
   const [values, setValues] = useState<Record<string, unknown>>({}),
     [changed, setChanged] = useState<Record<string, unknown>>({}),
     [detail, setDetail] = useState<any>(),
+    [history, setHistory] = useState<any>(),
+    [historyError, setHistoryError] = useState(""),
+    [historyRetry, setHistoryRetry] = useState(0),
     [fields, setFields] = useState(context.fields),
     [target, setTarget] = useState(""),
     [busy, setBusy] = useState(false),
@@ -104,7 +107,7 @@ export function EmployeeEditor({
   useEffect(() => {
     let active = true;
     if (row) {
-      query("employee", { id: row.id })
+      query("employee", { id: row.id, include_history: false })
         .then((d) => {
           if (active) {
             setDetail((current: any) =>
@@ -146,7 +149,7 @@ export function EmployeeEditor({
     return () => {
       active = false;
     };
-  }, [row?.id, context.revision, target]);
+  }, [row?.id, context.revision, context.today, context.profile.id, target]);
   const editable = fields.filter(
     (f) =>
       f.active &&
@@ -365,6 +368,25 @@ export function EmployeeEditor({
     ...(row ? ["Record history"] : []),
   ];
   const selectedTab = tabNames.includes(activeTab) ? activeTab : tabNames[0];
+  const historyKey = `${context.profile.id}:${row?.id}:${context.revision}:${context.today}`;
+  const historyReady = history?.key === historyKey;
+  useEffect(() => {
+    if (!row || selectedTab !== "Record history" || historyReady) return;
+    let active = true;
+    setHistoryError("");
+    void trackTransaction("Loading employee history", () =>
+      query("employee_history", { id: row.id }),
+    )
+      .then((data) => {
+        if (active) setHistory({ ...data, key: historyKey });
+      })
+      .catch((e) => {
+        if (active) setHistoryError(e.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [historyKey, selectedTab, historyReady, historyRetry]);
   function selectTab(name: string) {
     if (row && name === "Overview") {
       setEditingOverview(false);
@@ -1087,32 +1109,53 @@ export function EmployeeEditor({
               aria-labelledby={`${tabId}-tab-${tabs.length}`}
               hidden={selectedTab !== "Record history"}
             >
-              <h3>Assignments</h3>
-              {detail?.assignments?.length ? (
-                detail.assignments.map((a: any) => (
-                  <p key={a.id}>
-                    {a.category} ·{" "}
-                    {options.find(
-                      (o) => o.id === a.client_id || o.id === a.branch_id,
-                    )?.label || a.target_level}{" "}
-                    · {a.starts_on} to {a.ends_on || "open"}
-                  </p>
-                ))
-              ) : (
-                <p className="muted">No accessible assignments.</p>
-              )}
-              <h3>Movement timeline</h3>
-              {detail?.movements?.length ? (
-                detail.movements.map((m: any) => (
-                  <div className="timeline-item" key={m.id}>
-                    <strong>{m.type}</strong>
-                    <span>
-                      {m.effective_on} · {m.state}
-                    </span>
+              {selectedTab === "Record history" &&
+                !historyReady &&
+                !historyError && (
+                  <FloatingNotification kind="loading">
+                    Loading employee history…
+                  </FloatingNotification>
+                )}
+              {selectedTab === "Record history" &&
+                !historyReady &&
+                historyError && (
+                  <div>
+                    <FloatingNotification>{historyError}</FloatingNotification>
+                    <button onClick={() => setHistoryRetry((n) => n + 1)}>
+                      Retry history
+                    </button>
                   </div>
-                ))
-              ) : (
-                <p className="muted">No accessible movement history.</p>
+                )}
+              {selectedTab === "Record history" && historyReady && (
+                <>
+                  <h3>Assignments</h3>
+                  {history.assignments?.length ? (
+                    history.assignments.map((a: any) => (
+                      <p key={a.id}>
+                        {a.category} ·{" "}
+                        {options.find(
+                          (o) => o.id === a.client_id || o.id === a.branch_id,
+                        )?.label || a.target_level}{" "}
+                        · {a.starts_on} to {a.ends_on || "open"}
+                      </p>
+                    ))
+                  ) : (
+                    <p className="muted">No accessible assignments.</p>
+                  )}
+                  <h3>Movement timeline</h3>
+                  {history.movements?.length ? (
+                    history.movements.map((m: any) => (
+                      <div className="timeline-item" key={m.id}>
+                        <strong>{m.type}</strong>
+                        <span>
+                          {m.effective_on} · {m.state}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="muted">No accessible movement history.</p>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -1122,7 +1165,10 @@ export function EmployeeEditor({
               {error.toLowerCase().includes("conflict") && (
                 <button
                   onClick={async () => {
-                    const d = await query("employee", { id: row!.id });
+                    const d = await query("employee", {
+                      id: row!.id,
+                      include_history: false,
+                    });
                     setDetail(d);
                     setValues(d.employee.values);
                     setFields(d.fields);

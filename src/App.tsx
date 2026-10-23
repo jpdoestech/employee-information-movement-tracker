@@ -980,6 +980,7 @@ export default function App() {
                       try {
                         const d = await query("employee", {
                           id: m.employee_id,
+                          include_history: false,
                         });
                         setCorrection({
                           ...m,

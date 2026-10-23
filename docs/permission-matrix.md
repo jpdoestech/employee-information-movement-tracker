@@ -86,6 +86,19 @@ drafts are excluded. Inspection and administration remain Superadmin-only.
    editor's selected scope.
 4. Deploy the frontend and verify Superadmin and ordinary-user flows.
 
+For the employee loading optimization, apply
+`20261023130450_employee_profile_loading.sql` before deploying its frontend.
+`tracker_query('employee', {id, include_history:false})` returns the same secured
+employee and field catalog without history. `employee_history` reuses the
+existing authorized detail/history path and returns only assignments and
+movements. Legacy employee queries still return their original full response.
+Rolling the frontend back requires no database rollback or data changes.
+
+History loads only when its tab opens. Its cache exists only inside the mounted
+dialog and is keyed by account, employee, authorization revision and business
+date. Closing the dialog discards it. Failed history reads can be retried without
+blocking or changing the overview; no write is retried automatically.
+
 The migration adds private catalog, role membership, override, record-rule and
 reporting tables. It does not rewrite profiles, capabilities, organization grants,
 field policies, employee values or passwords. Existing accounts keep their prior

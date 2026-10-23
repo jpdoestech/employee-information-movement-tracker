@@ -690,12 +690,21 @@ export async function demoQuery(op: string, q: any = {}) {
       revision: context.revision,
     };
   }
+  if (op === "employee_history")
+    return {
+      assignments: [],
+      movements: history.filter((m) => m.employee_id === q.id),
+    };
   if (op === "employee")
     return {
       employee: structuredClone(employees.find((e) => e.id === q.id)),
       fields: structuredClone(fields),
-      assignments: [],
-      movements: history.filter((m) => m.employee_id === q.id),
+      ...(q.include_history === false
+        ? {}
+        : {
+            assignments: [],
+            movements: history.filter((m) => m.employee_id === q.id),
+          }),
     };
   if (op === "record_page") {
     const source =
