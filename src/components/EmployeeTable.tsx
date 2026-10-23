@@ -1,0 +1,310 @@
+import { fieldTypeIcons } from "./FieldTypeIcon";
+import { useMemo, type CSSProperties } from "react";
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Hash,
+  UserRound,
+  Building2,
+  BriefcaseBusiness,
+  Activity,
+  Fingerprint,
+  Columns3,
+  ShieldCheck,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  reconcileLayout,
+  type Employee,
+  type Field,
+  type Layout,
+} from "../domain";
+import { contentWidths, useFontMetrics } from "../tableSizing";
+import { displayFieldValue } from "../fieldValues";
+import { fieldTextRole } from "../typography";
+const columnIcons: Record<string, LucideIcon> = {
+  employee_number: Hash,
+  name: UserRound,
+  client_employee_number: Fingerprint,
+  status: Activity,
+  position: BriefcaseBusiness,
+  branch: Building2,
+  client: BriefcaseBusiness,
+  bir_tin: ShieldCheck,
+  sss_number: ShieldCheck,
+  philhealth_pin: ShieldCheck,
+  pagibig_mid: ShieldCheck,
+};
+const columnIcon = (key: string, type: string) =>
+  columnIcons[key] || fieldTypeIcons[type] || Columns3;
+export function EmployeeTable({
+  rows,
+  fields,
+  layout,
+  onOpen,
+  onSort,
+  selected = [],
+  onSelect,
+  preview = false,
+  rowNumbersAllowed = false,
+}: {
+  rows: Employee[];
+  fields: Field[];
+  layout: Layout;
+  onOpen?: (row: Employee) => void;
+  onSort?: (key: string) => void;
+  selected?: string[];
+  onSelect?: (ids: string[]) => void;
+  preview?: boolean;
+  rowNumbersAllowed?: boolean;
+}) {
+  const numbered = rowNumbersAllowed && layout.showRowNumbers !== false;
+  const leadingWidth = (numbered ? 48 : 0) + (onSelect ? 44 : 0);
+  const { columns, pinned } = reconcileLayout(layout, fields);
+  const order = [...pinned, ...columns.filter((k) => !pinned.includes(k))];
+  const fontReady = useFontMetrics();
+  const widths = useMemo(() => {
+    const sized = contentWidths(
+      columns.map((key) => fields.find((f) => f.key === key)?.label || key),
+      rows.map((row) =>
+        columns.map((key) =>
+          displayFieldValue(
+            fields.find((f) => f.key === key),
+            row.values[key],
+          ),
+        ),
+      ),
+      66,
+      columns.map((key) => fieldTextRole(fields.find((f) => f.key === key))),
+    );
+    return Object.fromEntries(columns.map((key, i) => [key, sized[i]]));
+  }, [rows, fields, columns.join("|"), fontReady]);
+  const width = (key: string) => widths[key];
+  function style(k: string): CSSProperties {
+    return {
+      width: width(k),
+      minWidth: width(k),
+      "--pin-left": `${pinned.slice(0, pinned.indexOf(k)).reduce((n, c) => n + width(c), 0) + leadingWidth}px`,
+    } as CSSProperties;
+  }
+  function cls(k: string) {
+    const i = pinned.indexOf(k);
+    return i >= 0
+      ? `pinned pin-${i}${i === pinned.length - 1 ? " pin-edge" : ""}`
+      : "";
+  }
+  return (
+    <div
+      className="table-region"
+      tabIndex={0}
+      style={
+        { "--row-number-width": `${numbered ? 48 : 0}px` } as CSSProperties
+      }
+      aria-label={preview ? "Live column preview" : "Scrollable employee table"}
+    >
+      <table
+        style={{
+          width: order.reduce((s, k) => s + width(k), leadingWidth),
+          minWidth: order.reduce((s, k) => s + width(k), leadingWidth),
+        }}
+      >
+        <caption className="sr-only">
+          {preview
+            ? "Draft table layout preview"
+            : "Employees: authorized columns only"}
+        </caption>
+        <thead>
+          <tr>
+            {numbered && (
+              <th className="row-ordinal" scope="col" aria-label="Row number">
+                No.
+              </th>
+            )}
+            {onSelect && (
+              <th className="selection">
+                <input
+                  type="checkbox"
+                  aria-label="Select visible employees"
+                  checked={
+                    rows.length > 0 &&
+                    rows.every((r) => selected.includes(r.id))
+                  }
+                  ref={(node) => {
+                    if (node)
+                      node.indeterminate =
+                        rows.some((r) => selected.includes(r.id)) &&
+                        !rows.every((r) => selected.includes(r.id));
+                  }}
+                  onChange={(e) =>
+                    onSelect(
+                      e.target.checked
+                        ? [...new Set([...selected, ...rows.map((r) => r.id)])]
+                        : selected.filter(
+                            (id) => !rows.some((r) => r.id === id),
+                          ),
+                    )
+                  }
+                />
+              </th>
+            )}
+            {order.map((k) => (
+              <th
+                key={k}
+                className={cls(k)}
+                style={style(k)}
+                scope="col"
+                aria-sort={
+                  layout.filter.sort === k
+                    ? layout.filter.direction === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
+              >
+                {onSort ? (
+                  <button type="button" onClick={() => onSort(k)}>
+                    <span className="column-heading">
+                      {(() => {
+                        const Icon = columnIcon(
+                          k,
+                          fields.find((f) => f.key === k)?.type ?? "system",
+                        );
+                        return <Icon size={14} aria-hidden />;
+                      })()}
+                      {fields.find((f) => f.key === k)?.label}
+                    </span>
+                    {layout.filter.sort === k ? (
+                      layout.filter.direction === "asc" ? (
+                        <ArrowUp size={13} aria-hidden />
+                      ) : (
+                        <ArrowDown size={13} aria-hidden />
+                      )
+                    ) : (
+                      <ArrowUpDown size={13} aria-hidden />
+                    )}
+                  </button>
+                ) : (
+                  <span className="table-header-label column-heading">
+                    {(() => {
+                      const Icon = columnIcon(
+                        k,
+                        fields.find((f) => f.key === k)?.type ?? "system",
+                      );
+                      return <Icon size={14} aria-hidden />;
+                    })()}
+                    {fields.find((f) => f.key === k)?.label}
+                  </span>
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr
+              key={row.id}
+              className={`${selected.includes(row.id) ? "selected-row" : ""}${onOpen ? " employee-record-row" : ""}`}
+              aria-selected={onSelect ? selected.includes(row.id) : undefined}
+              tabIndex={onOpen ? 0 : undefined}
+              onClick={
+                onOpen
+                  ? (event) => {
+                      if (
+                        (event.target as Element).closest(
+                          "button,a,input,select,textarea",
+                        )
+                      )
+                        return;
+                      onOpen(row);
+                    }
+                  : undefined
+              }
+              onKeyDown={
+                onOpen
+                  ? (event) => {
+                      if (
+                        event.target !== event.currentTarget ||
+                        !["Enter", " "].includes(event.key)
+                      )
+                        return;
+                      event.preventDefault();
+                      onOpen(row);
+                    }
+                  : undefined
+              }
+            >
+              {numbered && (
+                <td className="row-ordinal">
+                  {(preview ? 0 : layout.filter.offset) + rowIndex + 1}
+                </td>
+              )}
+              {onSelect && (
+                <td className="selection">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${row.values.employee_number || "record"}`}
+                    checked={selected.includes(row.id)}
+                    onChange={(e) =>
+                      onSelect(
+                        e.target.checked
+                          ? [...selected, row.id]
+                          : selected.filter((x) => x !== row.id),
+                      )
+                    }
+                  />
+                </td>
+              )}
+              {order.map((k, i) => (
+                <td
+                  key={k}
+                  className={`${cls(k)} ${fieldTextRole(fields.find((f) => f.key === k))} ${k === "name" ? "employee-name" : k === "employee_number" ? "employee-id" : ""}`}
+                  style={style(k)}
+                  title={displayFieldValue(
+                    fields.find((f) => f.key === k),
+                    row.values[k],
+                  )}
+                >
+                  {i === 0 && onOpen ? (
+                    <button
+                      className="text-link"
+                      type="button"
+                      onClick={() => onOpen(row)}
+                    >
+                      {displayFieldValue(
+                        fields.find((f) => f.key === k),
+                        row.values[k],
+                      )}
+                    </button>
+                  ) : k === "status" ? (
+                    <span
+                      className={`badge ${row.values[k] === "Active" ? "success" : ""}`}
+                    >
+                      {displayFieldValue(
+                        fields.find((f) => f.key === k),
+                        row.values[k],
+                      )}
+                    </span>
+                  ) : (
+                    <span className="cell-value">
+                      {displayFieldValue(
+                        fields.find((f) => f.key === k),
+                        row.values[k],
+                      )}
+                    </span>
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {!rows.length && (
+        <div className="empty">
+          <strong>No employees match</strong>
+          <p>Adjust your filters or add an authorized employee.</p>
+        </div>
+      )}
+    </div>
+  );
+}
