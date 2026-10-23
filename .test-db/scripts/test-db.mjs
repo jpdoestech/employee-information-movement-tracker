@@ -245,6 +245,9 @@ try {
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
+  if (process.env.TEST_RBAC_ONLY === "true") {
+    await testPermissionMatrix({ owner, test, m, q, as, id, revision });
+  } else {
   await test("create profiles allocates permanent IDs and atomic outbox", async () => {
     const initialOutbox = Number((await owner.query("select count(*) n from public.sync_outbox")).rows[0].n);
     e1 = (
@@ -3346,6 +3349,7 @@ try {
   await testEmergencyAddress({ owner, test, m, q, revision, id, today });
   await testPasswordReceipts({ owner, test, as, id });
   await testPermissionMatrix({ owner, test, m, q, as, id, revision });
+  }
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
     ".test-db/reports/verification/database.json",

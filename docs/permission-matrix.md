@@ -57,7 +57,10 @@ drafts are excluded. Inspection and administration remain Superadmin-only.
 
 1. Apply all existing migrations through `20261023014601_account_password.sql`.
 2. Apply `20261023024633_rbac_matrix.sql` before the new frontend.
-3. Deploy the frontend and verify Superadmin and ordinary-user flows.
+3. Apply `20261023033903_matrix_review_coverage.sql` so module/role changes and
+   scope removals review every affected placement, independent of the field
+   editor's selected scope.
+4. Deploy the frontend and verify Superadmin and ordinary-user flows.
 
 The migration adds private catalog, role membership, override, record-rule and
 reporting tables. It does not rewrite profiles, capabilities, organization grants,

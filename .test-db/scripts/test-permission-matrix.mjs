@@ -238,6 +238,18 @@ export async function testPermissionMatrix({
       ],
     });
   });
+  await test("matrix reviews module restorations and scope revocations beyond the selected placement", async () => {
+    const sensitive = (await owner.query("select id,key from public.field_definitions where sensitivity='restricted' and active order by key limit 1")).rows[0];
+    await m(id.sa, "policy", { user_id: user, field_id: sensitive.id, action: "R", effect: "allow", reason: "Synthetic explicit restricted allow" });
+    await saved({ modules: [{ module: "employees", action: "view", effect: "deny" }] });
+    const preview = p => as(id.sa, c => c.query("select public.access_change_preview('access_matrix',$1) r", [{ user_id: user, reason: "Synthetic complete impact review", ...p }]).then(r => r.rows[0].r));
+    const restored = await preview({ scope_type: "branch", scope_id: id.b1, modules: [{ module: "employees", action: "view", effect: "inherit" }] });
+    assert(restored.changes.some(c => c.key === sensitive.key && c.action === "R" && c.after && c.restricted && c.target_id === outsideBranch));
+    await saved({ modules: [{ module: "employees", action: "view", effect: "inherit" }] });
+    const grant = (await owner.query("select id from public.user_scope_grants where user_id=$1 and scope_type='all'", [user])).rows[0];
+    const revoked = await preview({ scope_type: "branch", scope_id: id.b1, revoke_scopes: [grant.id] });
+    assert(revoked.changes.some(c => c.target_id === outsideBranch && c.action === "R" && c.before && !c.after));
+  });
   await test("matrix trusted Administrator retains complete applicable access", async () => {
     await saved({
       user_id: id.sa,
