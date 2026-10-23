@@ -121,6 +121,19 @@ record fences or reversing deny precedence requires a reviewed forward migration
 
 ## Performance and validation
 
+Apply `20261023133957_target_field_loading.sql` after the employee-profile loading
+migration, before publishing its frontend. `target_fields` keeps its JSON contract,
+defaults, applicability and ACLs, but computes the shared field policy grid once
+per request. Older clients remain compatible; a frontend rollback may retain it.
+To reverse the database optimization, restore the previous `target_fields`
+definition from `20261012000700_client_entry_settings.sql` in a forward migration.
+
+New employee forms wait for the current organization's verified field list instead
+of temporarily rendering the union from the context catalog. Switching organization,
+principal, permission revision or business date invalidates the displayed list
+immediately. Pending/failed checks disable Save; read retries preserve the draft.
+Empty groups do not generate tabs, and restricted fields still need explicit grants.
+
 Before this change, the ordinary user's production context request measured
 2594 ms versus 453 ms for Superadmin on two employees and 49 fields. The context
 path repeatedly rebuilt the field catalog. The shared relational evaluator now

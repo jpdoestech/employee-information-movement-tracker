@@ -15,7 +15,6 @@ IDs/codes/dates/financial amounts use the default monospace stack equivalent;
 counts, display ordinals and generic numeric fields retain the UI stack.
 Table sizing measures authorized displayed content with the same typography.
 
-
 Verified live main on 2026-10-10 (Asia/Manila): coop-sys `54bbf05cc9211a603a011051803e5de44a815319`; hr-management `99a28c937f16c8f582649ea8c89370ff00cb032d`. Snapshots cloned under Codex temporary storage; reference checkouts were never edited. User also permits relevant read-only inspection at `C:/Users/USER/Documents/GitHub/coop-sys` and `C:/Users/USER/Documents/GitHub/hr-management`.
 
 Inspected coop-sys paths:
@@ -141,3 +140,5 @@ Main visual styling follows the installed `ui-styling` skill. Field type icons s
 Data-list search, filters and page actions share one stationary toolbar row, following AMS. Keep compact desktop controls and 44px touch targets; narrow screens scroll the toolbar horizontally without creating page-level overflow. Dropdowns remain viewport-bound, and pagination stays below the data region.
 
 All current and future data tables keep column headers sticky at the top of their bounded data scroll region, including permission matrices and modal tables. The table region owns both scroll axes; do not put an unbounded horizontal overflow wrapper between sticky headers and the vertical scroller. Row headers scroll vertically with their records; pinned identity cells remain fixed horizontally. Keep the header/pinned-column intersection above both layers with an opaque semantic surface.
+
+Search suggestions must remain attached to their input as results grow, shrink or become empty. Anchor upward lists by their bottom edge, never by subtracting a maximum height from the input position. Use `LocationSearch` for all address levels and `SearchFilterPicker` for organization, employee, field and choice searches; do not add independent positioning implementations. Keep panels within the visual viewport, including keyboard resize and scroll. Shared picker panels on narrow screens and nested pickers inside toolbar editors retain their existing bounded surfaces. Verify both opening directions, scrolling, keyboard dismissal and short result lists.

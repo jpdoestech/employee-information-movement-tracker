@@ -64,6 +64,51 @@ for (const [width, height] of [
       page.getByRole("button", { name: "Branches", exact: true }),
     ).toHaveAttribute("aria-expanded", "false");
   });
+for (const height of [520, 768])
+  test(`form choice search stays attached as results shrink at ${height}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1366, height });
+    await enter(page);
+    await page
+      .getByRole("button", { name: "Add employee", exact: true })
+      .click();
+    const editor = page.getByRole("dialog", {
+      name: "New employee",
+      exact: true,
+    });
+    await editor
+      .getByRole("tab", { name: "Employment Details", exact: true })
+      .click();
+    const trigger = editor.getByRole("button", {
+      name: "Employment Status",
+      exact: true,
+    });
+    await trigger.evaluate((el) => el.scrollIntoView({ block: "end" }));
+    await trigger.click();
+    const picker = page.getByRole("dialog", {
+      name: "Employment Status options",
+      exact: true,
+    });
+    const search = picker.getByRole("combobox");
+    for (const word of ["Inactive", "No matching option"]) {
+      await search.fill(word);
+      await expect(picker.getByRole("option")).toHaveCount(
+        word === "Inactive" ? 1 : 0,
+      );
+      const anchor = (await trigger.boundingBox())!,
+        bounds = (await picker.boundingBox())!;
+      expect(
+        Math.abs(anchor.y - bounds.y - bounds.height - 6),
+      ).toBeLessThanOrEqual(1);
+      expect(bounds.y).toBeGreaterThanOrEqual(0);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(height);
+    }
+    await search.press("Escape");
+    await expect(picker).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
 test("single picker mixes clients with branches and applies IDs", async ({
   page,
 }) => {

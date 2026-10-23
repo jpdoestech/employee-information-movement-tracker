@@ -104,17 +104,13 @@ test("unconfirmed typed text blocks saving and Escape closes only suggestions", 
   await expect(
     home.getByText("Choose a province from the official list."),
   ).toBeVisible();
-  await expect(
-    dialog.getByRole("button", { name: "Save" }),
-  ).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Save" })).toBeDisabled();
   await input.focus();
   await input.press("Escape");
   await expect(page.getByRole("listbox")).toHaveCount(0);
   await expect(dialog).toBeVisible();
   await input.fill("");
-  await expect(
-    dialog.getByRole("button", { name: "Save" }),
-  ).toBeEnabled();
+  await expect(dialog.getByRole("button", { name: "Save" })).toBeEnabled();
 });
 test("load failure supports retry without retyping and stale searches cannot replace results", async ({
   page,
@@ -221,6 +217,69 @@ test("addresses and emergency contact save through confirmation and edit existin
       .getByLabel("Street / building", { exact: true }),
   ).toHaveValue("Current Test Street");
 });
+for (const editing of [false, true])
+  for (const [width, height] of [
+    [375, 740],
+    [768, 1024],
+    [1366, 768],
+    [812, 375],
+  ]) {
+    test(`address results stay attached to the input as they shrink in ${editing ? "update" : "create"} at ${width}x${height}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      let dialog = await editor(page);
+      if (editing) {
+        await dialog
+          .getByRole("button", { name: "Close dialog", exact: true })
+          .click();
+        await page.getByRole("button", { name: /^EMP-/ }).first().click();
+        dialog = page.getByRole("dialog", {
+          name: "Employee profile",
+          exact: true,
+        });
+        await dialog
+          .getByRole("button", { name: "Edit details", exact: true })
+          .click();
+      }
+      const input = dialog
+        .getByRole("group", { name: "Home Address", exact: true })
+        .getByRole("combobox", { name: "Barangay", exact: true });
+      await input.evaluate((el) => el.scrollIntoView({ block: "end" }));
+      await input.fill("Agdao");
+      const list = page.getByRole("listbox", {
+        name: "Barangay suggestions",
+        exact: true,
+      });
+      await expect(list.getByRole("option")).toHaveCount(3);
+      async function attached() {
+        const anchor = (await input.boundingBox())!;
+        const bounds = (await list.boundingBox())!;
+        const gap =
+          width === 768
+            ? bounds.y - anchor.y - anchor.height
+            : anchor.y - bounds.y - bounds.height;
+        expect(Math.abs(gap - 4)).toBeLessThanOrEqual(1);
+        expect(bounds.y).toBeGreaterThanOrEqual(0);
+        expect(bounds.x).toBeGreaterThanOrEqual(0);
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      }
+      await attached();
+      await page.screenshot({
+        path: `.test-db/reports/release/address-anchored-${editing ? "update" : "create"}-${width}.png`,
+      });
+      await input.fill("NoMatchingBarangay");
+      await expect(
+        list.getByText("No matching locations.", { exact: true }),
+      ).toBeVisible();
+      await attached();
+      await input.press("Escape");
+      await expect(list).toHaveCount(0);
+      await expect(dialog).toBeVisible();
+    });
+  }
+
 for (const [width, height] of [
   [320, 740],
   [768, 1024],

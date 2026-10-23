@@ -1,5 +1,5 @@
 import { Search, MapPin } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
   cities,
@@ -73,7 +73,7 @@ function LocationSearch({
   const [query, setQuery] = useState(value),
     [open, setOpen] = useState(false),
     [invalid, setInvalid] = useState(false);
-  const [position, setPosition] = useState({
+  const [position, setPosition] = useState<CSSProperties>({
     left: 0,
     top: 0,
     width: 0,
@@ -98,14 +98,23 @@ function LocationSearch({
     if (!open || disabled) return;
     const place = () => {
       const box = input.current!.getBoundingClientRect(),
-        width = Math.min(Math.max(box.width, 280), innerWidth - 24);
-      const below = innerHeight - box.bottom - 12,
-        above = box.top - 12;
+        viewport = window.visualViewport,
+        viewportWidth = viewport?.width || innerWidth,
+        viewportHeight = viewport?.height || innerHeight,
+        viewportLeft = viewport?.offsetLeft || 0,
+        viewportTop = viewport?.offsetTop || 0,
+        width = Math.min(Math.max(box.width, 280), viewportWidth - 24);
+      const below = viewportTop + viewportHeight - box.bottom - 12,
+        above = box.top - viewportTop - 12;
       const down = below >= 180 || below >= above,
-        maxHeight = Math.min(300, Math.max(80, down ? below : above));
+        maxHeight = Math.max(0, Math.min(300, down ? below : above));
       setPosition({
-        left: Math.min(Math.max(12, box.left), innerWidth - width - 12),
-        top: down ? box.bottom + 4 : Math.max(12, box.top - maxHeight - 4),
+        left: Math.min(
+          Math.max(viewportLeft + 12, box.left),
+          viewportLeft + viewportWidth - width - 12,
+        ),
+        top: down ? box.bottom + 4 : undefined,
+        bottom: down ? undefined : innerHeight - box.top + 4,
         width,
         maxHeight,
       });
@@ -113,6 +122,8 @@ function LocationSearch({
     place();
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
+    window.visualViewport?.addEventListener("resize", place);
+    window.visualViewport?.addEventListener("scroll", place);
     const outside = (event: PointerEvent) => {
       if (
         !input.current?.contains(event.target as Node) &&
@@ -124,6 +135,8 @@ function LocationSearch({
     return () => {
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
+      window.visualViewport?.removeEventListener("resize", place);
+      window.visualViewport?.removeEventListener("scroll", place);
       document.removeEventListener("pointerdown", outside);
     };
   }, [open, disabled]);

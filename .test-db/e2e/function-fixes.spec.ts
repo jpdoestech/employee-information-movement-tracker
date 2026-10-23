@@ -30,6 +30,9 @@ async function connected(page: Page) {
     historyReads: 0,
     historyGate: null as Promise<void> | null,
     failHistory: false,
+    targetReads: [] as any[],
+    targetGates: {} as Record<string, Promise<void>>,
+    failTarget: false,
   };
   const employee = () => ({
     id: user.id,
@@ -47,6 +50,19 @@ async function connected(page: Page) {
     if (request.url().includes("/auth/v1/user"))
       return route.fulfill({ json: user });
     const body = request.method() === "POST" ? request.postDataJSON() : {};
+    if (request.url().includes("/target_fields")) {
+      const target = body.q.client_id || body.q.branch_id || "unassigned";
+      state.targetReads.push(target);
+      await state.targetGates[target];
+      if (state.failTarget)
+        return route.fulfill({
+          status: 403,
+          json: { message: "Field access unavailable" },
+        });
+      return route.fulfill({
+        json: target === "unassigned" ? [] : context.fields,
+      });
+    }
     if (body.operation === "employee") state.employeeReads.push(body.q);
     if (body.operation === "employee_history") {
       state.historyReads++;
@@ -115,13 +131,19 @@ async function connected(page: Page) {
         ? { ...context, today: state.day, revision: state.revision }
         : body.operation === "options"
           ? [
-              { id: "branch-one", label: "North", kind: "branch" },
+              {
+                id: "branch-one",
+                label: "North",
+                kind: "branch",
+                active: true,
+              },
               {
                 id: "client-one",
                 label: "Client One",
                 kind: "client",
                 branch_id: "branch-one",
                 context: "North",
+                active: true,
               },
             ]
           : body.operation === "employees"
@@ -176,6 +198,108 @@ async function connected(page: Page) {
   await expect(page.locator(".stats .stat strong").first()).toHaveText("1");
   return state;
 }
+
+test("new employee waits for current organization permissions without flashing general or stale inputs", async ({
+  page,
+}) => {
+  const state = await connected(page);
+  let releaseInitial!: () => void;
+  state.targetGates.unassigned = new Promise<void>((resolve) => {
+    releaseInitial = resolve;
+  });
+  await page.goto("/#employees");
+  await page.getByRole("button", { name: "Add employee", exact: true }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "New employee",
+    exact: true,
+  });
+  const lastName = dialog.getByLabel("Last Name *", { exact: true });
+  await expect.poll(() => state.targetReads.length).toBeGreaterThan(0);
+  await expect(lastName).toHaveCount(0);
+  await expect(dialog.getByRole("status")).toContainText("Checking fields");
+  releaseInitial();
+  await expect(
+    dialog.getByText(
+      "Choose an authorized branch or client to enter employee details.",
+    ),
+  ).toBeVisible();
+  await expect(lastName).toHaveCount(0);
+  async function choose(name: string) {
+    await dialog
+      .getByRole("button", { name: "Initial organization", exact: true })
+      .click();
+    await page
+      .getByRole("dialog", {
+        name: "Initial organization options",
+        exact: true,
+      })
+      .getByRole("option", { name: new RegExp(`^${name}(?:\\s|$)`) })
+      .click();
+  }
+  let releaseBranch!: () => void;
+  state.targetGates["branch-one"] = new Promise<void>((resolve) => {
+    releaseBranch = resolve;
+  });
+  await choose("North");
+  await expect(lastName).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "Save", exact: true }),
+  ).toBeDisabled();
+  releaseBranch();
+  await expect(lastName).toBeVisible();
+  await lastName.fill("Preserved draft");
+  state.failTarget = true;
+  await choose("Client One");
+  await expect(lastName).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "Retry field access", exact: true }),
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Save", exact: true }),
+  ).toBeDisabled();
+  state.failTarget = false;
+  await dialog
+    .getByRole("button", { name: "Retry field access", exact: true })
+    .click();
+  await expect(lastName).toHaveValue("Preserved draft");
+  expect(state.writes).toHaveLength(0);
+  await page.screenshot({
+    path: ".test-db/reports/release/organization-fields-ready.png",
+  });
+});
+
+test("a late organization response cannot replace the current selection's fields", async ({
+  page,
+}) => {
+  const state = await connected(page);
+  let releaseInitial!: () => void;
+  state.targetGates.unassigned = new Promise<void>((resolve) => {
+    releaseInitial = resolve;
+  });
+  await page.goto("/#employees");
+  await page.getByRole("button", { name: "Add employee", exact: true }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "New employee",
+    exact: true,
+  });
+  await expect.poll(() => state.targetReads.length).toBeGreaterThan(0);
+  await dialog
+    .getByRole("button", { name: "Initial organization", exact: true })
+    .click();
+  await page
+    .getByRole("dialog", { name: "Initial organization options", exact: true })
+    .getByRole("option", { name: "North", exact: true })
+    .click();
+  const lastName = dialog.getByLabel("Last Name *", { exact: true });
+  await expect(lastName).toBeVisible();
+  await lastName.fill("Current target");
+  releaseInitial();
+  await expect(
+    dialog.getByText("Checking fields for the selected organization…"),
+  ).toHaveCount(0);
+  await expect(lastName).toHaveValue("Current target");
+  expect(state.writes).toHaveLength(0);
+});
 
 test("employee overview does not wait for history and history is reused only inside the dialog", async ({
   page,

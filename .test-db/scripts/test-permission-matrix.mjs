@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
+import { readFile } from "node:fs/promises";
 
 export async function testPermissionMatrix({
   owner,
@@ -431,6 +432,48 @@ export async function testPermissionMatrix({
       }),
       { code: "42501" },
     );
+  });
+  await test("target fields reuse the shared permission grid without changing scope, restricted fields or client defaults", async () => {
+    const source = await readFile("supabase/migrations/20261012000700_client_entry_settings.sql", "utf8");
+    const legacy = source.slice(source.indexOf("create or replace function public.target_fields"), source.indexOf("create function public.filter_values"));
+    await owner.query(legacy.replace("public.target_fields", "app_private.target_fields_loading_baseline"));
+    await owner.query("revoke all on function app_private.target_fields_loading_baseline(jsonb) from public,anon,authenticated");
+    const priorSettings = (await owner.query("select default_values from public.client_entry_settings where client_id=$1",[id.c1])).rows[0];
+    await owner.query("insert into public.client_entry_settings(client_id,default_values) values($1,'{\"phone\":\"09123456789\"}') on conflict(client_id) do update set default_values=public.client_entry_settings.default_values||excluded.default_values",[id.c1]);
+    const normalize = (fields) => fields.sort((a,b) => a.key.localeCompare(b.key));
+    try {
+      for (const who of [id.sa,user]) for (const target of [
+        { target_level: "branch", branch_id: id.b1 },
+        { target_level: "client", branch_id: id.b1, client_id: id.c1 },
+        { target_level: "head_office" },
+        { target_level: "unassigned" },
+      ]) {
+        const start = performance.now();
+        const expected = await as(who,c => c.query("select app_private.target_fields_loading_baseline($1) r", [target]).then(r => r.rows[0].r),"postgres");
+        const legacyMs = performance.now()-start;
+        const next = performance.now();
+        const actual = await rpc(who,"target_fields",target);
+        const optimizedMs = performance.now()-next;
+        assert.deepEqual(normalize(actual), normalize(expected));
+        if (target.target_level==='client') {
+          if (who===id.sa) assert.equal(actual.find(f=>f.key==='phone')?.default_value,'09123456789');
+          else assert.notEqual(actual.find(f=>f.key==='phone')?.default_value,'09123456789');
+        }
+        if (who===user && target.target_level==='branch') {
+          assert(optimizedMs < legacyMs, `Target fields ${optimizedMs}ms versus legacy ${legacyMs}ms`);
+          console.log(`Target fields ordinary Admin: ${Math.round(legacyMs)}ms -> ${Math.round(optimizedMs)}ms; exact authorized output preserved`);
+        }
+      }
+      await owner.query("update public.user_profiles set active=false where id=$1",[user]);
+      assert.deepEqual(await rpc(user,"target_fields",{target_level:"branch",branch_id:id.b1}),[]);
+    } finally {
+      await owner.query("update public.user_profiles set active=true where id=$1",[user]);
+      await owner.query("drop function app_private.target_fields_loading_baseline(jsonb)");
+      if (priorSettings) await owner.query("update public.client_entry_settings set default_values=$2 where client_id=$1",[id.c1,priorSettings.default_values]);
+      else await owner.query("delete from public.client_entry_settings where client_id=$1",[id.c1]);
+    }
+    const acl = (await owner.query("select has_function_privilege('anon','public.target_fields(jsonb)','EXECUTE') anon,has_function_privilege('authenticated','public.target_fields(jsonb)','EXECUTE') authenticated")).rows[0];
+    assert.deepEqual(acl,{anon:false,authenticated:true});
   });
   await test("matrix ordinary-user context catalog matches the shared evaluator with bounded latency", async () => {
     const start = performance.now(),

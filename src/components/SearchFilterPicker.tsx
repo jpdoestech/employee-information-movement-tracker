@@ -152,7 +152,7 @@ export function SearchFilterPicker({
               left: Math.max(left + 8, Math.min(r.left, left + w - width - 8)),
               top: up ? undefined : Math.max(top + 8, r.bottom + 6),
               bottom: up ? innerHeight - r.top + 6 : undefined,
-              maxHeight: Math.max(240, Math.min(420, up ? above : below)),
+              maxHeight: Math.max(0, Math.min(420, up ? above : below)),
             },
       );
     }
@@ -169,11 +169,13 @@ export function SearchFilterPicker({
     window.addEventListener("resize", locate);
     window.addEventListener("scroll", locate, true);
     window.visualViewport?.addEventListener("resize", locate);
+    window.visualViewport?.addEventListener("scroll", locate);
     return () => {
       document.removeEventListener("pointerdown", outside);
       window.removeEventListener("resize", locate);
       window.removeEventListener("scroll", locate, true);
       window.visualViewport?.removeEventListener("resize", locate);
+      window.visualViewport?.removeEventListener("scroll", locate);
     };
   }, [open, surface]);
   useEffect(() => {

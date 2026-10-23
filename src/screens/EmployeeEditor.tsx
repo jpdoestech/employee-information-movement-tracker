@@ -86,12 +86,22 @@ export function EmployeeEditor({
     [history, setHistory] = useState<any>(),
     [historyError, setHistoryError] = useState(""),
     [historyRetry, setHistoryRetry] = useState(0),
-    [fields, setFields] = useState(context.fields),
+    [recordFields, setFields] = useState(context.fields),
+    [targetFields, setTargetFields] = useState<{
+      key: string;
+      fields: Field[];
+      error?: string;
+    }>(),
+    [targetRetry, setTargetRetry] = useState(0),
     [target, setTarget] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [addressValid, setAddressValid] = useState<Record<string, boolean>>({}),
     [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
+  const targetKey = `${context.profile.id}:${context.revision}:${context.today}:${target}`;
+  const targetSettled = targetFields?.key === targetKey;
+  const targetReady = targetSettled && !targetFields.error;
+  const fields = row ? recordFields : targetReady ? targetFields.fields : [];
   const dirtyDraft = useRef(false);
   dirtyDraft.current =
     Object.keys(changed).length > 0 ||
@@ -134,22 +144,25 @@ export function EmployeeEditor({
         });
     } else {
       const o = options.find((o) => o.id === target);
-      query<Field[]>("target_fields", {
-        target_level: o?.kind || "unassigned",
-        branch_id: o?.kind === "branch" ? o.id : o?.branch_id,
-        client_id: o?.kind === "client" ? o.id : undefined,
-      })
+      void trackTransaction("Checking employee fields", () =>
+        query<Field[]>("target_fields", {
+          target_level: o?.kind || "unassigned",
+          branch_id: o?.kind === "branch" ? o.id : o?.branch_id,
+          client_id: o?.kind === "client" ? o.id : undefined,
+        }),
+      )
         .then((f) => {
-          if (active) setFields(f);
+          if (active) setTargetFields({ key: targetKey, fields: f });
         })
         .catch((e) => {
-          if (active) setError(e.message);
+          if (active)
+            setTargetFields({ key: targetKey, fields: [], error: e.message });
         });
     }
     return () => {
       active = false;
     };
-  }, [row?.id, context.revision, context.today, context.profile.id, target]);
+  }, [row?.id, targetKey, targetRetry]);
   const editable = fields.filter(
     (f) =>
       f.active &&
@@ -410,6 +423,7 @@ export function EmployeeEditor({
     }
   }
   async function save(changeKind?: "official" | "correction") {
+    if (!row && (!targetReady || !editable.length)) return;
     setError("");
     setBusy(true);
     try {
@@ -687,6 +701,30 @@ export function EmployeeEditor({
               value={target ? [target] : []}
               onChange={(v) => setTarget(v[0] || "")}
             />
+          )}
+          {!row && !targetSettled && (
+            <p className="muted" role="status">
+              Checking fields for the selected organization…
+            </p>
+          )}
+          {!row && targetSettled && targetFields.error && (
+            <>
+              <FloatingNotification>{targetFields.error}</FloatingNotification>
+              <button
+                type="button"
+                onClick={() => {
+                  setTargetFields(undefined);
+                  setTargetRetry((n) => n + 1);
+                }}
+              >
+                Retry field access
+              </button>
+            </>
+          )}
+          {!row && targetReady && !editable.length && (
+            <p className="muted">
+              Choose an authorized branch or client to enter employee details.
+            </p>
           )}
           {!row && initialClient && !idConfig.mode && !idConfig.error && (
             <FloatingNotification kind="loading">
@@ -1222,6 +1260,7 @@ export function EmployeeEditor({
             className="primary"
             disabled={
               busy ||
+              (!row && (!targetReady || !editable.length)) ||
               (!row && !!initialClient && !idConfig.mode) ||
               !Object.keys(changed).length ||
               Object.values(addressValid).includes(false)
