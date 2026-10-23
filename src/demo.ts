@@ -9,6 +9,7 @@ import { requiredForEdit } from "./governmentIds";
 import {
   addressDefinitions,
   addressKeys,
+  addressPrefixes,
   addressValue,
 } from "./address/addressFields";
 import { addressValidationError } from "./address/addressService";
@@ -459,7 +460,7 @@ for (const f of fields) {
     ].includes(f.key)
   )
     f.form_group_id = "employment";
-  if (f.key.startsWith("emergency_contact_")) f.form_group_id = "emergency";
+  if (f.key.startsWith("emergency_")) f.form_group_id = "emergency";
   f.group_name =
     context.groups.find((g) => g.id === f.group_id)?.name || f.group_name;
 }
@@ -902,7 +903,7 @@ export async function demoMutate(op: string, p: any) {
       }
     }
     if (op === "employee_create") {
-      for (const prefix of ["", "current_"]) {
+      for (const prefix of addressPrefixes) {
         const problem = await addressValidationError(
           addressValue(p.values ?? {}, prefix),
         );
@@ -987,7 +988,7 @@ export async function demoMutate(op: string, p: any) {
           throw new Error(
             "Edit the separate name fields to change a structured employee name",
           );
-        for (const prefix of ["", "current_"])
+        for (const prefix of addressPrefixes)
           if (
             addressKeys.some((key) =>
               Object.hasOwn(p.values ?? {}, prefix + key),

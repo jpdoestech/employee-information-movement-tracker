@@ -52,3 +52,9 @@ Separated. Legacy Resigned/Terminated statuses are displayed as Separated.
 Missing, invalid, reversed or future cutoff dates show an em dash. Derived
 service requires Read access to its source fields on existing employees and does
 not expose a denied effective date or status through the calculation.
+Personal Information retains independent Home and Current Address fields. Emergency
+Information also has its own Emergency Address (street/building, province,
+city/municipality, barangay and postal code), using the same authorized address
+picker and official hierarchy validation. New emergency values start empty;
+existing addresses and field permissions are preserved. Denied address parts are
+omitted from the overview and server projections.

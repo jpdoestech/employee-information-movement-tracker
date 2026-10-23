@@ -217,8 +217,11 @@ export default function App() {
         sessionStorage.setItem("eimt-password-recovery", "true");
         setAuthMode("recovery");
       }
-      if (event === "SIGNED_OUT")
+      if (event === "SIGNED_OUT") {
         sessionStorage.removeItem("eimt-password-recovery");
+        setEmail("");
+        setPassword("");
+      }
       setAuthenticated(!!session || isDemo());
       if (!session && !isDemo()) {
         setCtx(undefined);

@@ -1,3 +1,4 @@
+import { addressPrefixes, addressLabels } from "../address/addressFields";
 import { useEffect, useState, type ReactNode } from "react";
 import { Eye, EyeOff, Pencil } from "lucide-react";
 import type { Context, Field } from "../domain";
@@ -61,7 +62,7 @@ export function EmployeeOverview({
   function add(groupId: string, entry: Entry) {
     entries.set(groupId, [...(entries.get(groupId) || []), entry]);
   }
-  for (const prefix of ["", "current_"]) {
+  for (const prefix of addressPrefixes) {
     const addressFields = [
       "address",
       "barangay",
@@ -79,7 +80,7 @@ export function EmployeeOverview({
       .join(", ");
     add(group, {
       key: prefix + "summary-address",
-      label: prefix ? "Current Address" : "Home Address",
+      label: addressLabels[prefix],
       value: text || "—",
       wide: true,
     });

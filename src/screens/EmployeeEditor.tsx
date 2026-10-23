@@ -33,6 +33,8 @@ import {
 } from "lucide-react";
 import {
   addressKeys,
+  addressPrefixes,
+  addressLabels,
   addressValue,
   addressAccess,
   relationshipOptions,
@@ -155,9 +157,7 @@ export function EmployeeEditor({
       f.actions.includes(row ? "U" : "C"),
   );
   const addressFieldKeys = new Set(
-    ["", "current_"].flatMap((prefix) =>
-      addressKeys.map((key) => prefix + key),
-    ),
+    addressPrefixes.flatMap((prefix) => addressKeys.map((key) => prefix + key)),
   );
   const defaults = row
     ? {}
@@ -419,7 +419,7 @@ export function EmployeeEditor({
         }
       }
       const problems: Record<string, string> = {};
-      for (const prefix of ["", "current_"]) {
+      for (const prefix of addressPrefixes) {
         if (!addressKeys.some((key) => Object.hasOwn(changed, prefix + key)))
           continue;
         const hierarchy = ["province", "city_municipality", "barangay"];
@@ -1007,7 +1007,7 @@ export function EmployeeEditor({
                                 ))}
                             </div>
                           </fieldset>
-                          {["", "current_"].map((prefix) => {
+                          {addressPrefixes.map((prefix) => {
                             const access = addressAccess(fields, !!row, prefix);
                             for (const key of addressKeys) {
                               access[key].visible =
@@ -1035,9 +1035,7 @@ export function EmployeeEditor({
                               return null;
                             return (
                               <fieldset key={prefix || "home"}>
-                                <legend>
-                                  {prefix ? "Current Address" : "Home Address"}
-                                </legend>
+                                <legend>{addressLabels[prefix]}</legend>
                                 <AddressFields
                                   value={addressValue(draft, prefix)}
                                   access={access}

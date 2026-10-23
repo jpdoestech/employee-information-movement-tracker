@@ -112,5 +112,35 @@
       "Neighbor",
       "Other"
     ]
+  },
+  {
+    "key": "emergency_address",
+    "label": "Emergency Street / building",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "emergency_province",
+    "label": "Emergency Province",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "emergency_city_municipality",
+    "label": "Emergency City / municipality",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "emergency_barangay",
+    "label": "Emergency Barangay",
+    "type": "short_text",
+    "options": []
+  },
+  {
+    "key": "emergency_postal_code",
+    "label": "Emergency Postal code",
+    "type": "short_text",
+    "options": []
   }
 ]

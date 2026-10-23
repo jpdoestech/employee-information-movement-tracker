@@ -1,5 +1,11 @@
 import defaults from "./defaultFields.json";
 import type { Field } from "../domain";
+export const addressPrefixes = ["", "current_", "emergency_"] as const;
+export const addressLabels = {
+  "": "Home Address",
+  current_: "Current Address",
+  emergency_: "Emergency Address",
+};
 export const addressKeys = [
   "address",
   "province",

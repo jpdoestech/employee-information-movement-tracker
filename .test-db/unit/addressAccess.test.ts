@@ -91,8 +91,12 @@ describe("address column permissions", () => {
     expect(html.match(/disabled=""/g)?.length).toBe(2);
   });
   it("default definitions keep original storage names and comprehensive emergency relationships", () => {
-    expect(addressDefinitions).toHaveLength(13);
+    expect(addressDefinitions).toHaveLength(18);
     expect(addressDefinitions.some((f) => f.key === "region")).toBe(false);
+    expect(
+      addressAccess([field("emergency_address", ["R"])], true, "emergency_")
+        .address,
+    ).toMatchObject({ visible: true, write: false, clear: false });
     expect(relationshipOptions).toEqual(
       expect.arrayContaining([
         "Guardian",
