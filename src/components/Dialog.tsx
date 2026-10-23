@@ -8,6 +8,7 @@ export function Dialog({
   wide = false,
   className = "",
   isDirty,
+  closeDisabled = false,
 }: {
   title: string;
   onClose: () => void;
@@ -15,12 +16,13 @@ export function Dialog({
   wide?: boolean;
   className?: string;
   isDirty?: boolean;
+  closeDisabled?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const dirty = useRef(false),
     closing = useRef(false);
   async function close() {
-    if (closing.current) return;
+    if (closing.current || closeDisabled) return;
     closing.current = true;
     if (
       !(isDirty ?? dirty.current) ||
@@ -87,6 +89,7 @@ export function Dialog({
         <button
           type="button"
           aria-label="Close dialog"
+          disabled={closeDisabled}
           onClick={() => void close()}
         >
           <X size={20} />

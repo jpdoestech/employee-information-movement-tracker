@@ -73,18 +73,24 @@ export function EmployeeOverview({
       .map((key) => readable.find((f) => f.key === prefix + key))
       .filter((f): f is Field => !!f);
     if (!addressFields.length) continue;
-    const group = addressFields[0].form_group_id || addressFields[0].group_id;
-    const text = addressFields
-      .map((f) => values[f.key])
-      .filter((v) => typeof v === "string" && v.trim())
-      .join(", ");
-    add(group, {
-      key: prefix + "summary-address",
-      label: addressLabels[prefix],
-      value: text || "—",
-      wide: true,
-    });
-    addressFields.forEach((f) => used.add(f.key));
+    for (const group of new Set(
+      addressFields.map((f) => f.form_group_id || f.group_id),
+    )) {
+      const sectionFields = addressFields.filter(
+        (f) => (f.form_group_id || f.group_id) === group,
+      );
+      const text = sectionFields
+        .map((f) => values[f.key])
+        .filter((v) => typeof v === "string" && v.trim())
+        .join(", ");
+      add(group, {
+        key: prefix + "summary-address",
+        label: addressLabels[prefix],
+        value: text || "—",
+        wide: true,
+      });
+      sectionFields.forEach((f) => used.add(f.key));
+    }
   }
   for (const f of readable) {
     if (used.has(f.key)) continue;

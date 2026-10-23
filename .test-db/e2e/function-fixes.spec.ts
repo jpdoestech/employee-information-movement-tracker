@@ -199,6 +199,132 @@ async function connected(page: Page) {
   return state;
 }
 
+for (const editing of [false, true])
+  test(`employee ${editing ? "update" : "create"} locks the draft through validation and save, and preserves it after cancellation and failure`, async ({
+    page,
+  }) => {
+    await connected(page);
+    let release!: () => void;
+    let pending = false;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const sent: any[] = [];
+    await page.route("**/rest/v1/rpc/employee_duplicates", async (route) => {
+      pending = true;
+      await gate;
+      await route.fulfill({ json: { total: 0, items: [] } });
+    });
+    await page.route("**/rest/v1/rpc/tracker_mutate", async (route) => {
+      sent.push(route.request().postDataJSON());
+      await route.fulfill(
+        sent.length === 1
+          ? { status: 503, json: { message: "Save temporarily unavailable" } }
+          : { json: { id: "synthetic-created" } },
+      );
+    });
+    await page.goto("/#employees");
+    await page
+      .getByRole("button", {
+        name: editing ? "EMP-00001" : "Add employee",
+        exact: true,
+      })
+      .click();
+    const dialog = page.getByRole("dialog", {
+      name: editing ? "Employee profile" : "New employee",
+      exact: true,
+    });
+    if (editing)
+      await dialog
+        .getByRole("button", { name: "Edit details", exact: true })
+        .click();
+    else {
+      await dialog
+        .getByRole("button", { name: "Initial organization", exact: true })
+        .click();
+      await page
+        .getByRole("dialog", {
+          name: "Initial organization options",
+          exact: true,
+        })
+        .getByRole("option", { name: "North", exact: true })
+        .click();
+    }
+    await dialog
+      .getByRole("textbox", { name: /^Last Name(?: \*)?$/ })
+      .fill("Audit");
+    await dialog
+      .getByRole("textbox", { name: /^First Name(?: \*)?$/ })
+      .fill("Draft");
+    const phone = dialog.getByLabel("Mobile", { exact: true });
+    await phone.fill("09123456789");
+    await expect(
+      dialog.getByRole("group", {
+        name: "Personal Information / Emergency Information",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole("group", { name: "Emergency Address", exact: true }),
+    ).toBeVisible();
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await expect.poll(() => pending).toBe(true);
+    await expect(phone).toBeDisabled();
+    await expect(
+      dialog.getByRole("button", { name: "Clear Mobile", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      dialog.getByRole("button", { name: "Close dialog", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      dialog.getByRole("button", { name: "Cancel", exact: true }),
+    ).toBeDisabled();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeVisible();
+    await expect(
+      page.getByRole("dialog", {
+        name: "Discard unsaved changes?",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    if (!editing)
+      await expect(
+        dialog.getByRole("button", {
+          name: "Initial organization",
+          exact: true,
+        }),
+      ).toBeDisabled();
+    release();
+    const confirmation = page.getByRole("dialog", {
+      name: editing ? "Save employee changes" : "Create employee",
+      exact: true,
+    });
+    await confirmation
+      .getByRole("button", { name: "Cancel", exact: true })
+      .click();
+    await expect(phone).toBeEnabled();
+    await expect(phone).toHaveValue("0912-345-6789");
+    expect(sent).toHaveLength(0);
+    await phone.fill("09987654321");
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await confirmation
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    await expect(
+      dialog.getByText("Save temporarily unavailable", { exact: true }),
+    ).toBeVisible();
+    await expect(phone).toBeEnabled();
+    await expect(phone).toHaveValue("0998-765-4321");
+    expect(sent).toHaveLength(1);
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await confirmation
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    await expect(dialog).toHaveCount(0);
+    expect(sent).toHaveLength(2);
+    expect(sent.every((s) => s.p.values.phone === "09987654321")).toBe(true);
+  });
+
 test("new employee waits for current organization permissions without flashing general or stale inputs", async ({
   page,
 }) => {

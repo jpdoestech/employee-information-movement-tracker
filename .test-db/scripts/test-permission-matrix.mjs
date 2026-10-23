@@ -480,6 +480,17 @@ export async function testPermissionMatrix({
       context = await q(user, "context"),
       elapsed = performance.now() - start;
     assert(elapsed < 5000, `Ordinary context took ${Math.round(elapsed)}ms`);
+    const sections = (await owner.query("select id,parent_group_id from public.field_groups")).rows;
+    for (const who of [user,id.sa]) {
+      const current = who===user ? context : await q(who,"context");
+      for (const field of current.fields) {
+        const sectionId = field.form_group_id || field.group_id;
+        assert(current.groups.some(g=>g.id===field.group_id),`Missing access group for ${field.key}`);
+        assert(current.groups.some(g=>g.id===sectionId),`Missing form section for ${field.key}`);
+        const section = sections.find(g=>g.id===sectionId);
+        if (section?.parent_group_id) assert(current.groups.some(g=>g.id===section.parent_group_id),`Missing parent for ${field.key}`);
+      }
+    }
     const all = (
       await owner.query(
         "select id,key from public.field_definitions where active",
@@ -506,5 +517,26 @@ export async function testPermissionMatrix({
     console.log(
       `Ordinary-user context: ${Math.round(elapsed)}ms; ${all.length} fields; statement-scoped permissions verified`,
     );
+  });
+  await test("separate form sections and parents preserve field permissions for ordinary and trusted accounts", async () => {
+    const before = await q(user,"context");
+    const field = before.fields.find(f=>f.type!=='system');
+    assert(field);
+    const root=randomUUID(),child=randomUUID();
+    await owner.query("insert into public.field_groups(id,name) values($1,'Synthetic form catalog root')",[root]);
+    await owner.query("insert into public.field_groups(id,name,parent_group_id) values($1,'Synthetic form catalog child',$2)",[child,root]);
+    try {
+      await owner.query("update public.field_definitions set form_group_id=$2 where id=$1",[field.id,child]);
+      for (const who of [user,id.sa]) {
+        const ctx=await q(who,"context");
+        assert(ctx.groups.some(g=>g.id===root));assert(ctx.groups.some(g=>g.id===child));
+        assert.equal(ctx.fields.find(f=>f.id===field.id).form_group_id,child);
+        if(who===user) assert.deepEqual(ctx.fields.find(f=>f.id===field.id).actions,field.actions);
+      }
+    } finally {
+      await owner.query("update public.field_definitions set form_group_id=$2 where id=$1",[field.id,field.form_group_id||null]);
+      await owner.query("delete from public.field_groups where id=$1",[child]);
+      await owner.query("delete from public.field_groups where id=$1",[root]);
+    }
   });
 }

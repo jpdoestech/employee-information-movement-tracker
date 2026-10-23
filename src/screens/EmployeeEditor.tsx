@@ -650,6 +650,7 @@ export function EmployeeEditor({
         title={row ? "Employee profile" : "New employee"}
         onClose={onClose}
         wide
+        closeDisabled={busy}
         isDirty={
           row
             ? Object.keys(changed).length > 0 ||
@@ -697,6 +698,7 @@ export function EmployeeEditor({
             <SearchFilterPicker
               mode="single"
               label="Initial organization"
+              disabled={busy}
               options={options.filter((o) => o.active)}
               value={target ? [target] : []}
               onChange={(v) => setTarget(v[0] || "")}
@@ -837,7 +839,7 @@ export function EmployeeEditor({
                       .filter((g) => tab.groups.includes(g.id))
                       .map((g) => (
                         <Fragment key={g.id}>
-                          <fieldset>
+                          <fieldset disabled={busy}>
                             <legend>
                               {g.parent_group_id
                                 ? `${context.groups.find((parent) => parent.id === g.parent_group_id)?.name} / ${g.name}`
@@ -1255,7 +1257,9 @@ export function EmployeeEditor({
               Archive employee
             </button>
           )}
-          <button onClick={onClose}>Cancel</button>
+          <button disabled={busy} onClick={onClose}>
+            Cancel
+          </button>
           <button
             className="primary"
             disabled={

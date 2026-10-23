@@ -167,6 +167,24 @@ try {
       ).error,
     );
   });
+  await test("real authenticated context includes every authorized form section and parent", async () => {
+    for (const client of publicClients) {
+      const { data, error } = await client.rpc("tracker_query", {
+        operation: "context",
+        q: {},
+      });
+      assert.ifError(error);
+      for (const field of data.fields) {
+        assert(data.groups.some((g) => g.id === field.group_id));
+        const section = data.groups.find(
+          (g) => g.id === (field.form_group_id || field.group_id),
+        );
+        assert(section, `Missing section for ${field.key}`);
+        if (section.parent_group_id)
+          assert(data.groups.some((g) => g.id === section.parent_group_id));
+      }
+    }
+  });
   await test("server paging scopes rows under real Supabase Auth", async () => {
     const r = await publicClients[1].rpc("tracker_query", {
       operation: "employees",

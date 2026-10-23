@@ -79,6 +79,18 @@ drafts are excluded. Inspection and administration remain Superadmin-only.
 
 ## Migration and rollback order
 
+Apply `20261023141014_form_section_catalog.sql` after the profile/target-field
+loading migrations and before publishing its frontend. It restores presentation
+sections and their parent names from the authorized field catalog. It does not
+change field actions, organization grants, field definitions, or employee values.
+The context JSON contract is unchanged, so older frontends remain compatible and
+a frontend rollback can retain the migration. Do not restore the older group-only
+projection: it hides authorized fields with separate form placement.
+
+Employee drafts are locked during validation, confirmation and submission;
+cancelling confirmation or a failed save unlocks the retained draft. Profile
+address summaries group readable parts by their configured presentation section.
+
 1. Apply all existing migrations through `20261023014601_account_password.sql`.
 2. Apply `20261023024633_rbac_matrix.sql` before the new frontend.
 3. Apply `20261023033903_matrix_review_coverage.sql` so module/role changes and

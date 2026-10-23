@@ -20,6 +20,46 @@ const field = (key: string, actions = ["R"]): Field => ({
   actions,
 });
 describe("employee overview privacy and derived values", () => {
+  it("keeps each readable address part in its configured form section", () => {
+    const html = renderToStaticMarkup(
+      <EmployeeOverview
+        values={{
+          address: "Home street",
+          postal_code: "8000",
+          province: "Denied province",
+          current_address: "Current street",
+          emergency_address: "Emergency street",
+        }}
+        fields={[
+          { ...field("address"), form_group_id: "home" },
+          { ...field("postal_code"), form_group_id: "other" },
+          { ...field("province", []), form_group_id: "other" },
+          { ...field("current_address"), form_group_id: "other" },
+          { ...field("emergency_address"), form_group_id: "emergency" },
+        ]}
+        groups={["g", "home", "other", "emergency"].map((id) => ({
+          id,
+          name: id,
+          active: true,
+          row_version: 1,
+        }))}
+        today="2026-10-23"
+        employeeId="synthetic"
+        canEdit={false}
+        onEdit={() => {}}
+      />,
+    );
+    const section = (id: string) =>
+      html.match(
+        new RegExp(`<section[^>]*aria-label="${id}"[\\s\\S]*?</section>`),
+      )?.[0] || "";
+    expect(section("home")).toContain("Home street");
+    expect(section("home")).not.toContain("8000");
+    expect(section("other")).toContain("8000");
+    expect(section("other")).toContain("Current street");
+    expect(section("emergency")).toContain("Emergency street");
+    expect(html).not.toContain("Denied province");
+  });
   it("masks existing values without duplicating them", () => {
     expect(maskedIdentifier("09-1234567-8")).toBe("**-****567-8");
     expect(maskedIdentifier("—")).toBe("—");
