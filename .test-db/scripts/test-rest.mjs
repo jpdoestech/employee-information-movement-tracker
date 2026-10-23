@@ -526,6 +526,7 @@ try {
     );
   });
   await test("real JWT matrix enforces independent export, self, department, assignments and branch fences", async () => {
+    await owner.query("update public.user_profiles set active=true where id=$1", [uid[1]]);
     await owner.query("update public.user_scope_grants set active=true where user_id=$1", [uid[1]]);
     const change = async (p) => {
       const payload = { user_id: uid[1], reason: "Synthetic REST matrix", ...p };
