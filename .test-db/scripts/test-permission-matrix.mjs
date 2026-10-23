@@ -78,6 +78,65 @@ export async function testPermissionMatrix({
     assigned: [],
     ...more,
   });
+  await test("Admin remains below Superadmin and Head Office and branch grants stay separate", async () => {
+    const headOffice = (
+      await m(id.sa, "employee_create", {
+        target_level: "head_office",
+        values: {
+          name: "Matrix Head Office",
+          department: "Matrix Head Office",
+        },
+      })
+    ).id;
+    try {
+      await owner.query(
+        "update public.user_scope_grants set scope_type='branch',scope_id=$2,include_descendants=false where user_id=$1",
+        [user, id.b1],
+      );
+      assert.equal((await q(user, "employee", { id: self })).employee.id, self);
+      for (const employee of [headOffice, other])
+        await assert.rejects(q(user, "employee", { id: employee }), {
+          code: "42501",
+        });
+      await assert.rejects(rpc(user, "access_configuration", {}), {
+        code: "42501",
+      });
+      await assert.rejects(
+        m(user, "profile", {
+          id: user,
+          role: "superadmin",
+          reason: "Synthetic escalation attempt",
+        }),
+        { code: "42501" },
+      );
+      await owner.query(
+        "update public.user_scope_grants set scope_type='head_office',scope_id=null where user_id=$1",
+        [user],
+      );
+      assert.equal(
+        (await q(user, "employee", { id: headOffice })).employee.id,
+        headOffice,
+      );
+      for (const employee of [self, other])
+        await assert.rejects(q(user, "employee", { id: employee }), {
+          code: "42501",
+        });
+      assert.equal(
+        (await q(id.sa, "employee", { id: other })).employee.id,
+        other,
+      );
+      await owner.query(
+        "update public.user_scope_grants set active=false where user_id=$1",
+        [user],
+      );
+      assert.equal((await q(user, "employees")).total, 0);
+    } finally {
+      await owner.query(
+        "update public.user_scope_grants set scope_type='all',scope_id=null,active=true where user_id=$1",
+        [user],
+      );
+    }
+  });
   await test("matrix self access rejects another employee across reads, dashboard, search, export and writes", async () => {
     await saved({ record_rule: rule("self") });
     const rows = await q(user, "employees");

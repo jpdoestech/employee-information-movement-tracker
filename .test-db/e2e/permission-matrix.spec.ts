@@ -242,6 +242,7 @@ test("switching role templates reloads the matrix and saves to the selected role
     .getByRole("button", { name: "Scope & assignments", exact: true })
     .click();
   await expect(page.getByText(/Account role: Administrator/)).toBeVisible();
+  await expect(page.getByText(/Admin is below Superadmin/)).toBeVisible();
   await page
     .getByRole("button", { name: "Additional roles", exact: true })
     .click();

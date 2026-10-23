@@ -607,6 +607,14 @@ export function PermissionMatrix({
                     title(account?.role || "")}
                   . Change it in Users; additional roles supplement it.
                 </small>
+                {account?.role === "admin" && (
+                  <small>
+                    Admin is below Superadmin. Head Office and branch admins use
+                    this role with different organization grants. Only permitted
+                    actions and fields are available; access administration
+                    remains Superadmin-only.
+                  </small>
+                )}
                 <span>Additional roles</span>
                 <SearchFilterPicker
                   mode="multiple"

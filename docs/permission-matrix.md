@@ -8,6 +8,18 @@ Clear value is a field action; Delete archives an employee separately.
 
 ## Evaluation and compatibility
 
+| Account role | Organization boundary                         | Access administration |
+| ------------ | --------------------------------------------- | --------------------- |
+| Superadmin   | All applicable scopes                         | Allowed               |
+| Admin        | Explicit Head Office, branch or client grants | Denied                |
+| Viewer       | Explicit grants, read-only employee access    | Denied                |
+
+Head Office Admin and Branch Admin are scoped assignments of Admin, not higher
+roles or automatic grants. A Head Office grant does not include branches. A
+branch grant includes clients only when explicitly selected. The Admin role
+alone grants no employee-record access without organization grants; field,
+module and record restrictions still apply. Existing assignments stay unchanged.
+
 The active native account role remains the security boundary: Superadmin has a
 trusted override, Admin can receive scoped mutations, and Viewer cannot mutate
 employee data. Additional roles are database records, not new application role
