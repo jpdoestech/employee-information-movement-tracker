@@ -79,9 +79,20 @@ drafts are excluded. Inspection and administration remain Superadmin-only.
 
 ## Migration and rollback order
 
+Apply `20261023151031_employee_names_uppercase.sql` after the text/category migration
+and before its frontend. Last/first/middle names, suffix and combined employee
+name are uppercase on entry and inside the existing secured mutation dispatcher.
+Combined-name generation also returns uppercase for duplicate checks. No policies,
+versions, atomic write boundaries or existing rows are changed. Existing names
+become uppercase as their name fields are edited and saved. Remarks, Department,
+Position and sign-in account display names retain their casing. Frontend rollback
+is compatible; reversing stored-name rules requires a forward migration restoring
+the previous dispatcher and combined-name function bodies.
+
 Apply `20261023143337_employee_text_and_initial_category.sql` after the form-section
 catalog migration, before its frontend. Submitted text is trimmed and repeated
-horizontal spaces collapse; case and paragraph breaks are retained. Credentials,
+horizontal spaces collapse; paragraph breaks are retained. Employee-name casing
+is governed by the later uppercase-name migration above; other text keeps its casing. Credentials,
 opaque review tokens and saved filter configurations remain exact. The same
 normalization runs before client confirmation/fingerprinting and at the secured
 mutation endpoints. Existing untouched values are not rewritten.

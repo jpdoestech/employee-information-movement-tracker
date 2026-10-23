@@ -25,7 +25,7 @@ for (const [width, height] of [
     const suffix = profile.getByLabel("Suffix", { exact: true });
     for (const value of ["VIII", "Ph.D."]) {
       await suffix.fill(value);
-      await expect(suffix).toHaveValue(value);
+      await expect(suffix).toHaveValue(value.toUpperCase());
       const room = await suffix.evaluate((e) => {
         const input = e as HTMLInputElement;
         const css = getComputedStyle(input);

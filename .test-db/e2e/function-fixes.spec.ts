@@ -387,7 +387,7 @@ test("new employee waits for current organization permissions without flashing g
   await dialog
     .getByRole("button", { name: "Retry field access", exact: true })
     .click();
-  await expect(lastName).toHaveValue("Preserved draft");
+  await expect(lastName).toHaveValue("PRESERVED DRAFT");
   expect(state.writes).toHaveLength(0);
   await page.screenshot({
     path: ".test-db/reports/release/organization-fields-ready.png",
@@ -423,7 +423,7 @@ test("a late organization response cannot replace the current selection's fields
   await expect(
     dialog.getByText("Checking fields for the selected organization…"),
   ).toHaveCount(0);
-  await expect(lastName).toHaveValue("Current target");
+  await expect(lastName).toHaveValue("CURRENT TARGET");
   expect(state.writes).toHaveLength(0);
 });
 

@@ -36,10 +36,10 @@ describe("employee names and form tabs", () => {
         middle_name: " Maria ",
         suffix: " Jr. ",
       }),
-    ).toBe("Cruz, Ana Maria Jr.");
+    ).toBe("CRUZ, ANA MARIA JR.");
     expect(
       combinedName({ last_name: "Cruz", first_name: "Ana", middle_name: null }),
-    ).toBe("Cruz, Ana");
+    ).toBe("CRUZ, ANA");
   });
   it("merges groups without changing permission membership and orders tabs", () => {
     const groups: Context["groups"] = [

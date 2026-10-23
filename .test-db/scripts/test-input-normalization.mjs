@@ -9,7 +9,7 @@ export async function testInputNormalization({
   revision,
   id,
 }) {
-  await test("text normalization preserves paragraphs, case, exact tokens and existing values", async () => {
+  await test("text normalization uppercases employee names and preserves other case, paragraphs, exact tokens and untouched values", async () => {
     const input = {
       name: "  De   la\tCruz\u00a0 III  ",
       notes: "  First   paragraph \r\n\r\n Next\tline  ",
@@ -47,8 +47,10 @@ export async function testInputNormalization({
     let employee = (
       await q(id.sa, "employee", { id: created.id, include_history: false })
     ).employee;
-    assert.equal(employee.values.name, "De la Cruz, Ana Maria van der III");
-    assert.equal(employee.values.last_name, "De la Cruz");
+    assert.equal(employee.values.name, "DE LA CRUZ, ANA MARIA VAN DER III");
+    assert.equal(employee.values.last_name, "DE LA CRUZ");
+    assert.equal(employee.values.first_name, "ANA MARIA");
+    assert.equal(employee.values.middle_name, "VAN DER");
     assert.equal(employee.values.department, "HR Operations");
     assert.equal(employee.values.position, "QA Lead");
     assert.equal(employee.values.remarks, "First paragraph\n\nNext line");
@@ -60,16 +62,53 @@ export async function testInputNormalization({
     await m(id.sa, "employee_update", {
       id: created.id,
       expected_version: employee.row_version,
-      values: { department: "  Finance   Team ", employee_category: "Agency" },
+      values: {
+        first_name: " mAriA   sAnToS ",
+        department: "  Finance   Team ",
+        employee_category: "Agency",
+      },
       employment: { change_kind: "official", position: " Sr.   QA   Lead " },
     });
     employee = (
       await q(id.sa, "employee", { id: created.id, include_history: false })
     ).employee;
     assert.equal(employee.values.department, "Finance Team");
+    assert.equal(employee.values.first_name, "MARIA SANTOS");
+    assert.equal(employee.values.name, "DE LA CRUZ, MARIA SANTOS VAN DER III");
     assert.equal(employee.values.position, "Sr. QA Lead");
     assert.equal(employee.values.remarks, "Legacy   spacing");
     assert.equal(employee.values.employee_category, "Agency");
+    await m(id.sa, "bulk_update", {
+      rows: [{ id: created.id, row_version: employee.row_version }],
+      values: { first_name: " aNnA ", suffix: " jR. " },
+    });
+    employee = (
+      await q(id.sa, "employee", { id: created.id, include_history: false })
+    ).employee;
+    assert.equal(employee.values.first_name, "ANNA");
+    assert.equal(employee.values.suffix, "JR.");
+    assert.equal(employee.values.name, "DE LA CRUZ, ANNA VAN DER JR.");
+    const deny = randomUUID();
+    await owner.query(
+      "insert into public.field_access_policies(id,user_id,field_id,action,effect,scope_type) select $1,$2,id,'U','deny','all' from public.field_definitions where key='first_name'",
+      [deny, id.admin],
+    );
+    try {
+      await assert.rejects(
+        m(id.admin, "employee_update", {
+          id: created.id,
+          expected_version: employee.row_version,
+          values: { first_name: " nOt aLLoWeD " },
+        }),
+        { code: "42501" },
+      );
+      assert.equal(await revision(created.id), employee.row_version);
+    } finally {
+      await owner.query(
+        "delete from public.field_access_policies where id=$1",
+        [deny],
+      );
+    }
   });
   await test("new employee category follows initial placement and keeps category authorization", async () => {
     for (const target of [

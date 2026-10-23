@@ -271,7 +271,7 @@ try {
     assert.equal(preview.data.scoped_employee_count, 1);
     assert.equal(
       preview.data.samples[0].name,
-      "Test, Synthetic REST employee One",
+      "TEST, SYNTHETIC REST EMPLOYEE ONE",
     );
     const excluded = await publicClients[1].rpc("field_scope_preview", {
       q: {
@@ -324,7 +324,7 @@ try {
       q: { id: eid },
     });
     assert.ifError(detail.error);
-    assert.equal(detail.data.employee.values.name, "Cruz, Ana Maria Jr.");
+    assert.equal(detail.data.employee.values.name, "CRUZ, ANA MARIA JR.");
     const version = detail.data.employee.row_version;
     const invalid = await request(client, "employee_update", {
       id: eid,
@@ -338,7 +338,7 @@ try {
     });
     assert.ifError(unchanged.error);
     assert.equal(unchanged.data.employee.row_version, version);
-    assert.equal(unchanged.data.employee.values.last_name, "Cruz");
+    assert.equal(unchanged.data.employee.values.last_name, "CRUZ");
     const changedRetry = await raw(
       { ...p, values: { ...p.values, first_name: "Different" } },
       requestId,
@@ -373,7 +373,7 @@ try {
     const values = detail.data.employee.values;
     assert(!Object.hasOwn(values, "name"));
     assert(!Object.hasOwn(values, "middle_name"));
-    assert.equal(values.first_name, "Readable");
+    assert.equal(values.first_name, "READABLE");
     const search = await publicClients[1].rpc("tracker_query", {
       operation: "employees",
       q: { search: marker },
@@ -393,7 +393,7 @@ try {
     assert.ifError(checked.error);
     assert.equal(
       checked.data.employee.values.name,
-      "Sample, Readable Blind update",
+      "SAMPLE, READABLE BLIND UPDATE",
     );
     await owner.query(
       "insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'U','deny' from public.field_definitions where key='first_name'",
@@ -430,7 +430,7 @@ try {
     });
     assert.ifError(after.error);
     assert.equal(after.data.employee.row_version, 2);
-    assert.match(after.data.employee.values.name, /^Winner [01], Initial$/);
+    assert.match(after.data.employee.values.name, /^WINNER [01], INITIAL$/);
   });
   await test("form-layout REST writes are Superadmin-only, atomic and replay-safe", async () => {
     const read = () =>

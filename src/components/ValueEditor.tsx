@@ -9,7 +9,7 @@ import { governmentIdError, normalizeGovernmentId } from "../governmentIds";
 import { valueWidth } from "../controlSizing";
 import { FieldTypeIcon, fieldTypeIcons } from "./FieldTypeIcon";
 import { fieldTextRole } from "../typography";
-import { normalizeText } from "../inputNormalization";
+import { employeeNameKeys, normalizeText } from "../inputNormalization";
 
 function NumberInput({
   id,
@@ -145,7 +145,10 @@ export function ValueEditor({
             min={f.type === "integer" ? f.validation?.min : undefined}
             onBlur={(e) => {
               if (!["integer", "decimal", "date"].includes(f.type)) {
-                const clean = normalizeText(e.target.value);
+                const text = normalizeText(e.target.value);
+                const clean = employeeNameKeys.has(f.key)
+                  ? text.toUpperCase()
+                  : text;
                 if (clean !== e.target.value) onChange(clean);
               }
             }}
@@ -167,7 +170,19 @@ export function ValueEditor({
             aria-invalid={idError ? true : undefined}
             aria-describedby={idError ? `${id}-id-error` : undefined}
             value={String(value ?? "")}
-            onChange={(e) =>
+            onChange={(e) => {
+              if (employeeNameKeys.has(f.key)) {
+                const input = e.target;
+                const text = input.value;
+                const start = input.selectionStart;
+                const end = input.selectionEnd;
+                input.value = text.toUpperCase();
+                if (start !== null && end !== null)
+                  input.setSelectionRange(
+                    text.slice(0, start).toUpperCase().length,
+                    text.slice(0, end).toUpperCase().length,
+                  );
+              }
               onChange(
                 (f.type === "integer" || f.type === "decimal") &&
                   e.target.value !== ""
@@ -175,8 +190,8 @@ export function ValueEditor({
                   : f.validation?.government_id_digits
                     ? normalizeGovernmentId(e.target.value)
                     : e.target.value,
-              )
-            }
+              );
+            }}
             maxLength={
               f.validation?.government_id_digits
                 ? f.validation.government_id_digits + 8

@@ -40,7 +40,7 @@ test("separate name fields require first and last, preserve tab drafts, and save
     .click();
   await expect(
     editor.getByRole("textbox", { name: /^Last Name(?: \*)?$/ }),
-  ).toHaveValue("Cruz");
+  ).toHaveValue("CRUZ");
   await editor.getByRole("button", { name: "Save" }).click();
   const confirm = page.getByRole("dialog", {
     name: "Create employee",
@@ -49,14 +49,14 @@ test("separate name fields require first and last, preserve tab drafts, and save
   await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(
     editor.getByRole("textbox", { name: /^First Name(?: \*)?$/ }),
-  ).toHaveValue("Ana");
+  ).toHaveValue("ANA");
   await editor.getByRole("button", { name: "Save" }).click();
   await confirm.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(editor).toHaveCount(0);
   await page
     .getByRole("searchbox", { name: "Search employees" })
     .fill("Cruz, Ana Maria Jr.");
-  const row = page.getByRole("row").filter({ hasText: "Cruz, Ana Maria Jr." });
+  const row = page.getByRole("row").filter({ hasText: "CRUZ, ANA MARIA JR." });
   await expect(row).toHaveCount(1);
   await row.getByRole("button").first().click();
   const profile = page.getByRole("dialog", {
@@ -68,7 +68,7 @@ test("separate name fields require first and last, preserve tab drafts, and save
     .click();
   await expect(
     profile.getByRole("textbox", { name: /^First Name(?: \*)?$/ }),
-  ).toHaveValue("Ana");
+  ).toHaveValue("ANA");
   await profile.getByRole("tab", { name: "Overview", exact: true }).click();
   await expect(
     profile.getByRole("region", { name: "Personal Information", exact: true }),
@@ -205,7 +205,7 @@ for (const [width, height] of [
       .click();
     await expect(
       editor.getByRole("textbox", { name: /^Last Name(?: \*)?$/ }),
-    ).toHaveValue("Sample");
+    ).toHaveValue("SAMPLE");
     await page.screenshot({
       path: `.test-db/reports/verification/employee-form-${width}x${height}.png`,
     });
@@ -217,6 +217,6 @@ for (const [width, height] of [
       .click();
     await expect(
       editor.getByRole("textbox", { name: /^Last Name(?: \*)?$/ }),
-    ).toHaveValue("Sample");
+    ).toHaveValue("SAMPLE");
   });
 }

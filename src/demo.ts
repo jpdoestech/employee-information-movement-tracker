@@ -3,7 +3,7 @@ import {
   bulkDuplicateEmployees,
 } from "./duplicateEmployees";
 import { mobileError, normalizeIdentifier } from "./identifiers";
-import { normalizeInputs } from "./inputNormalization";
+import { employeeNameKeys, normalizeInputs } from "./inputNormalization";
 import { fieldConfigurationError } from "./fieldConfiguration";
 import { manpowerError, uniqueValuesError } from "./employmentValidation";
 import { requiredForEdit } from "./governmentIds";
@@ -790,6 +790,13 @@ export async function demoQuery(op: string, q: any = {}) {
 }
 export async function demoMutate(op: string, p: any) {
   p = normalizeInputs(p);
+  if (
+    ["employee_create", "employee_update", "bulk_update"].includes(op) &&
+    p.values
+  )
+    for (const key of employeeNameKeys)
+      if (typeof p.values[key] === "string")
+        p.values[key] = p.values[key].toUpperCase();
   if (
     op === "employee_create" &&
     ["head_office", "branch", "client"].includes(p.target_level)

@@ -13,7 +13,7 @@ it("cleans text without changing case, paragraphs, non-text values or exact inpu
       first_name: " Ana   Maria ",
       suffix: " III ",
     }),
-  ).toBe("De la Cruz, Ana Maria III");
+  ).toBe("DE LA CRUZ, ANA MARIA III");
   const exact = {
     password: "  pass  word  ",
     duplicate_review: " token ",

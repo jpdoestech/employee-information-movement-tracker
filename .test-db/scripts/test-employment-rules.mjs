@@ -416,7 +416,7 @@ export async function testEmploymentRules({
     const found = await review(duplicatePayload);
     assert.equal(found.threshold, 90);
     assert.equal(found.total, 1);
-    assert.equal(found.items[0].values.name, "DuplicateReview, Alexandria");
+    assert.equal(found.items[0].values.name, "DUPLICATEREVIEW, ALEXANDRIA");
     assert.equal(found.items[0].values.branch, "Synthetic uniqueness branch");
     assert.equal(found.items[0].values.client, "Synthetic client A");
     assert.equal(found.items[0].values.department, "Quality");
@@ -594,7 +594,7 @@ export async function testEmploymentRules({
     const found = await review({ operation: "bulk_update", ...payload });
     assert.equal(found.total, 2);
     assert.equal(found.items.length, 2);
-    assert.equal(found.items[0].candidate_name, "BulkDuplicate, Sample");
+    assert.equal(found.items[0].candidate_name, "BULKDUPLICATE, SAMPLE");
     assert.deepEqual(await snapshot(), before);
     assert.equal(await revision(a.id), 1);
     assert.equal(await revision(b.id), 1);

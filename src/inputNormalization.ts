@@ -5,6 +5,14 @@ export function normalizeText(value: string) {
     .trim();
 }
 
+export const employeeNameKeys = new Set([
+  "name",
+  "last_name",
+  "first_name",
+  "middle_name",
+  "suffix",
+]);
+
 // Credentials, opaque review tokens and saved filter literals must stay exact.
 const exactKeys = new Set([
   "password",

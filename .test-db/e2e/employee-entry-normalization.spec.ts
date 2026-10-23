@@ -19,9 +19,15 @@ for (const width of [375, 1366])
     const first = dialog.getByLabel("First Name *", { exact: true });
     await last.fill("  De   la Cruz  ");
     await first.fill("  Ana   Maria  ");
+    await expect(first).toHaveValue("  ANA   MARIA  ");
     await first.press("Tab");
-    await expect(last).toHaveValue("De la Cruz");
-    await expect(first).toHaveValue("Ana Maria");
+    await expect(last).toHaveValue("DE LA CRUZ");
+    await first.press("Home");
+    await first.press("ArrowRight");
+    await first.press("x");
+    await expect(first).toHaveValue("AXNA MARIA");
+    await first.press("Backspace");
+    await expect(first).toHaveValue("ANA MARIA");
     const street = dialog
       .getByRole("group", { name: "Home Address", exact: true })
       .getByLabel("Street / building", { exact: true });
@@ -76,7 +82,7 @@ for (const width of [375, 1366])
       .fill("De la Cruz");
     const row = page
       .getByRole("row")
-      .filter({ hasText: "De la Cruz, Ana Maria" });
+      .filter({ hasText: "DE LA CRUZ, ANA MARIA" });
     await expect(row).toContainText("Admin");
     await row.getByRole("button").first().click();
     const profile = page.getByRole("dialog", {
@@ -90,7 +96,19 @@ for (const width of [375, 1366])
     await expect(
       profile.getByRole("button", { name: "Employee Category", exact: true }),
     ).toBeVisible();
+    const editedName = profile.getByLabel("First Name", { exact: true });
+    await editedName.fill("mAriA sAnToS");
+    await expect(editedName).toHaveValue("MARIA SANTOS");
     await page.screenshot({
       path: `.test-db/reports/release/employee-entry-normalized-${width}.png`,
     });
+    await profile.getByRole("button", { name: "Save", exact: true }).click();
+    await page
+      .getByRole("dialog", { name: "Save employee changes", exact: true })
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    await expect(profile).toHaveCount(0);
+    await expect(
+      page.getByRole("row").filter({ hasText: "DE LA CRUZ, MARIA SANTOS" }),
+    ).toBeVisible();
   });
