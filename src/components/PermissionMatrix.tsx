@@ -128,6 +128,7 @@ export function PermissionMatrix({
     setPreset("");
   }
   async function changeSubject(nextUser: string, nextRole: string) {
+    if (nextUser === user && nextRole === role) return;
     if (
       dirty &&
       !(await confirmTransaction(
@@ -156,7 +157,7 @@ export function PermissionMatrix({
     return () => {
       active = false;
     };
-  }, [user, context.revision]);
+  }, [user, role, context.revision]);
   const loadEmployees = async (search: string): Promise<Option[]> => {
     const result = await query("employees", {
       search,
