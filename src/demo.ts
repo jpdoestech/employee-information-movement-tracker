@@ -465,7 +465,64 @@ for (const f of fields) {
     context.groups.find((g) => g.id === f.group_id)?.name || f.group_name;
 }
 const accounts = [{ ...context.profile, active: true, row_version: 1 }];
+const demoAccess = {
+  modules: [
+    {
+      code: "employees",
+      name: "Employees",
+      actions: ["view", "create", "update", "delete", "export"],
+    },
+    { code: "movements", name: "Movements", actions: ["view", "create"] },
+    { code: "organization", name: "Organization", actions: ["view", "manage"] },
+    { code: "fields", name: "Field definitions", actions: ["manage"] },
+    { code: "bulk", name: "Bulk updates", actions: ["update"] },
+    { code: "audit", name: "Audit log", actions: ["view"] },
+    { code: "sync", name: "Workbook synchronization", actions: ["manage"] },
+    { code: "access", name: "Access administration", actions: ["manage"] },
+  ],
+  roles: ["admin", "viewer", "hr_staff", "manager", "employee"].map((code) => ({
+    code,
+    name: code.replaceAll("_", " "),
+  })),
+  memberships: [] as string[],
+  overrides: [] as any[],
+  role_permissions: [] as any[],
+  policies: [] as any[],
+  scopes: [] as any[],
+  record_rule: {
+    mode: "organization",
+    employee_id: null as string | null,
+    departments: [] as string[],
+    assigned: [] as string[],
+  },
+  reporting: [] as string[],
+  departments: ["Operations", "Head Office"],
+};
 export async function demoQuery(op: string, q: any = {}) {
+  if (op === "access_configuration")
+    return structuredClone({
+      ...demoAccess,
+      today: context.today,
+      revision: context.revision,
+    });
+  if (op === "effective_access")
+    return structuredClone({
+      ...demoAccess,
+      roles: ["superadmin"],
+      record_allowed: null,
+      modules: demoAccess.modules.flatMap((m) =>
+        m.actions.map((action) => ({
+          module: m.code,
+          action,
+          decision: {
+            allowed: true,
+            reason: "Synthetic preview; no live authorization evaluation",
+            sources: [],
+          },
+        })),
+      ),
+      fields: [],
+    });
   await new Promise((r) => setTimeout(r, 40));
   if (op === "context") return structuredClone(context);
   if (op === "field_scope_preview") {
@@ -719,6 +776,18 @@ export async function demoQuery(op: string, q: any = {}) {
   throw new Error("Unknown demo query");
 }
 export async function demoMutate(op: string, p: any) {
+  if (op === "access_role") {
+    demoAccess.roles.push({ code: p.code, name: p.name });
+    context.revision++;
+    return { code: p.code };
+  }
+  if (op === "access_matrix") {
+    if (p.memberships) demoAccess.memberships = p.memberships;
+    if (p.record_rule) demoAccess.record_rule = p.record_rule;
+    if (p.reports) demoAccess.reporting = p.reports;
+    context.revision++;
+    return { saved: true };
+  }
   const beforeEmployees = new Map(
     employees.map((e) => [e.id, { ...e.values }]),
   );

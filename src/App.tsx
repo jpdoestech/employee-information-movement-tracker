@@ -338,14 +338,17 @@ export default function App() {
   const currentNav = nav.find((n) => n.id === page) || nav[0];
   const visibleNav = nav.filter(
     (n) =>
-      !["fields", "permissions", "sync", "audit"].includes(n.id) ||
-      (n.id === "fields"
-        ? can("schema_manage")
-        : n.id === "permissions"
-          ? ctx?.profile.role === "superadmin"
-          : n.id === "sync"
-            ? can("sync_manage")
-            : can("audit_read")),
+      ctx?.module_permissions?.[
+        `${n.id === "employees" || n.id === "dashboard" ? "employees" : n.id}.view`
+      ] !== false &&
+      (!["fields", "permissions", "sync", "audit"].includes(n.id) ||
+        (n.id === "fields"
+          ? can("schema_manage")
+          : n.id === "permissions"
+            ? ctx?.profile.role === "superadmin"
+            : n.id === "sync"
+              ? can("sync_manage")
+              : can("audit_read"))),
   );
   async function exportCSV() {
     setBusy(true);
@@ -747,7 +750,11 @@ export default function App() {
                     <button
                       aria-label="Export CSV"
                       title="Export CSV"
-                      disabled={busy || !total}
+                      disabled={
+                        busy ||
+                        !total ||
+                        ctx.module_permissions?.["employees.export"] === false
+                      }
                       onClick={exportCSV}
                     >
                       <Download size={16} />

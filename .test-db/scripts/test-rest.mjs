@@ -525,6 +525,33 @@ try {
       ).error,
     );
   });
+  await test("real JWT matrix enforces independent export, self, department, assignments and branch fences", async () => {
+    await owner.query("update public.user_scope_grants set active=true where user_id=$1", [uid[1]]);
+    const change = async (p) => {
+      const payload = { user_id: uid[1], reason: "Synthetic REST matrix", ...p };
+      const review = await publicClients[0].rpc("access_change_preview", { operation: "access_matrix", p: payload });
+      assert.ifError(review.error);
+      const result = await request(publicClients[0], "access_matrix", { ...payload, review_revision: review.data.revision, review_date: review.data.today });
+      assert.ifError(result.error);
+    };
+    const rule = (mode, assigned = [], departments = []) => ({ mode, employee_id: first.data.id, assigned, departments });
+    await change({ record_rule: rule("self"), modules: [{ module: "employees", action: "export", effect: "deny" }] });
+    let rows = await publicClients[1].rpc("tracker_query", { operation: "employees", q: {} });
+    assert.ifError(rows.error); assert.deepEqual(rows.data.items.map(e => e.id), [first.data.id]);
+    assert.equal((await publicClients[1].rpc("export_employees", { q: {} })).error?.code, "42501");
+    assert.equal((await publicClients[1].rpc("tracker_query", { operation: "employee", q: { id: second.data.id } })).error?.code, "42501");
+    await change({ record_rule: rule("assigned", [second.data.id]) });
+    rows = await publicClients[1].rpc("tracker_query", { operation: "employees", q: {} });
+    assert.ifError(rows.error); assert.equal(rows.data.total, 0, "Record assignment cannot override branch isolation");
+    await change({ record_rule: rule("department", [], ["No matching REST department"]) });
+    rows = await publicClients[1].rpc("tracker_query", { operation: "employees", q: {} });
+    assert.ifError(rows.error); assert.equal(rows.data.total, 0);
+    assert.equal((await publicClients[1].rpc("effective_access", { q: { user_id: uid[0] } })).error?.code, "42501");
+    assert((await publicClients[1].schema("app_private").from("access_overrides").select("*")).error);
+    const effective = await publicClients[0].rpc("effective_access", { q: { user_id: uid[1], employee_id: first.data.id } });
+    assert.ifError(effective.error); assert.equal(effective.data.record_allowed, false);
+    await change({ record_rule: rule("organization"), modules: [{ module: "employees", action: "export", effect: "inherit" }] });
+  });
   await test("worker date reconciliation runs with safeupdate enabled", async () => {
     const result = await admin.rpc("worker_command", {
       operation: "claim",

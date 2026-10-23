@@ -12,6 +12,11 @@ export default defineConfig({
     cwd: fileURLToPath(new URL("..", import.meta.url)),
     url: "http://127.0.0.1:5173",
     reuseExistingServer: true,
+    env: {
+      VITE_SUPABASE_URL: "https://synthetic.supabase.co",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic",
+      VITE_DEMO_MODE: "false",
+    },
   },
   reporter: [
     ["list"],

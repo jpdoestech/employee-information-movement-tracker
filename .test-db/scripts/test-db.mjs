@@ -1,4 +1,5 @@
 import { testPasswordReceipts } from "./test-password-receipts.mjs";
+import { testPermissionMatrix } from "./test-permission-matrix.mjs";
 import { testEmergencyAddress } from "./test-emergency-address.mjs";
 import { testEmploymentRules } from "./test-employment-rules.mjs";
 import { testAuditFixes } from "./test-audit-fixes.mjs";
@@ -3344,6 +3345,7 @@ try {
   await testAccessReview({ owner, test, m, as, id, today, date });
   await testEmergencyAddress({ owner, test, m, q, revision, id, today });
   await testPasswordReceipts({ owner, test, as, id });
+  await testPermissionMatrix({ owner, test, m, q, as, id, revision });
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
     ".test-db/reports/verification/database.json",

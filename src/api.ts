@@ -36,6 +36,8 @@ export async function query<T = any>(
     "client_settings",
     "filter_values",
     "employee_duplicates",
+    "access_configuration",
+    "effective_access",
   ].includes(operation)
     ? operation
     : operation === "record_page"
@@ -49,15 +51,19 @@ export async function query<T = any>(
             : operation === "target_fields"
               ? "target_fields"
               : null;
-  const { data, error } = await supabase.rpc(
+  const response = supabase.rpc(
     special || "tracker_query",
     special ? { q } : { operation, q },
   );
+  const [result, settings] = await Promise.all([
+    response,
+    operation === "context" ? supabase.rpc("register_settings") : null,
+  ]);
+  const { data, error } = result;
   if (error) throw new Error(error.message);
   if (operation === "context") {
-    const settings = await supabase.rpc("register_settings");
-    if (settings.error) throw new Error(settings.error.message);
-    return { ...data, register_settings: settings.data } as T;
+    if (settings?.error) throw new Error(settings.error.message);
+    return { ...data, register_settings: settings?.data } as T;
   }
   return data as T;
 }
@@ -199,6 +205,8 @@ export async function mutate<T = any>(
     scope: "Change access scope",
     policy: "Change access policy",
     policy_batch: "Change access policy",
+    access_matrix: "Save access changes",
+    access_role: "Create access role",
     profile: "Change user account",
     capability: "Change user capability",
     workbook: "Change workbook settings",

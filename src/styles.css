@@ -4487,3 +4487,37 @@ dialog.employee-edit-dialog[open] {
 .security-users-table td:first-child { position: sticky; left: 0; z-index: 2; }
 .security-users-table th:first-child { left: 0; z-index: 4; }
 .security-user-name { border: 0; background: transparent; color: var(--primary); padding: 0; font-weight: 600; text-align: left; }
+.security-workspace .admin-scroll-region:has(> .permission-workspace) { display: flex; padding: 0; overflow: hidden; }
+.permission-workspace { display: flex; flex-direction: column; width: 100%; min-width: 0; min-height: 0; }
+.permission-toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; overflow-x: auto; flex: none; }
+.permission-toolbar > * { flex: none; }
+.permission-toolbar button, .permission-toolbar label { white-space: nowrap; }
+.permission-workspace .access-section-tabs { flex: none; }
+.permission-body { flex: 1; min-height: 0; padding: 8px 12px; overflow: auto; }
+.permission-body > p { margin: 6px 0 12px; }
+.permission-table-scroll { max-width: 100%; overflow: auto; margin-bottom: 12px; }
+.permission-matrix { width: max-content; min-width: 100%; border-collapse: collapse; }
+.permission-matrix th, .permission-matrix td { padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.permission-matrix th[scope="row"] { text-align: left; font-size: 12px; text-transform: none; letter-spacing: normal; min-width: 190px; background: var(--paper); }
+.permission-matrix th:first-child { position: sticky; left: 0; z-index: 1; background: var(--paper); }
+.permission-matrix thead th { white-space: nowrap; }
+.permission-matrix td { text-align: center; }
+.permission-matrix .permission-cell { width: 88px; min-height: 32px; font-size: 12px; padding: 4px 6px; }
+.permission-cell.deny { color: var(--danger); font-weight: 600; }
+.permission-cell.allow { color: var(--primary); font-weight: 600; }
+.permission-group-row th button { display: flex; align-items: center; gap: 6px; background: transparent; border-color: transparent; font-size: 12px; }
+.permission-matrix .permission-field-name { padding-left: 30px; font-weight: 400; }
+.permission-workspace small, .effective-access-dialog small { display: block; font-size: 11px; color: var(--muted); white-space: normal; }
+.permission-save-bar { display: flex; flex: none; align-items: end; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--paper); overflow-x: auto; }
+.permission-save-bar > label { flex: 1; min-width: 180px; margin: 0; }
+.permission-save-bar > button { flex: none; white-space: nowrap; }
+.effective-access-dialog[open] { display: flex; flex-direction: column; overflow: hidden; width: min(1100px, calc(100vw - 24px)); }
+.dialog-scroll { min-height: 0; overflow: auto; padding: 12px; }
+.effective-access-dialog > header, .effective-access-dialog > footer { flex: none; }
+.effective-access-dialog table { width: 100%; min-width: 700px; }
+.effective-access-dialog th, .effective-access-dialog td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.matrix-review table { width: 100%; }
+.matrix-review td, .matrix-review th { padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--line); }
+@media (pointer: coarse), (max-width: 760px) {
+  .permission-matrix .permission-cell, .permission-toolbar > button, .permission-save-bar > button { min-height: 44px; }
+}

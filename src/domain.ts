@@ -76,6 +76,7 @@ export type Context = {
     tab_order?: number;
   }[];
   capabilities: string[];
+  module_permissions?: Record<string, boolean>;
   views: { id: string; name: string; config: Layout }[];
 };
 export const defaultFilter: Filter = {

@@ -44,6 +44,10 @@ node .test-db/scripts/assert-no-drift.mjs .test-db/reports/verification/local-dr
 
 ## Implementation
 
+See [Permission matrix and record access](docs/permission-matrix.md) for the
+current module/field editor, explicit deny precedence, record restrictions and
+required migration order.
+
 - `src/components/`: shared single/multiple search picker, filter bar, authorized table, live column layout preview, dialogs and dynamic value editors.
 - `src/screens/`: employees, seven movement types, atomic bulk updates, organization, dynamic fields, permissions and workbook policies. Saved layouts belong to the signed-in user.
 - `supabase/migrations/`: ordered schema and secured RPCs; the source of truth for database changes.

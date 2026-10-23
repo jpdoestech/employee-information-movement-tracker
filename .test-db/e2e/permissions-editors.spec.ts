@@ -16,38 +16,35 @@ for (const width of [375, 1366]) {
       })
       .click();
     await page
+      .getByRole("button", { name: "Scope & assignments", exact: true })
+      .click();
+    await page
       .getByRole("button", { name: "Access preset", exact: true })
       .click();
     await page
       .getByRole("option", { name: "Head Office editor", exact: true })
       .click();
     await page
-      .getByLabel("Reason for policy change", { exact: true })
+      .getByLabel("Reason", { exact: true })
       .fill("Keep this access draft");
     await page
       .getByRole("button", { name: "Field permissions", exact: true })
       .click();
     await expect(
-      page.getByRole("button", {
-        name: "Grant organization actions",
-        exact: true,
-      }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: "Save field policy", exact: true }),
+      page.getByRole("columnheader", { name: "Field group / field" }),
     ).toBeVisible();
     await page
-      .getByRole("button", { name: "Current access", exact: true })
+      .getByRole("button", { name: "Permission matrix", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Access overview", exact: true }),
+      page.getByRole("columnheader", { name: "Export", exact: true }),
     ).toBeVisible();
     await page
       .getByRole("button", { name: "Scope & assignments", exact: true })
       .click();
-    await expect(
-      page.getByLabel("Reason for policy change", { exact: true }),
-    ).toHaveValue("Keep this access draft");
+    await expect(page.getByLabel("Reason", { exact: true })).toHaveValue(
+      "Keep this access draft",
+    );
     await expect(
       page.getByRole("button", { name: "Organization scope", exact: true }),
     ).toContainText("Head Office");
