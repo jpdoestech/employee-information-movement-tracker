@@ -4559,6 +4559,12 @@ dialog.employee-edit-dialog[open] {
 .permission-table-scroll[aria-label="Field permissions"] .permission-matrix { table-layout: auto; min-width: 0; }
 .permission-group-row th button { width: auto; max-width: 260px; text-align: left; justify-content: flex-start; text-transform: none; letter-spacing: normal; white-space: normal; }
 .permission-field-name small { display: block; max-width: 240px; white-space: normal; overflow-wrap: anywhere; }
+.permission-inheritance { padding: 0 4px; max-width: 260px; text-transform: none; letter-spacing: normal; font-weight: 400; }
+.permission-group-row th > button { scroll-margin-block: 44px; }
+.permission-inheritance .permission-source-link { display: inline; width: auto; min-height: 32px; padding: 2px 4px; border: 0; background: transparent; color: var(--primary); text-decoration: underline; white-space: normal; font-size: 11px; font-weight: 400; }
+@media (max-width: 760px), (pointer: coarse) {
+  .permission-inheritance .permission-source-link { min-height: 44px; }
+}
 @media (max-width: 760px), (pointer: coarse) {
   .permission-group-row th button, .permission-field-name small { max-width: 180px; }
 }

@@ -959,9 +959,11 @@ export function FieldBuilder({
             </label>
             <div className="form-control">
               <span>Parent group</span>
+              <small>Child groups inherit this group's access policies. Changing the parent changes inherited access and requires Superadmin.</small>
               <SearchFilterPicker
                 mode="single"
                 label="Parent group"
+                disabled={context.profile.role !== "superadmin"}
                 options={groups
                   .filter(
                     (g: any) =>

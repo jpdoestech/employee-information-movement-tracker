@@ -562,8 +562,15 @@ export function PermissionMatrix({
                 Edit any number of groups together. Expand a group for
                 individual fields. Group allows cover normal fields; restricted
                 fields require an individual allow. Clear value does not archive
-                an employee. Parent and child groups have independent
-                permissions. Fields are listed by permission group; a different
+                an employee. Child groups inherit their parent group's policies.
+                Fields inherit their permission group's policies. Inherit removes
+                the selected user's or role's direct setting at this scope;
+                other matching user and role policies still apply. Root groups
+                have no parent and default to denied when no matching policy
+                allows access. Any matching field, group or parent
+                Deny wins. Follow the parent links to adjust inherited policies;
+                View effective access shows the saved outcome and source.
+                Fields are listed by permission group; a different
                 form location is shown below the field name.
               </p>
             </details>
@@ -603,6 +610,12 @@ export function PermissionMatrix({
                         }
                         cell={cell}
                         effect={fieldEffect}
+                        goToGroup={(id) => {
+                          setExpanded(old => old.includes(id) ? old : [...old, id]);
+                          const button = document.getElementById(`permission-group-${id}`);
+                          button?.scrollIntoView({ block: "nearest", inline: "nearest" });
+                          button?.focus({ preventScroll: true });
+                        }}
                       />
                     ))}
                 </tbody>
@@ -1097,6 +1110,10 @@ export function PermissionMatrix({
                                       ? `Role ${f.actions[a].policy.role}`
                                       : "Direct user policy"}
                                     : {f.actions[a].policy.effect}
+                                    {f.actions[a].policy.group_id && (
+                                      <> · {fieldGroupPath(context.groups, f.actions[a].policy.group_id)}</>
+                                    )}
+                                    {" · "}{scopeLabel(f.actions[a].policy, options)}
                                   </small>
                                 )}
                               </td>
@@ -1191,6 +1208,7 @@ function GroupRows({
   toggle,
   cell,
   effect,
+  goToGroup,
 }: {
   group: Context["groups"][number];
   groups: Context["groups"];
@@ -1199,13 +1217,19 @@ function GroupRows({
   toggle: () => void;
   cell: (key: string, original: string, label: string) => React.ReactNode;
   effect: (id: string, action: string) => string;
+  goToGroup: (id: string) => void;
 }) {
   const groupLabel = fieldGroupPath(groups, group.id);
+  const parent = groups.find((g) => g.id === group.parent_group_id);
   return (
     <>
       <tr className="permission-group-row">
         <th scope="row">
-          <button aria-expanded={expanded} onClick={toggle}>
+          <button
+            id={`permission-group-${group.id}`}
+            aria-expanded={expanded}
+            onClick={toggle}
+          >
             {expanded ? (
               <ChevronDown size={14} aria-hidden />
             ) : (
@@ -1213,6 +1237,23 @@ function GroupRows({
             )}
             {groupLabel}
           </button>
+          <small className="permission-inheritance">
+            {parent ? (
+              <>
+                Parent group:{" "}
+                <button
+                  className="permission-source-link"
+                  onClick={() => goToGroup(parent.id)}
+                  aria-label={`Go to parent group ${parent.name}`}
+                >
+                  {parent.name}
+                </button>
+                {!parent.active && " (inactive; no inherited grant)"}
+              </>
+            ) : (
+              "Root group · No parent; matching user/role policies apply"
+            )}
+          </small>
         </th>
         {fieldActions.map((a) => (
           <td key={a}>
@@ -1229,10 +1270,22 @@ function GroupRows({
           <tr key={f.id}>
             <th scope="row" className="permission-field-name">
               {f.label}
+              <small className="permission-inheritance">
+                Permission group:{" "}
+                <button
+                  className="permission-source-link"
+                  onClick={() => goToGroup(group.id)}
+                  aria-label={`Go to permission group for ${f.label}`}
+                >
+                  {groupLabel}
+                </button>
+              </small>
               {f.form_group_id && f.form_group_id !== f.group_id && (
                 <small>Form: {fieldGroupPath(groups, f.form_group_id)}</small>
               )}
-              {f.sensitivity === "restricted" && <small>Restricted</small>}
+              {f.sensitivity === "restricted" && (
+                <small>Restricted · explicit field policy required</small>
+              )}
             </th>
             {fieldActions.map((a) => (
               <td key={a}>

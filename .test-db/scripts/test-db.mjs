@@ -1,5 +1,6 @@
 import { testPasswordReceipts } from "./test-password-receipts.mjs";
 import { testEmployeeImport } from "./test-employee-import.mjs";
+import { testParentInheritance } from "./test-parent-inheritance.mjs";
 import { testPermissionMatrix } from "./test-permission-matrix.mjs";
 import { testEmergencyAddress } from "./test-emergency-address.mjs";
 import { testEmploymentRules } from "./test-employment-rules.mjs";
@@ -220,6 +221,13 @@ try {
       `insert into public.field_access_policies(user_id,group_id,action,effect,inherit_new) select $1,$2,a,'allow',true from unnest(array['C','R','U','D']) a`,
       [who, id.core],
     );
+  // These fixtures deliberately hide contact data, even when Core is now its
+  // permission parent. Preserve that boundary with an explicit child deny.
+  for (const who of [id.viewer, id.client])
+    await owner.query(
+      "insert into public.field_access_policies(user_id,group_id,action,effect) values($1,$2,'R','deny')",
+      [who,id.contact],
+    );
   // Explicit C-only ID grants let ordinary security fixtures create complete
   // profiles without exposing restricted IDs or broadening organization scope.
   await owner.query(
@@ -247,7 +255,9 @@ try {
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
-  if (process.env.TEST_IMPORT_ONLY === "true") {
+  if (process.env.TEST_PARENT_ONLY === "true") {
+    await testParentInheritance({owner,test,m,q,as,id,revision});
+  } else if (process.env.TEST_IMPORT_ONLY === "true") {
     await testEmployeeImport({owner,test,m,q,as,id});
   } else if (process.env.TEST_INPUT_ONLY === "true") {
     await testInputNormalization({owner,test,m,q,revision,id});
@@ -728,6 +738,10 @@ try {
       expected_version: await revision(e1),
       values: { email: "blind@example.invalid" },
     });
+    const clearDeny = (await owner.query(
+      "insert into public.field_access_policies(user_id,field_id,action,effect) values($1,$2,'D','deny') returning id",
+      [id.admin,email],
+    )).rows[0].id;
     await assert.rejects(
       m(id.admin, "employee_update", {
         id: e1,
@@ -736,6 +750,7 @@ try {
       }),
       { code: "42501" },
     );
+    await owner.query("delete from public.field_access_policies where id=$1",[clearDeny]);
     await m(id.sa, "policy", {
       user_id: id.admin,
       field_id: email,
@@ -1824,9 +1839,10 @@ try {
     assert.equal((await decide("emergency_contact_private")).allowed, false);
     assert.equal(
       (await decide("address")).allowed,
-      false,
-      "New Address fields are default-denied",
+      true,
+      "Normal Address fields inherit the active Personal Information parent grant",
     );
+    assert.match((await decide("address")).reason,/Parent group Personal Information allow/);
     await owner.query(
       "insert into public.field_access_policies(user_id,field_id,action,effect) values($1,$2,'R','deny')",
       [id.admin, legacy.id],
@@ -1875,6 +1891,10 @@ try {
         }),
         { code: "22023" },
       );
+    const provinceDeny = (await owner.query(
+      "insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'U','deny' from public.field_definitions where key='province' returning id",
+      [id.admin],
+    )).rows[0].id;
     await assert.rejects(
       m(id.admin, "employee_update", {
         id: e,
@@ -1883,6 +1903,7 @@ try {
       }),
       { code: "42501" },
     );
+    await owner.query("delete from public.field_access_policies where id=$1",[provinceDeny]);
     assert.equal(
       (await q(id.sa, "employee", { id: e })).employee.values.province,
       "Davao del Sur",
@@ -3352,6 +3373,7 @@ try {
   await testAuditFixes({ owner, test, q, m, worker, revision, id });
   await testFunctionFixes({ owner, test, m, worker, id });
   await testEmployeeCategory({ owner, test, m, q, revision, id });
+  await testParentInheritance({owner,test,m,q,as,id,revision});
   await testEmployeeImport({owner,test,m,q,as,id});
   await testInputNormalization({owner,test,m,q,revision,id});
   await testAccessReview({ owner, test, m, as, id, today, date });

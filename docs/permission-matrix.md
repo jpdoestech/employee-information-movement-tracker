@@ -36,12 +36,37 @@ empty and need explicit configuration before assignment.
 Additional roles and the account-role explanation are under Scope & assignments.
 Field Builder, employee form sections and Field permissions share full group
 paths such as **Employment Details / Compensation** and place child groups after
-their parent. Parent and child permission groups remain independent. Permission
+their parent. Child permission groups inherit their active parent's policies;
+fields inherit their own permission group. Any matching field, group or parent
+deny overrides ordinary allows. Restricted fields still require an explicit field
+policy, including a field policy from an assigned role. Inherit removes the
+selected user's or role's direct setting at the selected scope; it is not itself
+an Allow. Other matching user policies (including broader scopes) and role
+policies still apply, and a root group with no applicable policy defaults to denied.
+Parent links in the matrix take administrators directly to the group to adjust;
+field rows link to their permission group. View effective access names the saved
+policy's group, role/user source and organization scope. Draft settings do not
+claim to be the final effective result. Permission
 rows still target the original access-group ID, not the displayed form location.
 When those locations differ, Field Builder shows **Permission group: …** and the
 expanded permission row shows **Form: …**. Field Builder labels its access selector
 **Permission group**; its form-section selector controls presentation only.
 Confirmation summaries use the same full group paths.
+
+Apply `20261026022643_parent_group_permissions.sql` after the import migration
+and before this frontend. The shared evaluator supplies the inheritance to every
+read/write, import, export, preview and synchronization path. It changes no saved
+policies or employee values. Existing parent grants can therefore permit normal
+child fields that were previously default-denied; review the impact on current
+users before release. Explicit child/field denies continue to block access.
+Form placement (`form_group_id`) does not confer permission. New ordinary fields
+inherit only policies with `inherit_new`; group denies continue to apply.
+An inactive parent supplies no inherited grant. Reparenting changes security and
+requires Superadmin, while the existing two-level hierarchy constraint remains.
+For rollback, restore `field_policy_grid` and `validate_group_parent` from their
+private `*_before_parent_inheritance` / `*_before_inheritance` predecessors in a
+new forward migration, preserving ACLs; then roll back the frontend. Keep the
+predecessors private and retain employee data and all saved policies.
 
 Field organization controls share the stationary top toolbar. Permission tables
 own their vertical and horizontal scroll; column headers and the first identity

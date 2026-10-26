@@ -1,5 +1,11 @@
 # Deployment and migrations
 
+Parent field-group inheritance requires `20261026022643_parent_group_permissions.sql`
+after employee import. Review changed effective access for existing users before
+applying it: saved parent grants can now reach normal child fields. Publish the
+updated permission UI after the migration. See [permission-matrix.md](permission-matrix.md)
+for deny precedence, parent links, restricted fields and rollback.
+
 Employee import requires `20261026014402_employee_import.sql` after all earlier
 migrations and before the updated frontend. It preserves existing records and
 grants Import to no ordinary account by default. See [employee-import.md](employee-import.md)

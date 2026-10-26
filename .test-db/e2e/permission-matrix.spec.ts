@@ -32,6 +32,13 @@ for (const [width, height] of [
     );
     await parent.click();
     await child.click();
+    const childRow=page.getByRole("row").filter({has:child});
+    await expect(childRow).toContainText("Parent group:");
+    await childRow.getByRole("button",{name:"Go to parent group Employment Details",exact:true}).click();
+    await expect(parent).toBeFocused();
+    await expect(page.getByRole("button",{name:"Go to permission group for Daily Rate",exact:true})).toBeVisible();
+    await page.getByRole("button",{name:"Go to permission group for Daily Rate",exact:true}).click();
+    await expect(child).toBeFocused();
     const bank = page
       .getByRole("row")
       .filter({ has: page.getByLabel("Bank Name View", { exact: true }) });
