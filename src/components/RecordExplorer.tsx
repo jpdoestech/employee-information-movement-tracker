@@ -49,6 +49,8 @@ export type RecordRow = {
   reference?: string;
   employment_type?: string;
   required_headcount?: number;
+  filled_headcount?: number | null;
+  lines?: { department: string; position: string }[];
   starts_on?: string;
   ends_on?: string | null;
 };
@@ -279,17 +281,19 @@ export function RecordExplorer({
   } else if (kind === "staffing") {
     headers = (
       <>
-        {heading("label", "PRF reference")}
+        {heading("label", "PRF No.")}
         {heading("client_label", "Client")}
         {heading("employment_type", "Employment Type")}
+        <th>Departments / positions</th>
         <th>Required</th>
+        <th>Filled</th>
         {heading("effective_on", "Starts on")}
         <th>Ends before</th>
         <th>Status</th>
         <th>Actions</th>
       </>
     );
-    columns = 8;
+    columns = 10;
   } else {
     headers = (
       <>
@@ -308,10 +312,12 @@ export function RecordExplorer({
   const columnLabels =
     kind === "staffing"
       ? [
-          "PRF reference",
+          "PRF No.",
           "Client",
           "Employment Type",
+          "Departments / positions",
           "Required",
+          "Filled",
           "Starts on",
           "Ends before",
           "Status",
@@ -354,7 +360,14 @@ export function RecordExplorer({
             r.reference || "",
             r.client_label || "",
             r.employment_type || "",
+            (r.lines || [])
+              .map(
+                (line) =>
+                  `${line.department || "Not configured"} / ${line.position || "Not configured"}`,
+              )
+              .join("; "),
             String(r.required_headcount),
+            String(r.filled_headcount ?? "�"),
             r.starts_on || "",
             r.ends_on || "—",
             r.active ? "Active" : "Inactive",
@@ -391,7 +404,7 @@ export function RecordExplorer({
     ),
     60,
     kind === "staffing"
-      ? ["text-id", "", "", "", "text-date", "text-date"]
+      ? ["text-id", "", "", "", "", "", "text-date", "text-date"]
       : kind === "movements"
         ? ["", "", "", "", "text-date"]
         : kind === "audit"
@@ -618,7 +631,23 @@ export function RecordExplorer({
                     </td>
                     <td title={r.client_label}>{r.client_label}</td>
                     <td title={r.employment_type}>{r.employment_type}</td>
+                    <td
+                      title={(r.lines || [])
+                        .map(
+                          (line) =>
+                            `${line.department || "Not configured"} / ${line.position || "Not configured"}`,
+                        )
+                        .join("; ")}
+                    >
+                      {(r.lines || [])
+                        .map(
+                          (line) =>
+                            `${line.department || "Not configured"} / ${line.position || "Not configured"}`,
+                        )
+                        .join("; ") || "Not configured"}
+                    </td>
                     <td>{r.required_headcount}</td>
+                    <td>{r.filled_headcount ?? "�"}</td>
                     <td className="text-date">{r.starts_on}</td>
                     <td className="text-date">{r.ends_on || "—"}</td>
                     <td>{r.active ? "Active" : "Inactive"}</td>

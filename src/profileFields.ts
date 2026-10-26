@@ -7,6 +7,7 @@ export const employmentDisplayOrder = [
   "employee_category",
   "manpower_classification",
   "replaced_employee_id",
+  "prf_number",
   "department",
   "position",
   "date_hired",
@@ -23,6 +24,7 @@ export const employmentOrder = [
   "employee_category",
   "manpower_classification",
   "replaced_employee_id",
+  "prf_number",
   "department",
   "position",
   "date_hired",
@@ -83,6 +85,12 @@ export const separationReasons = [
 ];
 // These are editable metadata defaults, not a separate HR module or authorization path.
 export const profileDefinitions = [
+  {
+    key: "prf_number",
+    label: "PRF No.",
+    type: "short_text",
+    group: "employment",
+  },
   {
     key: "employee_category",
     label: "Employee Category",

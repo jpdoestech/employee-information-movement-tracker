@@ -52,21 +52,16 @@ staffing targets; applicant tracking and a PRF approval workflow are not include
 
 ## Approved client staffing / PRFs
 
-Record the PRF reference, client, configured Employment Type, approved headcount,
-start date, optional exclusive end date and active state. Multiple concurrent
-active PRFs add to the client/type requirement. These records must represent the
-total approved staffing demand, including existing staffing requirements where
-applicable; they are not a count of unfilled hiring requests. Use the employee
-field's configured choices, including On-call or Permanent if those have been
-configured. No automatic mapping to Regular is performed.
+PRFs now support multiple Department/Position requirement lines and optional
+employee assignments through PRF No. See [PRF employee assignments](prf-employee-assignments.md)
+for the current model, permissions, migration and rollback.
 
-Fill rate is `sum(min(active headcount, required headcount) per client/type) /
-sum(required headcount) × 100`, using active PRFs effective today. Extra staffing
-in one group cannot cover another group's vacancy. No target means a dash.
+Fill rate uses explicitly linked, matching active employees, capped per requirement
+line. Unlinked employees do not fill staffing requests. No target means a dash.
 
 Staffing reads require organization View, employee scope Read, Client and
-Employment Type Read, and an unrestricted organization record rule. Fill rate
-also requires Status Read. Self/assigned/department/direct-report restrictions
+Employment Type, Department and Position Read, and an unrestricted organization record rule. Fill rate
+also requires Status and PRF No. Read. Self/assigned/department/direct-report restrictions
 hide client staffing targets and fill rate because those users cannot see the
 whole staffing population. Users can read a PRF only within their client access.
 Writes additionally require Organization Manage and client scope Update; native
@@ -77,9 +72,8 @@ Client is immutable on edit. The shared Continue/Cancel confirmation precedes
 every write, and Cancel preserves the draft. Closing edited forms uses the shared
 Discard changes / Continue editing prompt. RPC writes serialize with the existing
 system-state lock, validate versions and configured choices, and commit audit,
-revision and actor/payload-bound idempotency ledger together. PRFs are separate
-from employee values and workbook synchronization; saving a PRF does not create
-an employee or a Google synchronization event.
+revision and actor/payload-bound idempotency ledger together. Saving a PRF does not create an employee or a Google synchronization event.
+Employee PRF assignment uses the normal employee audit and synchronization path.
 
 ## Performance and deployment
 
@@ -89,7 +83,8 @@ existing `tracker_query('dashboard', q)` signature and its legacy total/status/
 placement keys remain compatible with the previous frontend. New staffing data
 and indexes are additive; existing employee values, permissions and history are
 not rewritten. Roll back by redeploying the prior frontend, retaining both
-migrations and PRF records. No destructive database rollback is needed.
+migrations and PRF records. The PRF employee-assignment migration follows these
+two migrations; retain all relationship data on frontend rollback.
 
 The dashboard builds only the small analytics field projection. Policy grids are
 evaluated by distinct placement within each statement. A partial status-history
@@ -112,5 +107,5 @@ Recorded verification: production build passed, 135 unit tests passed, 139 full
 database checks passed, and 12 Overview / record-list browser scenarios passed.
 The focused benchmark measured 2,435 ms for the previous projection versus 741 ms
 for the new analytics; the larger regression fixture measured 8,102 ms versus
-1,867 ms. Timings are local medians and vary with host load. No production
-migrations or deployment were performed.
+1,867 ms. Timings are local medians and vary with host load. Those measurements were recorded locally before production rollout; they do not
+establish hosted capacity.

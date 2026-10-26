@@ -45,7 +45,7 @@ export async function testOverviewAnalytics({
     [user, id.c1],
   );
   await owner.query(
-    "insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'R','allow' from public.field_definitions where key=any(array['status','date_hired','branch','client','birth_date','gender','employment_type'])",
+    "insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'R','allow' from public.field_definitions where key=any(array['status','date_hired','branch','client','birth_date','gender','employment_type','department','position','prf_number'])",
     [user],
   );
   for (let i = 0; i < 5; i++) {
@@ -158,6 +158,7 @@ export async function testOverviewAnalytics({
       reference: "ANALYTICS-PRF",
       employment_type: "Regular",
       required_headcount: 6,
+      lines: [{ id: randomUUID(), department: "Operations", position: "Coordinator", required_headcount: 6 }],
       starts_on: date(-20),
       ends_on: null,
       active: true,
@@ -165,6 +166,7 @@ export async function testOverviewAnalytics({
     };
     const request = randomUUID();
     prf = await save(id.sa, payload, request);
+    await owner.query("update public.employees set prf_line_id=$1,initial_position='Coordinator',custom_values=custom_values||'{\"department\":\"Operations\"}'::jsonb where id=any($2::uuid[])", [payload.lines[0].id,employeeIds]);
     assert.deepEqual(await save(id.sa, payload, request), prf);
     assert.equal(
       Number(
@@ -178,7 +180,7 @@ export async function testOverviewAnalytics({
       1,
     );
     await assert.rejects(
-      save(id.sa, { ...payload, required_headcount: 7 }, request),
+      save(id.sa, { ...payload, lines: [{ ...payload.lines[0], required_headcount: 7 }] }, request),
       /different payload/,
     );
     await assert.rejects(save(user, { ...payload, id: randomUUID() }), {
@@ -189,8 +191,8 @@ export async function testOverviewAnalytics({
       { code: "40001" },
     );
     await assert.rejects(
-      save(id.sa, { ...payload, id: randomUUID(), required_headcount: 0 }),
-      { code: "23514" },
+      save(id.sa, { ...payload, id: randomUUID(), lines: [{ ...payload.lines[0], required_headcount: 0 }] }),
+      { code: "22023" },
     );
     await assert.rejects(
       save(id.sa, { ...payload, id: randomUUID(), ends_on: payload.starts_on }),
@@ -209,6 +211,7 @@ export async function testOverviewAnalytics({
       client_id: id.c2,
       reference: "SECRET-PRF",
       required_headcount: 100,
+      lines: [{ ...payload.lines[0], id: randomUUID(), required_headcount: 100 }],
     });
     assert.equal((await page(user)).total, 1);
     assert(

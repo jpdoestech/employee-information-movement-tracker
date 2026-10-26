@@ -114,10 +114,15 @@ for (const [width, height] of [
     await expect(
       page.getByRole("button", { name: "Workforce grouping", exact: true }),
     ).toContainText("Client");
-    const mix = page.getByRole("region", { name: "Age and gender mix", exact: true });
+    const mix = page.getByRole("region", {
+      name: "Age and gender mix",
+      exact: true,
+    });
     await mix.focus();
     await expect(mix).toBeFocused();
-    await page.locator(".analytics-scroll").evaluate((e) => { e.scrollTop = 0; });
+    await page.locator(".analytics-scroll").evaluate((e) => {
+      e.scrollTop = 0;
+    });
     await page.screenshot({
       path: `.test-db/reports/screenshots/analytics-${width}x${height}.png`,
     });
@@ -128,10 +133,17 @@ for (const [width, height] of [
       name: "Client staffing / PRFs",
       exact: true,
     });
-    await list.getByRole("button", { name: "More filters", exact: true }).click();
-    const staffingFilters = page.getByRole("dialog", { name: "More filters", exact: true });
+    await list
+      .getByRole("button", { name: "More filters", exact: true })
+      .click();
+    const staffingFilters = page.getByRole("dialog", {
+      name: "More filters",
+      exact: true,
+    });
     await expect(staffingFilters).toBeVisible();
-    await staffingFilters.getByRole("button", { name: "Close More filters", exact: true }).click();
+    await staffingFilters
+      .getByRole("button", { name: "Close More filters", exact: true })
+      .click();
     await list.getByRole("button", { name: "Add PRF", exact: true }).click();
     const editor = page.getByRole("dialog", {
       name: "Add staffing PRF",
@@ -185,7 +197,7 @@ test("PRF confirmation cancellation keeps draft, saves once, updates fill rate a
     name: "Add staffing PRF",
     exact: true,
   });
-  await editor.getByLabel("PRF reference", { exact: true }).fill("DEMO-PRF-01");
+  await editor.getByLabel("PRF No.", { exact: true }).fill("DEMO-PRF-01");
   await editor.getByRole("button", { name: "PRF client", exact: true }).click();
   await page
     .getByRole("dialog", { name: "PRF client options", exact: true })
@@ -199,16 +211,20 @@ test("PRF confirmation cancellation keeps draft, saves once, updates fill rate a
     .getByRole("dialog", { name: "PRF Employment Type options", exact: true })
     .getByRole("option", { name: "Regular", exact: true })
     .click();
+  await editor.getByLabel("Department", { exact: true }).fill("Operations");
+  await editor
+    .getByLabel("Position required", { exact: true })
+    .fill("Coordinator");
   await editor.getByLabel("Required headcount").fill("20");
   await editor.getByRole("button", { name: "Save PRF", exact: true }).click();
   const confirm = page.getByRole("dialog", {
     name: "Save staffing PRF",
     exact: true,
   });
-  await expect(editor.getByLabel("PRF reference", { exact: true })).toBeDisabled();
+  await expect(editor.getByLabel("PRF No.", { exact: true })).toBeDisabled();
   await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
-  await expect(editor.getByLabel("PRF reference", { exact: true })).toBeEnabled();
-  await expect(editor.getByLabel("PRF reference", { exact: true })).toHaveValue(
+  await expect(editor.getByLabel("PRF No.", { exact: true })).toBeEnabled();
+  await expect(editor.getByLabel("PRF No.", { exact: true })).toHaveValue(
     "DEMO-PRF-01",
   );
   await editor.getByRole("button", { name: "Save PRF", exact: true }).click();

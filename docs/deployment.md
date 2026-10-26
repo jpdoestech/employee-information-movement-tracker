@@ -1,5 +1,10 @@
 # Deployment and migrations
 
+PRF employee links and multiple department/position requirements need
+`20261027000000_prf_employee_assignments.sql` after both Overview migrations and
+before publishing their frontend. Existing employees remain unassigned; existing
+PRF totals are preserved. See [PRF assignments](prf-employee-assignments.md).
+
 Parent field-group inheritance requires `20261026022643_parent_group_permissions.sql`
 after employee import. Review changed effective access for existing users before
 applying it: saved parent grants can now reach normal child fields. Publish the

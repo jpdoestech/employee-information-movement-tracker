@@ -12,6 +12,8 @@ describe("overview synthetic fixture calculations", () => {
         branch: "North",
         client: "Shared",
         employment_type: "Regular",
+        department: "Operations",
+        position: "Clerk",
         date_hired: "2026-01-01",
         birth_date: "2000-10-27",
         gender: "Female",
@@ -25,6 +27,8 @@ describe("overview synthetic fixture calculations", () => {
         branch: "South",
         client: "Shared",
         employment_type: "Regular",
+        department: "Operations",
+        position: "Clerk",
         date_hired: "2026-10-25",
         birth_date: "2000-10-26",
         gender: "Male",
@@ -65,7 +69,17 @@ describe("overview synthetic fixture calculations", () => {
           reference: "PRF",
           client_id: "n",
           employment_type: "Regular",
+          department: "Operations",
+          position: "Clerk",
           required_headcount: 1,
+          lines: [
+            {
+              id: "one-line",
+              department: "Operations",
+              position: "Clerk",
+              required_headcount: 1,
+            },
+          ],
           starts_on: "2026-01-01",
           ends_on: null,
           active: true,
@@ -76,6 +90,14 @@ describe("overview synthetic fixture calculations", () => {
           client_id: "n",
           employment_type: "Contractual",
           required_headcount: 3,
+          lines: [
+            {
+              id: "two-line",
+              department: "Operations",
+              position: "Clerk",
+              required_headcount: 3,
+            },
+          ],
           starts_on: "2026-01-01",
           ends_on: null,
           active: true,
@@ -85,7 +107,17 @@ describe("overview synthetic fixture calculations", () => {
           reference: "OLD",
           client_id: "s",
           employment_type: "Regular",
+          department: "Operations",
+          position: "Clerk",
           required_headcount: 100,
+          lines: [
+            {
+              id: "expired-line",
+              department: "Operations",
+              position: "Clerk",
+              required_headcount: 100,
+            },
+          ],
           starts_on: "2026-01-01",
           ends_on: today,
           active: true,
@@ -94,6 +126,10 @@ describe("overview synthetic fixture calculations", () => {
       org,
       today,
       {},
+      new Map([
+        ["a", "one-line"],
+        ["b", "one-line"],
+      ]),
     );
     expect(result.staffing).toEqual({ required: 4, filled: 1 });
     expect(result.fill_rate).toBe(25);

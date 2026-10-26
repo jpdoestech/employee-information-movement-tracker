@@ -9,6 +9,7 @@ export function fieldTextRole(
   if (field.type === "date") return "text-date";
   if (
     field.validation?.government_id_digits ||
+    field.key === "prf_number" ||
     /(?:^|_)(?:id|code)$/.test(field.key) ||
     (/(?:^|_)number$/.test(field.key) && field.type === "system")
   )

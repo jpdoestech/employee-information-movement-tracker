@@ -1,4 +1,4 @@
-import { demoAnalytics } from "./demoAnalytics";
+import { demoAnalytics, demoLineFilled } from "./demoAnalytics";
 import type { StaffingRequirement } from "./components/StaffingRequisitions";
 import {
   duplicateEmployees,
@@ -319,6 +319,7 @@ for (const e of employees)
       )
     : null;
 const staffingRequirements: StaffingRequirement[] = [];
+const employeePrfs = new Map<string, string>();
 const history: any[] = [];
 const audit: any[] = [];
 const context: Context = {
@@ -730,6 +731,48 @@ export async function demoQuery(op: string, q: any = {}) {
             movements: history.filter((m) => m.employee_id === q.id),
           }),
     };
+  if (op === "staffing_options") {
+    const employee = employees.find((entry) => entry.id === q.employee_id);
+    const client = org.find(
+      (entry) =>
+        entry.id === q.client_id ||
+        (employee &&
+          entry.kind === "client" &&
+          entry.label === employee.values.client &&
+          entry.context === employee.values.branch),
+    );
+    const choices = staffingRequirements
+      .filter((row) => row.client_id === client?.id)
+      .flatMap((row) =>
+        row.lines.map((line) => ({
+          ...line,
+          label: row.reference,
+          context: `${line.department} � ${line.position} � ${row.employment_type}`,
+          employment_type: row.employment_type,
+          available:
+            line.active !== false &&
+            row.active &&
+            row.starts_on <= context.today &&
+            (!row.ends_on || row.ends_on > context.today),
+        })),
+      );
+    return {
+      items: choices
+        .filter(
+          (row) =>
+            row.available &&
+            `${row.label} ${row.context}`
+              .toLowerCase()
+              .includes((q.search || "").toLowerCase()),
+        )
+        .slice(0, 25),
+      selected:
+        choices.find(
+          (row) =>
+            row.id === (q.selected_id || employeePrfs.get(q.employee_id)),
+        ) || null,
+    };
+  }
   if (op === "record_page") {
     const source =
       q.kind === "staffing"
@@ -737,6 +780,33 @@ export async function demoQuery(op: string, q: any = {}) {
             const client = org.find((o) => o.id === r.client_id);
             return {
               ...r,
+              job_locked: r.lines.some((line) =>
+                [...employeePrfs.values()].includes(line.id),
+              ),
+              lines: r.lines
+                .filter((line) => line.active !== false)
+                .map((line) => ({
+                  ...line,
+                  job_locked: [...employeePrfs.values()].includes(line.id),
+                  filled_headcount: demoLineFilled(
+                    employees,
+                    org,
+                    r,
+                    line,
+                    employeePrfs,
+                  ),
+                })),
+              filled_headcount: r.lines
+                .filter((line) => line.active !== false)
+                .reduce(
+                  (sum, line) =>
+                    sum +
+                    Math.min(
+                      line.required_headcount,
+                      demoLineFilled(employees, org, r, line, employeePrfs),
+                    ),
+                  0,
+                ),
               label: r.reference,
               client_label: client?.label,
               context: client?.context,
@@ -756,6 +826,12 @@ export async function demoQuery(op: string, q: any = {}) {
             r.reference,
             r.client_label,
             r.employment_type,
+            ...(r.lines || []).flatMap(
+              (line: { department: string; position: string }) => [
+                line.department,
+                line.position,
+              ],
+            ),
             r.employee_name,
             r.employee_number,
             r.type,
@@ -804,6 +880,7 @@ export async function demoQuery(op: string, q: any = {}) {
       org,
       context.today,
       q,
+      employeePrfs,
     );
   if (op === "schema") return { fields, groups: context.groups, targets: [] };
   if (op === "security")
@@ -875,6 +952,60 @@ export async function demoMutate(op: string, p: any) {
   if (op === "employee_import") return demoImport(p);
   if (op === "staffing_requisition") {
     const existing = staffingRequirements.find((r) => r.id === p.id);
+    if (
+      !Array.isArray(p.lines) ||
+      !p.lines.length ||
+      p.lines.length > 100 ||
+      p.lines.some(
+        (line: any) =>
+          !line.department?.trim() ||
+          !line.position?.trim() ||
+          !Number.isInteger(line.required_headcount) ||
+          line.required_headcount < 1,
+      )
+    )
+      throw new Error(
+        "Complete each department, position and positive whole headcount",
+      );
+    if (
+      new Set(
+        p.lines.map(
+          (line: any) =>
+            `${line.department.trim().toLowerCase()}:${line.position.trim().toLowerCase()}`,
+        ),
+      ).size !== p.lines.length
+    )
+      throw new Error("Combine duplicate department and position requirements");
+    if (
+      existing?.lines.some((line) =>
+        [...employeePrfs.values()].includes(line.id),
+      ) &&
+      (p.reference !== existing.reference ||
+        p.employment_type !== existing.employment_type)
+    )
+      throw new Error(
+        "PRF No. and Employment Type are locked after employees are assigned",
+      );
+    for (const line of p.lines) {
+      const previous = existing?.lines.find((entry) => entry.id === line.id);
+      if (
+        previous &&
+        [...employeePrfs.values()].includes(line.id) &&
+        (line.department !== previous.department ||
+          line.position !== previous.position)
+      )
+        throw new Error(
+          "Assigned job details are locked; add another requirement line",
+        );
+    }
+    p = {
+      ...p,
+      required_headcount: p.lines.reduce(
+        (sum: number, line: any) => sum + line.required_headcount,
+        0,
+      ),
+    };
+
     if ((existing?.row_version || 0) !== p.expected_version)
       throw new Error("PRF changed; reload before saving");
     if (
@@ -907,6 +1038,12 @@ export async function demoMutate(op: string, p: any) {
     const saved = {
       ...p,
       reference: p.reference.trim(),
+      lines: [
+        ...p.lines.map((line: any) => ({ ...line, active: true })),
+        ...(existing?.lines || [])
+          .filter((line) => !p.lines.some((entry: any) => entry.id === line.id))
+          .map((line) => ({ ...line, active: false })),
+      ],
       row_version: (existing?.row_version || 0) + 1,
     };
     if (existing) Object.assign(existing, saved);
@@ -1032,6 +1169,48 @@ export async function demoMutate(op: string, p: any) {
     )
       throw new Error("Name parts must be text of at most 80 characters");
     return combinedName(values);
+  }
+  const prfSelections = new Map<string, string | null>();
+  if (
+    (op === "employee_create" ||
+      op === "employee_update" ||
+      op === "bulk_update") &&
+    Object.hasOwn(p.values || {}, "prf_number")
+  ) {
+    const targets =
+      op === "employee_create"
+        ? [{ id: "new", client_id: p.client_id }]
+        : (op === "bulk_update" ? p.rows : [{ id: p.id }]).map((row: any) => {
+            const employee = employees.find((entry) => entry.id === row.id);
+            return {
+              id: row.id,
+              client_id: org.find(
+                (entry) =>
+                  entry.kind === "client" &&
+                  entry.label === employee?.values.client &&
+                  entry.context === employee?.values.branch,
+              )?.id,
+            };
+          });
+    let reference: string | null = null;
+    for (const target of targets) {
+      const requirement = staffingRequirements.find(
+        (row) =>
+          row.client_id === target.client_id &&
+          row.active &&
+          row.starts_on <= context.today &&
+          (!row.ends_on || row.ends_on > context.today) &&
+          row.lines.some((line) => line.id === p.values.prf_number),
+      );
+      const line = requirement?.lines.find(
+        (line) => line.id === p.values.prf_number,
+      );
+      if (p.values.prf_number != null && !line)
+        throw new Error("Choose an available PRF requirement for this client");
+      prfSelections.set(target.id, line?.id || null);
+      reference = requirement?.reference || null;
+    }
+    p = { ...p, values: { ...p.values, prf_number: reference } };
   }
   if (op === "employee_create") {
     const defaults = Object.fromEntries(
@@ -1174,6 +1353,8 @@ export async function demoMutate(op: string, p: any) {
         ? clientIdentity(created, p.client_id, p.manual_client_id)
         : null;
       employees.push(created);
+      if (prfSelections.get("new"))
+        employeePrfs.set(id, prfSelections.get("new")!);
       audit.unshift({
         id: audit.length + 1,
         operation: op,
@@ -1292,6 +1473,11 @@ export async function demoMutate(op: string, p: any) {
         employees = employees.filter((x) => x.id !== e.id);
       } else {
         Object.assign(e.values, p.values);
+        if (prfSelections.has(e.id)) {
+          const line = prfSelections.get(e.id);
+          if (line) employeePrfs.set(e.id, line);
+          else employeePrfs.delete(e.id);
+        }
         if (nameKeys.some((key) => Object.hasOwn(p.values ?? {}, key)))
           e.values.name = structuredValues(e.values);
         e.row_version++;

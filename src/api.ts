@@ -39,6 +39,7 @@ export async function query<T = any>(
     "filter_values",
     "employee_duplicates",
     "access_configuration",
+    "staffing_options",
     "effective_access",
   ].includes(operation)
     ? operation

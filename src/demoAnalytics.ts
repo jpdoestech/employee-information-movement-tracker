@@ -1,6 +1,29 @@
 import type { Employee, Option } from "./domain";
 import type { AnalyticsReport } from "./components/ManagementAnalytics";
-import type { StaffingRequirement } from "./components/StaffingRequisitions";
+import type {
+  StaffingLine,
+  StaffingRequirement,
+} from "./components/StaffingRequisitions";
+
+export function demoLineFilled(
+  employees: Employee[],
+  org: Option[],
+  requirement: StaffingRequirement,
+  line: StaffingLine,
+  assignments: Map<string, string>,
+) {
+  const client = org.find((option) => option.id === requirement.client_id);
+  return employees.filter(
+    (employee) =>
+      assignments.get(employee.id) === line.id &&
+      employee.values.status === "Active" &&
+      employee.values.client === client?.label &&
+      employee.values.branch === client?.context &&
+      employee.values.department === line.department &&
+      employee.values.position === line.position &&
+      employee.values.employment_type === requirement.employment_type,
+  ).length;
+}
 
 // Synthetic demo only. Production aggregates and permissions are evaluated in PostgreSQL.
 export function demoAnalytics(
@@ -18,6 +41,7 @@ export function demoAnalytics(
   org: Option[],
   today: string,
   q: { from?: string; to?: string },
+  assignments = new Map<string, string>(),
 ): AnalyticsReport {
   const end = q.to || today,
     start = new Date(`${end}T00:00:00Z`);
@@ -94,37 +118,23 @@ export function demoAnalytics(
       context: undefined,
       count: noClient,
     });
-  const targets = new Map<
-    string,
-    { client: Option; type: string; required: number }
-  >();
-  for (const row of staffing.filter(
-    (r) =>
-      r.active && r.starts_on <= today && (!r.ends_on || r.ends_on > today),
-  )) {
-    const client = org.find((o) => o.id === row.client_id);
-    if (!client) continue;
-    const key = `${client.id}:${row.employment_type}`,
-      prior = targets.get(key);
-    targets.set(key, {
-      client,
-      type: row.employment_type,
-      required: row.required_headcount + (prior?.required || 0),
-    });
-  }
   let required = 0,
     filled = 0;
-  for (const target of targets.values()) {
-    required += target.required;
-    filled += Math.min(
-      target.required,
-      active.filter(
-        (e) =>
-          e.values.client === target.client.label &&
-          e.values.branch === target.client.context &&
-          e.values.employment_type === target.type,
-      ).length,
-    );
+  for (const requirement of staffing.filter(
+    (row) =>
+      row.active &&
+      row.starts_on <= today &&
+      (!row.ends_on || row.ends_on > today),
+  )) {
+    for (const line of requirement.lines.filter(
+      (line) => line.active !== false,
+    )) {
+      required += line.required_headcount;
+      filled += Math.min(
+        line.required_headcount,
+        demoLineFilled(employees, org, requirement, line, assignments),
+      );
+    }
   }
   const mix = new Map<string, { age: string; gender: string; count: number }>();
   for (const e of active) {

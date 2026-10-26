@@ -79,3 +79,5 @@ The native workload defaults to 20 simultaneous users. For 50 on PowerShell, run
 Local implementation is verified separately from deployment. A new Supabase project, Google OAuth consent/account, approved workbook policies and staging/production targets remain necessary for live verification. Reference databases are never connected. Obtain explicit approval before production SQL or deployment.
 
 All test source, runners, configurations and generated evidence are under `.test-db/`: `unit/`, `e2e/`, `scripts/`, `runs/`, `results/`, `reports/` and `cache/`. Source/configuration are tracked; generated database files, reports, traces and caches are ignored. Existing archived test databases in `.test-db/` are preserved.
+
+PRFs support multiple department/position requirements and optional employee links through PRF No. See [PRF employee assignments](docs/prf-employee-assignments.md) for setup, fill-rate semantics and migration order.

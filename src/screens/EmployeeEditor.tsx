@@ -8,6 +8,7 @@ import {
 } from "../clientIdentity";
 import { ManualClientId } from "../components/ManualClientId";
 import { ReplacementEmployee } from "../components/ReplacementEmployee";
+import { PrfAssignment } from "../components/PrfAssignment";
 import { manpowerError } from "../employmentValidation";
 import { lengthOfService } from "../employeeOverview";
 import { FieldTypeIcon } from "../components/FieldTypeIcon";
@@ -130,7 +131,14 @@ export function EmployeeEditor({
     !row ? initialClient?.id : undefined,
     context.revision,
   );
-  useEffect(() => setManualId(""), [target]);
+  useEffect(() => {
+    setManualId("");
+    setChanged((current) => {
+      const next = { ...current };
+      delete next.prf_number;
+      return next;
+    });
+  }, [target]);
   useEffect(() => {
     let active = true;
     if (row) {
@@ -919,6 +927,54 @@ export function EmployeeEditor({
                                           onChange={setManualId}
                                           required
                                           disabled={busy}
+                                        />
+                                      ) : f.key === "prf_number" &&
+                                        editable.some(
+                                          (entry) => entry.id === f.id,
+                                        ) ? (
+                                        <PrfAssignment
+                                          field={f}
+                                          value={draft[f.key]}
+                                          selectionId={
+                                            typeof changed.prf_number ===
+                                            "string"
+                                              ? changed.prf_number
+                                              : undefined
+                                          }
+                                          employeeId={row?.id}
+                                          clientId={initialClient?.id}
+                                          revision={context.revision}
+                                          disabled={busy}
+                                          onChange={(value, requirement) =>
+                                            setChanged((current) => ({
+                                              ...current,
+                                              prf_number: value,
+                                              ...(!row && requirement
+                                                ? Object.fromEntries(
+                                                    [
+                                                      "department",
+                                                      "position",
+                                                      "employment_type",
+                                                    ]
+                                                      .filter((key) =>
+                                                        editable.some(
+                                                          (entry) =>
+                                                            entry.key === key,
+                                                        ),
+                                                      )
+                                                      .map((key) => [
+                                                        key,
+                                                        requirement[
+                                                          key as
+                                                            | "department"
+                                                            | "position"
+                                                            | "employment_type"
+                                                        ],
+                                                      ]),
+                                                  )
+                                                : {}),
+                                            }))
+                                          }
                                         />
                                       ) : f.key === "replaced_employee_id" &&
                                         editable.some(

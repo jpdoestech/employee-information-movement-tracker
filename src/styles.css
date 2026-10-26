@@ -4681,3 +4681,11 @@ main:has(> .management-analytics) { display: flex; flex-direction: column; overf
  .analytics-distribution-row { gap: 6px; grid-template-columns: minmax(80px,1.4fr) minmax(24px,1fr) auto 44px; }
  .analytics-mix th, .analytics-mix td { padding: 10px; }
 }
+.staffing-lines { grid-column: 1 / -1; min-width: 0; }
+.staffing-lines-heading, .staffing-line-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.staffing-lines-heading { margin-bottom: 8px; }
+.staffing-lines-heading span, .staffing-line-actions span { font-size: 11px; color: var(--muted); }
+.staffing-line { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(100px, .6fr); gap: 12px; border: 1px solid var(--line); border-radius: 4px; padding: 10px; margin: 0 0 10px; min-width: 0; }
+.staffing-line legend { font-size: 11px; padding: 0 4px; }
+.staffing-line-actions { grid-column: 1 / -1; }
+@media (max-width: 600px) { .staffing-line { grid-template-columns: minmax(0, 1fr); } .staffing-lines-heading { align-items: flex-start; flex-direction: column; gap: 4px; } }

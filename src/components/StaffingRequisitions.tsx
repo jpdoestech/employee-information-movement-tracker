@@ -7,6 +7,15 @@ import { RecordExplorer } from "./RecordExplorer";
 import { SearchFilterPicker } from "./SearchFilterPicker";
 import { FloatingNotification } from "./FloatingNotification";
 
+export type StaffingLine = {
+  id: string;
+  department: string;
+  position: string;
+  required_headcount: number;
+  filled_headcount?: number | null;
+  job_locked?: boolean;
+  active?: boolean;
+};
 export type StaffingRequirement = {
   id: string;
   client_id: string;
@@ -17,6 +26,9 @@ export type StaffingRequirement = {
   ends_on: string | null;
   active: boolean;
   row_version?: number;
+  lines: StaffingLine[];
+  job_locked?: boolean;
+  filled_headcount?: number | null;
 };
 export function StaffingRequisitions({
   context,
@@ -42,6 +54,17 @@ export function StaffingRequisitions({
     setDraft(value);
     setError("");
   }
+  function changeLine(id: string, patch: Partial<StaffingLine>) {
+    setDraft(
+      (current) =>
+        current && {
+          ...current,
+          lines: current.lines.map((line) =>
+            line.id === id ? { ...line, ...patch } : line,
+          ),
+        },
+    );
+  }
   return (
     <>
       <Dialog
@@ -53,8 +76,9 @@ export function StaffingRequisitions({
       >
         <div className="staffing-description">
           <p>
-            Record approved staffing requirements. Concurrent active PRFs add to
-            the client’s required headcount by Employment Type. End dates are
+            Each PRF has department and position requirements. Assign employees
+            through PRF No. in their profiles. Filled counts include active,
+            matching employees assigned to each requirement. End dates are
             exclusive.
           </p>
         </div>
@@ -74,6 +98,14 @@ export function StaffingRequisitions({
                     starts_on: context.today,
                     ends_on: null,
                     active: true,
+                    lines: [
+                      {
+                        id: crypto.randomUUID(),
+                        department: "",
+                        position: "",
+                        required_headcount: 1,
+                      },
+                    ],
                   })
               : undefined
           }
@@ -87,6 +119,7 @@ export function StaffingRequisitions({
       {draft && (
         <Dialog
           title={draft.row_version ? "Edit staffing PRF" : "Add staffing PRF"}
+          wide
           closeDisabled={busy}
           onClose={() => setDraft(undefined)}
           isDirty={JSON.stringify(draft) !== initial}
@@ -105,6 +138,10 @@ export function StaffingRequisitions({
               try {
                 await mutate("staffing_requisition", {
                   ...draft,
+                  required_headcount: draft.lines.reduce(
+                    (sum, line) => sum + line.required_headcount,
+                    0,
+                  ),
                   expected_version: draft.row_version || 0,
                 });
                 setDraft(undefined);
@@ -118,7 +155,7 @@ export function StaffingRequisitions({
           >
             <div className="form-grid">
               <label>
-                PRF reference
+                PRF No.
                 <span className="value-control has-type-icon">
                   <span className="value-type-icon">
                     <FieldTypeIcon type="short_text" size={14} />
@@ -127,6 +164,7 @@ export function StaffingRequisitions({
                     disabled={busy}
                     required
                     maxLength={80}
+                    readOnly={draft.job_locked}
                     value={draft.reference}
                     onChange={(e) =>
                       setDraft({ ...draft, reference: e.target.value })
@@ -153,7 +191,7 @@ export function StaffingRequisitions({
                 <SearchFilterPicker
                   mode="single"
                   label="PRF Employment Type"
-                  disabled={busy}
+                  disabled={busy || draft.job_locked}
                   clearable={false}
                   options={[
                     ...new Set([
@@ -166,29 +204,6 @@ export function StaffingRequisitions({
                     setDraft({ ...draft, employment_type })
                   }
                 />
-              </label>
-              <label>
-                Required headcount
-                <span className="value-control has-type-icon">
-                  <span className="value-type-icon">
-                    <FieldTypeIcon type="integer" size={14} />
-                  </span>
-                  <input
-                    disabled={busy}
-                    type="number"
-                    min={1}
-                    max={100000}
-                    step={1}
-                    required
-                    value={draft.required_headcount}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        required_headcount: Number(e.target.value),
-                      })
-                    }
-                  />
-                </span>
               </label>
               <label>
                 Starts on
@@ -241,6 +256,127 @@ export function StaffingRequisitions({
                 Use the same Employment Type as employee records. Configure
                 additional choices, such as On-call, in Field Builder.
               </p>
+              <section
+                className="staffing-lines"
+                aria-label="Department and position requirements"
+              >
+                <div className="staffing-lines-heading">
+                  <h3>Required departments & positions</h3>
+                  <span>
+                    Total required:{" "}
+                    {draft.lines
+                      .reduce((sum, line) => sum + line.required_headcount, 0)
+                      .toLocaleString()}
+                  </span>
+                </div>
+                {draft.lines.map((line, index) => (
+                  <fieldset
+                    className="staffing-line"
+                    key={line.id}
+                    disabled={busy}
+                  >
+                    <legend>Requirement {index + 1}</legend>
+                    <label>
+                      Department
+                      <span className="value-control has-type-icon">
+                        <span className="value-type-icon">
+                          <FieldTypeIcon type="short_text" size={14} />
+                        </span>
+                        <input
+                          required
+                          readOnly={line.job_locked}
+                          maxLength={200}
+                          value={line.department}
+                          onChange={(e) =>
+                            changeLine(line.id, { department: e.target.value })
+                          }
+                        />
+                      </span>
+                    </label>
+                    <label>
+                      Position required
+                      <span className="value-control has-type-icon">
+                        <span className="value-type-icon">
+                          <FieldTypeIcon type="short_text" size={14} />
+                        </span>
+                        <input
+                          required
+                          readOnly={line.job_locked}
+                          maxLength={200}
+                          value={line.position}
+                          onChange={(e) =>
+                            changeLine(line.id, { position: e.target.value })
+                          }
+                        />
+                      </span>
+                    </label>
+                    <label>
+                      Required headcount
+                      <span className="value-control has-type-icon">
+                        <span className="value-type-icon">
+                          <FieldTypeIcon type="integer" size={14} />
+                        </span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={100000}
+                          step={1}
+                          required
+                          value={line.required_headcount}
+                          onChange={(e) =>
+                            changeLine(line.id, {
+                              required_headcount: Number(e.target.value),
+                            })
+                          }
+                        />
+                      </span>
+                    </label>
+                    <div className="staffing-line-actions">
+                      <span>Filled: {line.filled_headcount ?? "—"}</span>
+                      <button
+                        type="button"
+                        disabled={draft.lines.length === 1}
+                        aria-label={`Remove requirement ${index + 1}`}
+                        onClick={() =>
+                          setDraft({
+                            ...draft,
+                            lines: draft.lines.filter(
+                              (entry) => entry.id !== line.id,
+                            ),
+                          })
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </fieldset>
+                ))}
+                <button
+                  type="button"
+                  disabled={busy || draft.lines.length >= 100}
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      lines: [
+                        ...draft.lines,
+                        {
+                          id: crypto.randomUUID(),
+                          department: "",
+                          position: "",
+                          required_headcount: 1,
+                        },
+                      ],
+                    })
+                  }
+                >
+                  Add requirement
+                </button>
+                <p className="analytics-note">
+                  Job details and the PRF number are locked after assignment.
+                  Retired requirements retain their employee links. Extra hires
+                  do not fill another requirement’s vacancies.
+                </p>
+              </section>
               {error && (
                 <FloatingNotification onDismiss={() => setError("")}>
                   {error}

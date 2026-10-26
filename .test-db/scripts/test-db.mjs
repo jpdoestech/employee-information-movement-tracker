@@ -1,4 +1,5 @@
 import { testOverviewAnalytics } from "./test-overview-analytics.mjs";
+import { testPrfAssignments } from "./test-prf-assignments.mjs";
 import { testPasswordReceipts } from "./test-password-receipts.mjs";
 import { testEmployeeImport } from "./test-employee-import.mjs";
 import { testParentInheritance } from "./test-parent-inheritance.mjs";
@@ -257,7 +258,10 @@ try {
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
-  if (process.env.TEST_ANALYTICS_ONLY === "true") {
+  if (process.env.TEST_PRF_ONLY === "true") {
+    await testOverviewAnalytics({ owner, test, as, q, id, today, date });
+    await testPrfAssignments({ owner, test, as, q, m, id, today, revision });
+  } else if (process.env.TEST_ANALYTICS_ONLY === "true") {
     await testOverviewAnalytics({ owner, test, q, as, id, today, date });
   } else if (process.env.TEST_REGISTER_ONLY === "true") {
     await testRegisterViews({ owner, test, as, q, id });
@@ -269,7 +273,8 @@ try {
     await testInputNormalization({owner,test,m,q,revision,id});
     await testEmployeeCategory({owner,test,m,q,revision,id});
   } else if (process.env.TEST_RBAC_ONLY === "true") {
-    await testPermissionMatrix({ owner, test, m, q, as, id, revision });
+    await testPrfAssignments({ owner, test, as, q, m, id, today, revision });
+  await testPermissionMatrix({ owner, test, m, q, as, id, revision });
   } else {
   await test("create profiles allocates permanent IDs and atomic outbox", async () => {
     const initialOutbox = Number((await owner.query("select count(*) n from public.sync_outbox")).rows[0].n);
@@ -3387,6 +3392,7 @@ try {
   await testEmergencyAddress({ owner, test, m, q, revision, id, today });
   await testPasswordReceipts({ owner, test, as, id });
   await testOverviewAnalytics({ owner, test, q, as, id, today, date });
+  await testPrfAssignments({ owner, test, as, q, m, id, today, revision });
   await testPermissionMatrix({ owner, test, m, q, as, id, revision });
   }
   await mkdir(".test-db/reports/verification", { recursive: true });
