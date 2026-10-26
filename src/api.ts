@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { demoQuery, demoMutate, demoIdentityPreview } from "./demo";
+import { demoQuery, demoMutate, demoIdentityPreview, demoImport } from "./demo";
 import { requireConfirmation } from "./components/TransactionConfirmation";
 import { trackTransaction } from "./transactions";
 import { normalizeInputs } from "./inputNormalization";
@@ -72,6 +72,7 @@ export async function query<T = any>(
 export async function preview(operation: string, p: unknown) {
   p = normalizeInputs(p);
   if (demo) {
+    if (operation === "employee_import") return demoImport(p, true);
     if (operation === "movement") demoIdentityPreview(p);
     return { valid: true };
   }
@@ -197,6 +198,7 @@ export async function mutate<T = any>(
   p = normalizeInputs(p);
   const labels: Record<string, string> = {
     employee_create: "Create employee",
+    employee_import: "Import employees",
     employee_update: "Save employee changes",
     employee_delete: "Archive employee",
     bulk_update: "Update selected employees",

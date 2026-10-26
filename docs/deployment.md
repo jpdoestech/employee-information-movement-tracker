@@ -1,5 +1,10 @@
 # Deployment and migrations
 
+Employee import requires `20261026014402_employee_import.sql` after all earlier
+migrations and before the updated frontend. It preserves existing records and
+grants Import to no ordinary account by default. See [employee-import.md](employee-import.md)
+for selected-user grants, file format, rollback and verification details.
+
 Create a **new** Supabase project. Keep its database and Auth separate from both reference applications. Configure Auth site/redirect URLs for the chosen frontend; disable public signup, create accounts through trusted Auth administration, and enroll them through Permissions. Enable appropriate MFA/password and session policies for your organization.
 
 ## Staging first

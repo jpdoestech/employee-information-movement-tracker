@@ -217,6 +217,12 @@ cancellation, draft preservation, presets, effective explanations and four
 viewports. The disposable Supabase REST harness also exercises real Auth JWTs
 and the publishable-key API; never run it against production.
 
+Employee import adds the independent `employees.import` action. It defaults to
+trusted Superadmin only; grant it explicitly for a selected user in the matrix.
+Employee Create, authorized creation scope and field Create permissions remain
+separate requirements. Import never grants Export or record access. See
+[employee-import.md](employee-import.md) for its atomic transaction and file rules.
+
 ESS, onboarding and broader HR Operations modules are absent from this standalone
 tracker. This change supplies their requested access primitives without inventing
 those modules or claiming nonexistent regression coverage.

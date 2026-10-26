@@ -4581,6 +4581,23 @@ dialog.employee-edit-dialog[open] {
 .effective-access-dialog table { width: 100%; min-width: 700px; }
 .effective-access-dialog th, .effective-access-dialog td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .matrix-review table { width: 100%; }
+.employee-import-dialog > .dialog-body { min-height: 0; overflow: auto; }
+.import-file-controls { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+.import-file-controls > label { min-width: 0; flex: 1; }
+.import-file-controls input { max-width: 100%; }
+.import-file-controls > button { flex: none; }
+.import-guide { margin: 10px 0; }
+.import-guide summary { cursor: pointer; }
+.import-guide dl > div { display: flex; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.import-guide dt { flex: 0 0 180px; overflow-wrap: anywhere; }
+.import-guide dd { margin: 0; overflow-wrap: anywhere; min-width: 0; }
+.import-preview { height: 280px; min-height: 120px; max-height: 45vh; }
+.import-preview .data-scroll-region { height: 100%; }
+.import-preview table { width: max-content; table-layout: auto; }
+.import-preview th, .import-preview td { padding: 6px 10px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.import-preview thead th { position: sticky; top: 0; z-index: 1; background: var(--section-surface); }
+.import-preview th:first-child, .import-preview td:first-child { position: sticky; left: 0; background: var(--paper); }
+.import-preview thead th:first-child { z-index: 2; background: var(--section-surface); }
 .matrix-review td, .matrix-review th { padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--line); }
 @media (pointer: coarse), (max-width: 760px) {
   .permission-matrix .permission-cell, .permission-toolbar > button, .permission-save-bar > button { min-height: 44px; }

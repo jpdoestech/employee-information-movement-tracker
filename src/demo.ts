@@ -393,6 +393,7 @@ const context: Context = {
     "audit_read",
     "sync_manage",
   ],
+  module_permissions: { "employees.import": true },
   views: JSON.parse(localStorage.getItem("eimt-synthetic-views") || "[]"),
 };
 
@@ -471,7 +472,7 @@ const demoAccess = {
     {
       code: "employees",
       name: "Employees",
-      actions: ["view", "create", "update", "delete", "export"],
+      actions: ["view", "create", "update", "delete", "export", "import"],
     },
     { code: "movements", name: "Movements", actions: ["view", "create"] },
     { code: "organization", name: "Organization", actions: ["view", "manage"] },
@@ -788,8 +789,56 @@ export async function demoQuery(op: string, q: any = {}) {
   if (op === "sync") return { workbooks: [], pending: 0, connected: false };
   throw new Error("Unknown demo query");
 }
+export async function demoImport(p: any, previewOnly = false) {
+  const before = structuredClone({
+    employees,
+    history,
+    audit,
+    revision: context.revision,
+    counters: clientCounters,
+    identities: clientIdentities,
+  });
+  let committed = false;
+  try {
+    if (!Array.isArray(p?.rows) || p.rows.length < 1 || p.rows.length > 100)
+      throw new Error("Import 1–100 employees per batch");
+    for (const [i, row] of p.rows.entries()) {
+      try {
+        const { position, status, ...values } = row.values;
+        await demoMutate("employee_create", {
+          target_level: p.target_level,
+          branch_id: p.branch_id,
+          client_id: p.client_id,
+          values,
+          manual_client_id: row.manual_client_id,
+          initial_position: position,
+          initial_employment: {
+            change_kind: "official",
+            status: status || "Active",
+          },
+        });
+      } catch (e) {
+        throw new Error(`Row ${i + 1}: ${(e as Error).message}`);
+      }
+    }
+    committed = !previewOnly;
+    return { valid: true, imported: p.rows.length };
+  } finally {
+    if (!committed) {
+      employees = before.employees;
+      history.splice(0, history.length, ...before.history);
+      audit.splice(0, audit.length, ...before.audit);
+      context.revision = before.revision;
+      clientCounters.clear();
+      before.counters.forEach((v, k) => clientCounters.set(k, v));
+      clientIdentities.clear();
+      before.identities.forEach((v, k) => clientIdentities.set(k, v));
+    }
+  }
+}
 export async function demoMutate(op: string, p: any) {
   p = normalizeInputs(p);
+  if (op === "employee_import") return demoImport(p);
   if (
     op === "employee_create" &&
     ["head_office", "branch", "client"].includes(p.target_level)

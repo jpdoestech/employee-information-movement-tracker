@@ -1,4 +1,5 @@
 import { testPasswordReceipts } from "./test-password-receipts.mjs";
+import { testEmployeeImport } from "./test-employee-import.mjs";
 import { testPermissionMatrix } from "./test-permission-matrix.mjs";
 import { testEmergencyAddress } from "./test-emergency-address.mjs";
 import { testEmploymentRules } from "./test-employment-rules.mjs";
@@ -246,7 +247,9 @@ try {
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
-  if (process.env.TEST_INPUT_ONLY === "true") {
+  if (process.env.TEST_IMPORT_ONLY === "true") {
+    await testEmployeeImport({owner,test,m,q,as,id});
+  } else if (process.env.TEST_INPUT_ONLY === "true") {
     await testInputNormalization({owner,test,m,q,revision,id});
     await testEmployeeCategory({owner,test,m,q,revision,id});
   } else if (process.env.TEST_RBAC_ONLY === "true") {
@@ -3349,6 +3352,7 @@ try {
   await testAuditFixes({ owner, test, q, m, worker, revision, id });
   await testFunctionFixes({ owner, test, m, worker, id });
   await testEmployeeCategory({ owner, test, m, q, revision, id });
+  await testEmployeeImport({owner,test,m,q,as,id});
   await testInputNormalization({owner,test,m,q,revision,id});
   await testAccessReview({ owner, test, m, as, id, today, date });
   await testEmergencyAddress({ owner, test, m, q, revision, id, today });

@@ -10,6 +10,7 @@ import {
   Building2,
   Columns3,
   Download,
+  Upload,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -52,6 +53,8 @@ import { EmployeeTable } from "./components/EmployeeTable";
 import { SearchFilterPicker } from "./components/SearchFilterPicker";
 import { ColumnDesigner } from "./components/ColumnDesigner";
 import { EmployeeEditor } from "./screens/EmployeeEditor";
+import { EmployeeImport } from "./screens/EmployeeImport";
+import { canImport } from "./employeeImport";
 import { BulkEditor } from "./screens/BulkEditor";
 import { MovementEditor } from "./screens/MovementEditor";
 import { Organization, FieldBuilder } from "./screens/Configuration";
@@ -107,7 +110,7 @@ export default function App() {
     [notice, setNotice] = useState(""),
     [version, setVersion] = useState(0),
     [dialog, setDialog] = useState<
-      "columns" | "employee" | "bulk" | "movement" | null
+      "columns" | "employee" | "bulk" | "movement" | "import" | null
     >(null),
     [editing, setEditing] = useState<Employee | null>(null),
     [report, setReport] = useState<any>(),
@@ -760,6 +763,12 @@ export default function App() {
                       <Download size={16} />
                       <span className="action-label">Export CSV</span>
                     </button>
+                    {canImport(ctx) && (
+                      <button aria-label="Import employees" title="Import employees" onClick={() => setDialog("import")}>
+                        <Upload size={16} />
+                        <span className="action-label">Import</span>
+                      </button>
+                    )}
                     {can("employee_create") && (
                       <button
                         className="primary"
@@ -1045,6 +1054,9 @@ export default function App() {
           onClose={() => setDialog(null)}
           onSaved={refresh}
         />
+      )}
+      {ctx && dialog === "import" && canImport(ctx) && (
+        <EmployeeImport context={ctx} options={options} onClose={() => setDialog(null)} onSaved={refresh} />
       )}
       {ctx && dialog === "bulk" && (
         <BulkEditor

@@ -306,6 +306,7 @@ test("matrix shows applicable actions and saves multiple groups atomically after
   await page
     .getByLabel("Employees View", { exact: true })
     .selectOption("allow");
+  await page.getByLabel("Employees Import", { exact: true }).selectOption("allow");
   await page
     .getByRole("button", { name: "Field permissions", exact: true })
     .click();
@@ -327,7 +328,7 @@ test("matrix shows applicable actions and saves multiple groups atomically after
     name: "Save access changes",
     exact: true,
   });
-  await expect(confirmation).toContainText("2 module changes");
+  await expect(confirmation).toContainText("3 module changes");
   await expect(confirmation).toContainText("2 field changes");
   await confirmation
     .getByRole("button", { name: "Cancel", exact: true })
@@ -348,6 +349,7 @@ test("matrix shows applicable actions and saves multiple groups atomically after
     action: "export",
     effect: "deny",
   });
+  expect(state.writes[0].p.modules).toContainEqual({module:"employees",action:"import",effect:"allow"});
 });
 
 test("failed matrix review sends no mutation and keeps the draft", async ({

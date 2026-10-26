@@ -35,12 +35,13 @@ type Configuration = {
   revision: number;
   today: string;
 };
-const actions = [
+const actionOrder = [
   "view",
   "create",
   "update",
   "delete",
   "export",
+  "import",
   "approve",
   "manage",
 ];
@@ -94,6 +95,11 @@ export function PermissionMatrix({
     [newRole, setNewRole] = useState(false),
     [roleName, setRoleName] = useState(""),
     [roleCode, setRoleCode] = useState("");
+  const applicableActions = [...new Set(config?.modules.flatMap(m => m.actions) || [])];
+  const actions = [
+    ...actionOrder.filter(a => applicableActions.includes(a)),
+    ...applicableActions.filter(a => !actionOrder.includes(a)),
+  ];
   const dirty =
     Object.keys(edits).length > 0 ||
     memberships !== null ||
@@ -491,6 +497,8 @@ export function PermissionMatrix({
                 Inherit uses roles and existing grants. Allow grants only this
                 action. Deny overrides ordinary grants. Record scopes and field
                 policies still apply.
+                Import is available to Superadmin by default. To authorize another user,
+                allow Employees Import and Create, then configure their creation scope and fields.
               </p>
             </details>
             <div
