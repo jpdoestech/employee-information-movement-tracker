@@ -1,3 +1,4 @@
+import { testOverviewAnalytics } from "./test-overview-analytics.mjs";
 import { testPasswordReceipts } from "./test-password-receipts.mjs";
 import { testEmployeeImport } from "./test-employee-import.mjs";
 import { testParentInheritance } from "./test-parent-inheritance.mjs";
@@ -256,7 +257,9 @@ try {
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
-  if (process.env.TEST_REGISTER_ONLY === "true") {
+  if (process.env.TEST_ANALYTICS_ONLY === "true") {
+    await testOverviewAnalytics({ owner, test, q, as, id, today, date });
+  } else if (process.env.TEST_REGISTER_ONLY === "true") {
     await testRegisterViews({ owner, test, as, q, id });
   } else if (process.env.TEST_PARENT_ONLY === "true") {
     await testParentInheritance({owner,test,m,q,as,id,revision});
@@ -3383,6 +3386,7 @@ try {
   await testAccessReview({ owner, test, m, as, id, today, date });
   await testEmergencyAddress({ owner, test, m, q, revision, id, today });
   await testPasswordReceipts({ owner, test, as, id });
+  await testOverviewAnalytics({ owner, test, q, as, id, today, date });
   await testPermissionMatrix({ owner, test, m, q, as, id, revision });
   }
   await mkdir(".test-db/reports/verification", { recursive: true });

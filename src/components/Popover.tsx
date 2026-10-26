@@ -22,7 +22,7 @@ export function Popover({
   label: string;
   icon: LucideIcon;
   count?: number;
-  children: ReactNode;
+  children: ReactNode | ((close: () => void) => ReactNode);
 }) {
   const id = useId(),
     anchor = useRef<HTMLButtonElement>(null),
@@ -178,7 +178,7 @@ export function Popover({
               </header>
               <PickerSurface.Provider value={surface}>
                 <div className="popover-root" hidden={!!selection}>
-                  {children}
+                  {typeof children === "function" ? children(close) : children}
                 </div>
                 <div
                   className="popover-selection"
@@ -188,7 +188,7 @@ export function Popover({
               </PickerSurface.Provider>
             </div>
           </>,
-          document.body,
+          anchor.current?.closest("dialog") || document.body,
         )}
     </>
   );

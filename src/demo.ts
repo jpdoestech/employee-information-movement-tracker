@@ -1,3 +1,5 @@
+import { demoAnalytics } from "./demoAnalytics";
+import type { StaffingRequirement } from "./components/StaffingRequisitions";
 import {
   duplicateEmployees,
   bulkDuplicateEmployees,
@@ -190,6 +192,17 @@ let employees: Employee[] = Array.from({ length: 34 }, (_, i) => ({
     name: `Synthetic Employee ${String(i + 1).padStart(2, "0")}`,
     status: i % 8 === 0 ? "Inactive" : "Active",
     position: ["Coordinator", "Team Lead", "Associate"][i % 3],
+    date_hired: new Date(Date.now() - (i * 20 + 1) * 86400000)
+      .toISOString()
+      .slice(0, 10),
+    birth_date: `${1960 + (i % 44)}-04-15`,
+    gender: ["Male", "Female", "Other", "Prefer not to say"][i % 4],
+    employment_type: [
+      "Regular",
+      "Probationary",
+      "Contractual",
+      "Project-based",
+    ][i % 4],
     branch:
       i % 3 === 0
         ? "Head Office"
@@ -305,6 +318,7 @@ for (const e of employees)
         e.values.branch === "Example North Branch" ? "client-n" : "client-s",
       )
     : null;
+const staffingRequirements: StaffingRequirement[] = [];
 const history: any[] = [];
 const audit: any[] = [];
 const context: Context = {
@@ -397,7 +411,11 @@ const context: Context = {
     "audit_read",
     "sync_manage",
   ],
-  module_permissions: { "employees.import": true },
+  module_permissions: {
+    "employees.import": true,
+    "organization.view": true,
+    "movements.view": true,
+  },
   views: JSON.parse(localStorage.getItem("eimt-synthetic-views") || "[]"),
 };
 
@@ -714,11 +732,30 @@ export async function demoQuery(op: string, q: any = {}) {
     };
   if (op === "record_page") {
     const source =
-      q.kind === "movements" ? history : q.kind === "audit" ? audit : org;
+      q.kind === "staffing"
+        ? staffingRequirements.map((r) => {
+            const client = org.find((o) => o.id === r.client_id);
+            return {
+              ...r,
+              label: r.reference,
+              client_label: client?.label,
+              context: client?.context,
+              branch_id: client?.branch_id,
+              effective_on: r.starts_on,
+            };
+          })
+        : q.kind === "movements"
+          ? history
+          : q.kind === "audit"
+            ? audit
+            : org;
     let items = source.filter(
       (r: any) =>
         (!q.search ||
           [
+            r.reference,
+            r.client_label,
+            r.employment_type,
             r.employee_name,
             r.employee_number,
             r.type,
@@ -760,21 +797,14 @@ export async function demoQuery(op: string, q: any = {}) {
   }
   if (op === "movements") return history;
   if (op === "dashboard")
-    return {
-      total: employees.length,
-      today: context.today,
-      statuses: Object.fromEntries(
-        ["Active", "Inactive"].map((s) => [
-          s,
-          employees.filter((e) => e.values.status === s).length,
-        ]),
-      ),
-      placements: Object.fromEntries(
-        ["Head Office", "Example North Branch", "Example South Branch"].map(
-          (s) => [s, employees.filter((e) => e.values.branch === s).length],
-        ),
-      ),
-    };
+    return demoAnalytics(
+      employees,
+      history,
+      staffingRequirements,
+      org,
+      context.today,
+      q,
+    );
   if (op === "schema") return { fields, groups: context.groups, targets: [] };
   if (op === "security")
     return {
@@ -843,6 +873,47 @@ export async function demoImport(p: any, previewOnly = false) {
 export async function demoMutate(op: string, p: any) {
   p = normalizeInputs(p);
   if (op === "employee_import") return demoImport(p);
+  if (op === "staffing_requisition") {
+    const existing = staffingRequirements.find((r) => r.id === p.id);
+    if ((existing?.row_version || 0) !== p.expected_version)
+      throw new Error("PRF changed; reload before saving");
+    if (
+      !org.some(
+        (o) => o.id === p.client_id && o.kind === "client" && o.active,
+      ) ||
+      !String(p.reference || "").trim() ||
+      !Number.isInteger(p.required_headcount) ||
+      p.required_headcount < 1 ||
+      p.required_headcount > 100000 ||
+      !p.starts_on ||
+      (p.ends_on && p.ends_on <= p.starts_on) ||
+      !fields
+        .find((f) => f.key === "employment_type")
+        ?.options?.includes(p.employment_type)
+    )
+      throw new Error("Complete the PRF staffing requirement");
+    if (
+      staffingRequirements.some(
+        (r) =>
+          r.id !== p.id &&
+          r.client_id === p.client_id &&
+          r.reference === p.reference.trim() &&
+          r.employment_type === p.employment_type,
+      )
+    )
+      throw new Error(
+        "This PRF reference and Employment Type are already recorded for the client",
+      );
+    const saved = {
+      ...p,
+      reference: p.reference.trim(),
+      row_version: (existing?.row_version || 0) + 1,
+    };
+    if (existing) Object.assign(existing, saved);
+    else staffingRequirements.push(saved);
+    context.revision++;
+    return saved;
+  }
   if (
     op === "employee_create" &&
     ["head_office", "branch", "client"].includes(p.target_level)

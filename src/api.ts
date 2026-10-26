@@ -43,7 +43,9 @@ export async function query<T = any>(
   ].includes(operation)
     ? operation
     : operation === "record_page"
-      ? "record_page"
+      ? (q as { kind?: string }).kind === "staffing"
+        ? "staffing_page"
+        : "record_page"
       : operation === "effective_permissions"
         ? "permission_preview"
         : operation === "export"
@@ -205,6 +207,7 @@ export async function mutate<T = any>(
     movement: "Record movement",
     void_movement: "Void or correct movement",
     organization: "Save organization",
+    staffing_requisition: "Save staffing PRF",
     field: "Save field definition",
     group: "Save field group",
     form_layout: "Save employee form tabs",
@@ -237,17 +240,22 @@ export async function mutate<T = any>(
       requestId || pendingRequests.get(fingerprint) || crypto.randomUUID();
     pendingRequests.set(fingerprint, id);
     const { data, error } =
-      operation === "register_view"
-        ? await supabase.rpc("set_register_view", { p, request_id: id })
-        : operation === "client_settings"
-          ? await supabase.rpc("set_client_settings", { p, request_id: id })
-          : operation === "register_settings"
-            ? await supabase.rpc("set_register_settings", { p, request_id: id })
-            : await supabase.rpc("tracker_mutate", {
-                operation,
-                p,
-                request_id: id,
-              });
+      operation === "staffing_requisition"
+        ? await supabase.rpc("set_staffing_requisition", { p, request_id: id })
+        : operation === "register_view"
+          ? await supabase.rpc("set_register_view", { p, request_id: id })
+          : operation === "client_settings"
+            ? await supabase.rpc("set_client_settings", { p, request_id: id })
+            : operation === "register_settings"
+              ? await supabase.rpc("set_register_settings", {
+                  p,
+                  request_id: id,
+                })
+              : await supabase.rpc("tracker_mutate", {
+                  operation,
+                  p,
+                  request_id: id,
+                });
     if (error)
       throw new Error(
         error.code === "23505" &&

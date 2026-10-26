@@ -212,9 +212,9 @@ test("client creation prefix produces separate System and Client-based IDs", asy
       .getByRole("option", { name: /COMPANY ABC/ })
       .click();
     await employee
-      .getByLabel("First Name", { exact: false })
+      .getByRole("textbox", { name: /^First Name/ })
       .fill(`Client identity sample ${n}`);
-    await employee.getByLabel("Last Name", { exact: false }).fill("Test");
+    await employee.getByRole("textbox", { name: /^Last Name/ }).fill("Test");
     await fillGovernmentIds(employee);
     await employee
       .getByRole("button", { name: "Save", exact: true })

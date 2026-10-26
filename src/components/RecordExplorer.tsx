@@ -45,6 +45,12 @@ export type RecordRow = {
   active?: boolean;
   row_version?: number;
   branch_id?: string;
+  client_label?: string;
+  reference?: string;
+  employment_type?: string;
+  required_headcount?: number;
+  starts_on?: string;
+  ends_on?: string | null;
 };
 type ListFilter = {
   search: string;
@@ -67,7 +73,7 @@ export function RecordExplorer({
   onEdit,
   onCorrect,
 }: {
-  kind: "movements" | "audit" | "organization";
+  kind: "movements" | "audit" | "organization" | "staffing";
   revision: string | number;
   options?: Option[];
   onCreate?: () => void;
@@ -93,12 +99,18 @@ export function RecordExplorer({
     offset: 0,
   };
   const [filter, setFilter] = useState(initial),
-    [data, setData] = useState<{ items: RecordRow[]; total: number }>({
+    [result, setData] = useState<{
+      items: RecordRow[];
+      total: number;
+      key?: string;
+    }>({
       items: [],
       total: 0,
     }),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
+  const requestKey = `${kind}:${revision}:${JSON.stringify(filter)}`;
+  const data = result.key === requestKey ? result : { items: [], total: 0 };
   const set = (patch: Partial<ListFilter>) =>
     setFilter((f) => ({ ...f, ...patch, offset: 0 }));
   const fetchedSearch = useRef(filter.search);
@@ -122,7 +134,7 @@ export function RecordExplorer({
               }));
               return;
             }
-            setData(r);
+            setData({ ...r, key: requestKey });
           })
           .catch((e) => {
             if (active) {
@@ -140,13 +152,15 @@ export function RecordExplorer({
       active = false;
       clearTimeout(timer);
     };
-  }, [kind, revision, JSON.stringify(filter)]);
+  }, [requestKey]);
   const title =
     kind === "movements"
       ? "Movement history"
       : kind === "audit"
         ? "Recorded activity"
-        : "Branches and clients";
+        : kind === "staffing"
+          ? "Client staffing PRFs"
+          : "Branches and clients";
   const choices =
     kind === "movements"
       ? movementTypes
@@ -262,6 +276,20 @@ export function RecordExplorer({
       </>
     );
     columns = 6;
+  } else if (kind === "staffing") {
+    headers = (
+      <>
+        {heading("label", "PRF reference")}
+        {heading("client_label", "Client")}
+        {heading("employment_type", "Employment Type")}
+        <th>Required</th>
+        {heading("effective_on", "Starts on")}
+        <th>Ends before</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </>
+    );
+    columns = 8;
   } else {
     headers = (
       <>
@@ -278,73 +306,97 @@ export function RecordExplorer({
     columns = 6;
   }
   const columnLabels =
-    kind === "movements"
+    kind === "staffing"
       ? [
-          "Employee",
-          "Transaction",
-          "From",
-          "To",
-          "Effective date",
-          "State",
-          "Reason",
+          "PRF reference",
+          "Client",
+          "Employment Type",
+          "Required",
+          "Starts on",
+          "Ends before",
+          "Status",
           "Actions",
         ]
-      : kind === "audit"
+      : kind === "movements"
         ? [
-            "Operation",
-            "Entity",
-            "Record reference",
+            "Employee",
+            "Transaction",
             "From",
             "To",
-            "Recorded (Manila)",
-          ]
-        : [
-            "Organization",
-            "Code",
-            "Type",
-            "Parent branch",
-            "Status",
+            "Effective date",
+            "State",
+            "Reason",
             "Actions",
-          ];
+          ]
+        : kind === "audit"
+          ? [
+              "Operation",
+              "Entity",
+              "Record reference",
+              "From",
+              "To",
+              "Recorded (Manila)",
+            ]
+          : [
+              "Organization",
+              "Code",
+              "Type",
+              "Parent branch",
+              "Status",
+              "Actions",
+            ];
   useFontMetrics();
   const recordWidths = contentWidths(
     columnLabels,
     data.items.map((r) =>
-      kind === "movements"
+      kind === "staffing"
         ? [
-            r.employee_name || r.employee_number || "Authorized employee",
-            movementTypes.find((t) => t.id === r.type)?.label || r.type || "",
-            r.from_value || "—",
-            r.to_value || "—",
-            r.effective_on || "",
-            r.state || "",
-            r.reason || "—",
-            onCorrect ? "Correct" : "",
+            r.reference || "",
+            r.client_label || "",
+            r.employment_type || "",
+            String(r.required_headcount),
+            r.starts_on || "",
+            r.ends_on || "—",
+            r.active ? "Active" : "Inactive",
+            onEdit ? "Edit" : "",
           ]
-        : kind === "audit"
+        : kind === "movements"
           ? [
-              r.operation?.replaceAll("_", " ") || "",
-              r.entity || "",
-              r.entity_id?.slice(0, 8) || "",
+              r.employee_name || r.employee_number || "Authorized employee",
+              movementTypes.find((t) => t.id === r.type)?.label || r.type || "",
               r.from_value || "—",
               r.to_value || "—",
-              when(r.created_at),
+              r.effective_on || "",
+              r.state || "",
+              r.reason || "—",
+              onCorrect ? "Correct" : "",
             ]
-          : [
-              r.label || "",
-              r.code || "",
-              r.kind?.replaceAll("_", " ") || "",
-              r.kind === "client" ? r.context || "" : "—",
-              r.active ? "Active" : "Inactive",
-              onEdit ? "Edit" : "",
-            ],
+          : kind === "audit"
+            ? [
+                r.operation?.replaceAll("_", " ") || "",
+                r.entity || "",
+                r.entity_id?.slice(0, 8) || "",
+                r.from_value || "—",
+                r.to_value || "—",
+                when(r.created_at),
+              ]
+            : [
+                r.label || "",
+                r.code || "",
+                r.kind?.replaceAll("_", " ") || "",
+                r.kind === "client" ? r.context || "" : "—",
+                r.active ? "Active" : "Inactive",
+                onEdit ? "Edit" : "",
+              ],
     ),
     60,
-    kind === "movements"
-      ? ["", "", "", "", "text-date"]
-      : kind === "audit"
-        ? ["", "", "text-id", "", "", "text-date"]
-        : ["", "text-id"],
+    kind === "staffing"
+      ? ["text-id", "", "", "", "text-date", "text-date"]
+      : kind === "movements"
+        ? ["", "", "", "", "text-date"]
+        : kind === "audit"
+          ? ["", "", "text-id", "", "", "text-date"]
+          : ["", "text-id"],
   );
   // The date heading includes a type icon and sort direction in addition to text.
   if (kind === "movements") recordWidths[4] = Math.max(recordWidths[4], 160);
@@ -361,7 +413,7 @@ export function RecordExplorer({
             onChange={(e) => set({ search: e.target.value })}
           />
         </label>
-        {kind !== "audit" && (
+        {kind !== "audit" && kind !== "staffing" && (
           <SearchFilterPicker
             mode="multiple"
             label={
@@ -395,7 +447,7 @@ export function RecordExplorer({
                     })
                   }
                 />
-                {kind === "movements" && (
+                {(kind === "movements" || kind === "staffing") && (
                   <SearchFilterPicker
                     mode="multiple"
                     label="Clients"
@@ -459,7 +511,11 @@ export function RecordExplorer({
             <button className="primary" onClick={onCreate}>
               <Plus size={16} />
               <span>
-                {kind === "movements" ? "New transaction" : "Add organization"}
+                {kind === "movements"
+                  ? "New transaction"
+                  : kind === "staffing"
+                    ? "Add PRF"
+                    : "Add organization"}
               </span>
             </button>
           </div>
@@ -474,7 +530,9 @@ export function RecordExplorer({
             ? "Movement records"
             : kind === "audit"
               ? "Audit records"
-              : "Organization records"
+              : kind === "staffing"
+                ? "Staffing PRF records"
+                : "Organization records"
         }
         aria-busy={loading}
       >
@@ -552,6 +610,28 @@ export function RecordExplorer({
                     <td title={r.from_value || "—"}>{r.from_value || "—"}</td>
                     <td title={r.to_value || "—"}>{r.to_value || "—"}</td>
                     <td className="text-date">{when(r.created_at)}</td>
+                  </>
+                ) : kind === "staffing" ? (
+                  <>
+                    <td className="text-id" title={r.reference}>
+                      <strong>{r.reference}</strong>
+                    </td>
+                    <td title={r.client_label}>{r.client_label}</td>
+                    <td title={r.employment_type}>{r.employment_type}</td>
+                    <td>{r.required_headcount}</td>
+                    <td className="text-date">{r.starts_on}</td>
+                    <td className="text-date">{r.ends_on || "—"}</td>
+                    <td>{r.active ? "Active" : "Inactive"}</td>
+                    <td>
+                      {onEdit && (
+                        <button
+                          aria-label={`Edit ${r.reference}`}
+                          onClick={() => onEdit(r)}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </td>
                   </>
                 ) : (
                   <>

@@ -1,3 +1,8 @@
+import {
+  ManagementAnalytics,
+  type AnalyticsRange,
+  type AnalyticsReport,
+} from "./components/ManagementAnalytics";
 import { RecordExplorer } from "./components/RecordExplorer";
 import { Appearance, SidebarToggle } from "./components/Appearance";
 import { refreshContext } from "./refreshContext";
@@ -114,7 +119,11 @@ export default function App() {
       "columns" | "employee" | "bulk" | "movement" | "import" | null
     >(null),
     [editing, setEditing] = useState<Employee | null>(null),
-    [report, setReport] = useState<any>(),
+    [report, setReport] = useState<{ key: string; data: AnalyticsReport }>(),
+    [analyticsDates, setAnalyticsDates] = useState<AnalyticsRange>({
+      from: "",
+      to: "",
+    }),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false);
@@ -277,6 +286,7 @@ export default function App() {
       stop();
     };
   }, [authenticated, authMode, version]);
+  const analyticsKey = `${ctx?.profile.id}:${ctx?.revision}:${ctx?.today}:${JSON.stringify(analyticsDates)}:${version}`;
   useEffect(() => {
     if (!ctx || !["employees", "dashboard"].includes(page)) {
       setLoading(false);
@@ -293,7 +303,10 @@ export default function App() {
             ? query("employees", filter)
             : Promise.resolve(undefined),
           page === "dashboard"
-            ? query("dashboard")
+            ? query<AnalyticsReport>(
+                "dashboard",
+                analyticsDates.to ? analyticsDates : {},
+              )
             : Promise.resolve(undefined),
         ])
           .then(([result, r]) => {
@@ -314,7 +327,7 @@ export default function App() {
               }
               setRows(result?.items || []);
               setTotal(result?.total || 0);
-              setReport(r);
+              setReport(r ? { key: analyticsKey, data: r } : undefined);
             }
           })
           .catch((e) => {
@@ -334,7 +347,15 @@ export default function App() {
       active = false;
       clearTimeout(timer);
     };
-  }, [ctx?.revision, ctx?.today, page, JSON.stringify(filter), version]);
+  }, [
+    ctx?.profile.id,
+    ctx?.revision,
+    ctx?.today,
+    page,
+    JSON.stringify(filter),
+    JSON.stringify(analyticsDates),
+    version,
+  ]);
   const fields = ctx?.fields || [];
   const can = (c: string) => ctx?.capabilities.includes(c);
   const readable = fields.filter((f) => f.actions.includes("R") && f.active);
@@ -660,95 +681,16 @@ export default function App() {
         </div>
         <main id="main" tabIndex={-1}>
           {ctx && page === "dashboard" && (
-            <>
-              <div className="stats">
-                <a href="#employees" className="stat">
-                  <span className="stat-label">
-                    Total employees
-                    <Users size={18} aria-hidden="true" />
-                  </span>
-                  <strong>{report?.total ?? "—"}</strong>
-                  <small>Within your access scope</small>
-                </a>
-                <div className="stat">
-                  <span className="stat-label">
-                    Active employees
-                    <ShieldCheck size={18} aria-hidden="true" />
-                  </span>
-                  <strong>{report?.statuses?.Active ?? "—"}</strong>
-                  <small>Effective status today</small>
-                </div>
-                <div className="stat">
-                  <span className="stat-label">
-                    Head Office
-                    <Building2 size={18} aria-hidden="true" />
-                  </span>
-                  <strong>{report?.placements?.["Head Office"] ?? "—"}</strong>
-                  <small>Primary placement</small>
-                </div>
-                <div className="stat">
-                  <span className="stat-label">
-                    Unassigned
-                    <GitBranch size={18} aria-hidden="true" />
-                  </span>
-                  <strong>{report?.placements?.Unassigned ?? "—"}</strong>
-                  <small>Awaiting primary placement</small>
-                </div>
-              </div>
-              <div className="dashboard-grid">
-                <section className="panel">
-                  <div className="section-heading">
-                    <div>
-                      <h2>People by placement</h2>
-                      <p>Current primary assignments</p>
-                    </div>
-                    <Building2 size={20} />
-                  </div>
-                  {Object.entries(report?.placements || {}).map(
-                    ([label, n]) => (
-                      <div className="placement-row" key={label}>
-                        <span>{label}</span>
-                        <div className="bar">
-                          <span
-                            style={{
-                              width: `${(Number(n) / Math.max(report.total, 1)) * 100}%`,
-                            }}
-                          />
-                        </div>
-                        <strong>{String(n)}</strong>
-                      </div>
-                    ),
-                  )}
-                </section>
-                <section className="panel">
-                  <div className="section-heading">
-                    <div>
-                      <h2>Employee status</h2>
-                      <p>Effective status today</p>
-                    </div>
-                    <Users size={20} aria-hidden="true" />
-                  </div>
-                  <dl className="status-summary">
-                    {Object.entries(report?.statuses || {}).map(
-                      ([label, count]) => (
-                        <div key={label}>
-                          <dt>{label}</dt>
-                          <dd>{String(count)}</dd>
-                        </div>
-                      ),
-                    )}
-                  </dl>
-                  <a className="action-link" href="#employees">
-                    Employee register
-                    <ArrowRight size={17} />
-                  </a>
-                  <a className="action-link" href="#movements">
-                    Movement history
-                    <ArrowRight size={17} />
-                  </a>
-                </section>
-              </div>
-            </>
+            <ManagementAnalytics
+              key={ctx.profile.id}
+              context={ctx}
+              report={report?.key === analyticsKey ? report.data : undefined}
+              range={analyticsDates}
+              onRangeChange={setAnalyticsDates}
+              loading={loading}
+              options={options}
+              onSaved={refresh}
+            />
           )}
           {ctx && page === "employees" && (
             <section className="panel register">

@@ -68,6 +68,10 @@ The default Address group provides Home Address, Current Address and emergency c
 
 Read [architecture](docs/architecture.md), [reference review](docs/design-reference.md), [deployment](docs/deployment.md), [Google synchronization](docs/google-sync.md), [security](docs/security.md), and [acceptance evidence](docs/acceptance.md).
 
+The [Overview analytics and client staffing / PRF notes](docs/overview-analytics.md)
+define the metrics, access boundaries and additive migrations to apply before
+deploying the analytics frontend.
+
 The current [v1.8 review and remaining work](docs/requirements-status.md) distinguishes implemented features, local evidence and external release gates. Field creation/edit previews resolve authorized applicability without creating data. Column rules use type-specific values and operators; matching active/inactive definitions can be reused or reactivated through the existing confirmed save flow.
 
 The native workload defaults to 20 simultaneous users. For 50 on PowerShell, run `$env:TEST_CONCURRENCY_USERS='50'; npm run test:db`; remove that variable afterward with `Remove-Item Env:TEST_CONCURRENCY_USERS`. Bash equivalent: `TEST_CONCURRENCY_USERS=50 npm run test:db`. Values outside 20–50 are rejected. The generated database report includes transaction latencies, expected revision conflicts, unexpected errors, outbox backlog and worker claims. It makes no live Google requests and is not a production capacity guarantee.

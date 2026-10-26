@@ -142,3 +142,9 @@ Data-list search, filters and page actions share one stationary toolbar row, fol
 All current and future data tables keep column headers sticky at the top of their bounded data scroll region, including permission matrices and modal tables. The table region owns both scroll axes; do not put an unbounded horizontal overflow wrapper between sticky headers and the vertical scroller. Row headers scroll vertically with their records; pinned identity cells remain fixed horizontally. Keep the header/pinned-column intersection above both layers with an opaque semantic surface.
 
 Search suggestions must remain attached to their input as results grow, shrink or become empty. Anchor upward lists by their bottom edge, never by subtracting a maximum height from the input position. Use `LocationSearch` for all address levels and `SearchFilterPicker` for organization, employee, field and choice searches; do not add independent positioning implementations. Keep panels within the visual viewport, including keyboard resize and scroll. Shared picker panels on narrow screens and nested pickers inside toolbar editors retain their existing bounded surfaces. Verify both opening directions, scrolling, keyboard dismissal and short result lists.
+
+Overview uses a stationary date toolbar above one scrolling analytics region,
+six compact metric surfaces, count/percentage distributions and a bounded age /
+gender table. Current workforce is explicitly distinguished from period metrics.
+Client staffing / PRFs reuse `RecordExplorer`, `Dialog`, shared field icons and
+confirmed saves. See [metric and permission definitions](overview-analytics.md).
