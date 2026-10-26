@@ -17,10 +17,10 @@ for (const width of [375, 1366]) {
     await definition.getByLabel("Label", { exact: true }).fill("Capacity");
     await definition.getByLabel("Immutable machine key").fill("capacity");
     await definition
-      .getByRole("button", { name: "Field group", exact: true })
+      .getByRole("button", { name: "Permission group", exact: true })
       .click();
     await page
-      .getByRole("dialog", { name: "Field group options", exact: true })
+      .getByRole("dialog", { name: "Permission group options", exact: true })
       .getByRole("option", { name: "Personal Information", exact: true })
       .click();
     await definition
@@ -102,7 +102,7 @@ for (const width of [375, 1366]) {
       .getByLabel("Scrollable employee table")
       .locator("tbody tr")
       .first();
-    await expect(row).toContainText("Numeric, Sample");
+    await expect(row).toContainText("NUMERIC, SAMPLE");
     await row.locator("td.employee-name").click();
     const profile = page.getByRole("dialog", {
       name: "Employee profile",

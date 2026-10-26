@@ -139,11 +139,11 @@ test("a configured sub-group follows its parent name in creation and editing", a
   await definition.getByLabel("Label", { exact: true }).fill("Daily rate");
   await definition.getByLabel("Immutable machine key").fill("daily_rate");
   await definition
-    .getByRole("button", { name: "Field group", exact: true })
+    .getByRole("button", { name: "Permission group", exact: true })
     .click();
   await page
-    .getByRole("dialog", { name: "Field group options", exact: true })
-    .getByRole("option", { name: "Pay details", exact: true })
+    .getByRole("dialog", { name: "Permission group options", exact: true })
+    .getByRole("option", { name: "Employment Details / Pay details", exact: true })
     .click();
   await definition
     .getByRole("button", { name: "Save definition", exact: true })

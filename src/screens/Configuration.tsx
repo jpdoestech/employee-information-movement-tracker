@@ -12,6 +12,7 @@ import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import { ValueEditor } from "../components/ValueEditor";
 import { fieldTypeLabel } from "../fieldValues";
 import type { Context, Field, Option } from "../domain";
+import { fieldGroupPath, orderedFieldGroups } from "../employeeForm";
 export function Organization({
   options,
   canManage,
@@ -174,17 +175,7 @@ export function FieldBuilder({
   }, [context.revision]);
   const fields: Field[] = schema?.fields || context.fields;
   const sourceGroups = schema?.groups || context.groups;
-  const groups = [...sourceGroups].sort((a: any, b: any) => {
-    const rootA =
-        sourceGroups.find((g: any) => g.id === a.parent_group_id) || a,
-      rootB = sourceGroups.find((g: any) => g.id === b.parent_group_id) || b;
-    return (
-      (rootA.tab_order ?? 0) - (rootB.tab_order ?? 0) ||
-      rootA.name.localeCompare(rootB.name) ||
-      Number(!!a.parent_group_id) - Number(!!b.parent_group_id) ||
-      (a.display_order ?? 0) - (b.display_order ?? 0)
-    );
-  });
+  const groups = orderedFieldGroups(sourceGroups);
   // Advisory matching only; the database's Unicode case-folded unique indexes remain authoritative.
   const normalize = (s: string) =>
     s.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
@@ -293,7 +284,10 @@ export function FieldBuilder({
           <SearchFilterPicker
             mode="multiple"
             label="Field groups"
-            options={groups.map((g: any) => ({ id: g.id, label: g.name }))}
+            options={groups.map((g: any) => ({
+              id: g.id,
+              label: fieldGroupPath(groups, g.id),
+            }))}
             value={groupFilter}
             onChange={setGroupFilter}
           />
@@ -366,11 +360,7 @@ export function FieldBuilder({
                       <tr className="definition-group">
                         <th colSpan={6}>
                           <div>
-                            <strong>
-                              {g.parent_group_id
-                                ? `${groups.find((parent: any) => parent.id === g.parent_group_id)?.name || "Group"} / ${g.name}`
-                                : g.name}
-                            </strong>
+                            <strong>{fieldGroupPath(groups, g.id)}</strong>
                             <small>
                               {matching.length} fields
                               {!g.active ? " � Inactive group" : ""}
@@ -393,6 +383,13 @@ export function FieldBuilder({
                         <tr key={f.id}>
                           <td>
                             <strong>{f.label}</strong>
+                            {f.form_group_id &&
+                              f.form_group_id !== f.group_id && (
+                                <small>
+                                  Permission group:{" "}
+                                  {fieldGroupPath(groups, f.group_id)}
+                                </small>
+                              )}
                             {f.sensitivity === "restricted" && (
                               <small>Explicit field grant</small>
                             )}
@@ -472,17 +469,20 @@ export function FieldBuilder({
                 />
               </label>
               <div className="form-control">
-                <span>Field group</span>
+                <span>Permission group</span>
                 <SearchFilterPicker
                   mode="single"
-                  label="Field group"
+                  label="Permission group"
                   options={groups.map((g: any) => ({
                     id: g.id,
-                    label: g.name,
+                    label: fieldGroupPath(groups, g.id),
                   }))}
                   value={[draft.group_id]}
                   onChange={(v) => setDraft({ ...draft, group_id: v[0] })}
                 />
+                <small className="help-text">
+                  Controls access through field permissions.
+                </small>
               </div>
               <div className="form-control">
                 <span>Form group / sub-group</span>
@@ -493,12 +493,7 @@ export function FieldBuilder({
                     .filter((g: any) => g.active)
                     .map((g: any) => ({
                       id: g.id,
-                      label: g.name,
-                      context: g.parent_group_id
-                        ? groups.find(
-                            (parent: any) => parent.id === g.parent_group_id,
-                          )?.name
-                        : "Parent group",
+                      label: fieldGroupPath(groups, g.id),
                     }))}
                   value={draft.form_group_id ? [draft.form_group_id] : []}
                   onChange={(v) =>
@@ -506,8 +501,8 @@ export function FieldBuilder({
                   }
                 />
                 <small className="help-text">
-                  Use the field group when empty. Form placement does not change
-                  access permissions.
+                  Use the permission group when empty. Form placement does not
+                  change access permissions.
                 </small>
               </div>
               <div className="form-control">

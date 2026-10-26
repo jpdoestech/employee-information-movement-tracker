@@ -34,6 +34,15 @@ Superadmin for trusted access administration. HR Staff/Manager templates start
 empty and need explicit configuration before assignment.
 
 Additional roles and the account-role explanation are under Scope & assignments.
+Field Builder, employee form sections and Field permissions share full group
+paths such as **Employment Details / Compensation** and place child groups after
+their parent. Parent and child permission groups remain independent. Permission
+rows still target the original access-group ID, not the displayed form location.
+When those locations differ, Field Builder shows **Permission group: …** and the
+expanded permission row shows **Form: …**. Field Builder labels its access selector
+**Permission group**; its form-section selector controls presentation only.
+Confirmation summaries use the same full group paths.
+
 Field organization controls share the stationary top toolbar. Permission tables
 own their vertical and horizontal scroll; column headers and the first identity
 column remain visible. Help stays available in compact expandable sections.

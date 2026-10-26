@@ -1,6 +1,108 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function setup(page: Page, largeMatrix = false) {
+for (const [width, height] of [
+  [375, 740],
+  [768, 1024],
+  [1366, 768],
+  [812, 375],
+])
+  test(`permission groups show form paths and save independent group IDs at ${width}x${height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const { state } = await setup(page, false, true);
+    await page
+      .getByRole("button", { name: "Field permissions", exact: true })
+      .click();
+    const parent = page.getByRole("button", {
+      name: "Employment Details",
+      exact: true,
+    });
+    const child = page.getByRole("button", {
+      name: "Employment Details / Compensation",
+      exact: true,
+    });
+    await expect(child).toBeVisible();
+    const labels = await page
+      .locator(".permission-group-row button")
+      .allTextContents();
+    expect(labels.indexOf("Employment Details")).toBeLessThan(
+      labels.indexOf("Employment Details / Compensation"),
+    );
+    await parent.click();
+    await child.click();
+    const bank = page
+      .getByRole("row")
+      .filter({ has: page.getByLabel("Bank Name View", { exact: true }) });
+    await expect(bank).toContainText("Form: Employment Details / Compensation");
+    await expect(
+      page.getByLabel("Daily Rate View", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByLabel("Account Number View", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByLabel("Employment Details View", { exact: true })
+      .selectOption("deny");
+    await page
+      .getByLabel("Employment Details / Compensation View", { exact: true })
+      .selectOption("allow");
+    await expect(
+      page.getByLabel("Employment Details View", { exact: true }),
+    ).toHaveValue("deny");
+    await page
+      .getByLabel("Reason", { exact: true })
+      .fill("Review distinct compensation group");
+    await page.screenshot({
+      path: `.test-db/reports/release/permission-group-path-${width}x${height}.png`,
+    });
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    const confirmation = page.getByRole("dialog", {
+      name: "Save access changes",
+      exact: true,
+    });
+    await expect(confirmation).toContainText(
+      "Employment Details / Compensation",
+    );
+    await confirmation
+      .getByRole("button", { name: "Cancel", exact: true })
+      .click();
+    expect(state.writes).toHaveLength(0);
+    await expect(
+      page.getByLabel("Employment Details / Compensation View", {
+        exact: true,
+      }),
+    ).toHaveValue("allow");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await confirmation
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    await expect.poll(() => state.writes.length).toBe(1);
+    expect(state.writes[0].p.fields).toEqual(
+      expect.arrayContaining([
+        {
+          group_id: "employment",
+          action: "R",
+          effect: "deny",
+          inherit_new: true,
+        },
+        {
+          group_id: "compensation",
+          action: "R",
+          effect: "allow",
+          inherit_new: true,
+        },
+      ]),
+    );
+    expect(state.writes[0].p.fields).toHaveLength(2);
+  });
+
+async function setup(
+  page: Page,
+  largeMatrix = false,
+  compensationFixture = false,
+) {
   await page.goto("/");
   const fixture = await page.evaluate(async () => {
     const path = "/src/demo.ts";
@@ -10,6 +112,36 @@ async function setup(page: Page, largeMatrix = false) {
       config: await demo.demoQuery("access_configuration"),
     };
   });
+  if (compensationFixture) {
+    const base = fixture.context.fields.find((f: any) => f.key === "email");
+    fixture.context.fields.push(
+      {
+        ...base,
+        id: "fixture-bank",
+        key: "bank_name",
+        label: "Bank Name",
+        group_id: "employment",
+        form_group_id: "compensation",
+      },
+      {
+        ...base,
+        id: "fixture-account",
+        key: "account_number",
+        label: "Account Number",
+        group_id: "compensation",
+        form_group_id: "compensation",
+      },
+      {
+        ...base,
+        id: "fixture-rate",
+        key: "daily_rate",
+        label: "Daily Rate",
+        type: "decimal",
+        group_id: "compensation",
+        form_group_id: "compensation",
+      },
+    );
+  }
   if (largeMatrix)
     fixture.config.modules.push(
       ...Array.from({ length: 20 }, (_, i) => ({
@@ -182,7 +314,10 @@ test("matrix shows applicable actions and saves multiple groups atomically after
     .slice(0, 2);
   for (const group of groups)
     await page
-      .getByLabel(`${group.name} View`, { exact: true })
+      .getByLabel(
+        `${group.parent_group_id ? fixture.context.groups.find((g: any) => g.id === group.parent_group_id)?.name + " / " : ""}${group.name} View`,
+        { exact: true },
+      )
       .selectOption("allow");
   await page
     .getByLabel("Reason", { exact: true })

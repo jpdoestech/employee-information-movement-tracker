@@ -52,6 +52,7 @@ import {
 import { valueWidth } from "../controlSizing";
 import {
   combinedName,
+  fieldGroupPath,
   employeeTabs,
   nameKeys,
   defaultEntryPriority,
@@ -869,9 +870,7 @@ export function EmployeeEditor({
                         <Fragment key={g.id}>
                           <fieldset disabled={busy}>
                             <legend>
-                              {g.parent_group_id
-                                ? `${context.groups.find((parent) => parent.id === g.parent_group_id)?.name} / ${g.name}`
-                                : g.name}
+                              {fieldGroupPath(context.groups, g.id)}
                             </legend>
                             <div className="form-grid field-entry-grid">
                               {displayFields

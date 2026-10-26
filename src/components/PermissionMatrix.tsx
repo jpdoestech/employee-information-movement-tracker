@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Eye, Plus } from "lucide-react";
 import { isDemo, mutate, query, reviewAccessChange } from "../api";
 import type { Context, Option } from "../domain";
+import { fieldGroupPath, orderedFieldGroups } from "../employeeForm";
 import { accessPresets, grantStatus, scopeLabel } from "../accessReview";
 import { Dialog } from "./Dialog";
 import { AccessChangeReview } from "./AccessChangeReview";
@@ -309,8 +310,9 @@ export function PermissionMatrix({
               {fields.map((f: any) => (
                 <tr key={`${f.group_id || f.field_id}.${f.action}`}>
                   <td>
-                    {context.groups.find((g) => g.id === f.group_id)?.name ||
-                      context.fields.find((x) => x.id === f.field_id)?.label}
+                    {f.group_id
+                      ? fieldGroupPath(context.groups, f.group_id)
+                      : context.fields.find((x) => x.id === f.field_id)?.label}
                   </td>
                   <td>{fieldLabels[f.action]}</td>
                   <td>{title(f.effect)}</td>
@@ -552,7 +554,9 @@ export function PermissionMatrix({
                 Edit any number of groups together. Expand a group for
                 individual fields. Group allows cover normal fields; restricted
                 fields require an individual allow. Clear value does not archive
-                an employee.
+                an employee. Parent and child groups have independent
+                permissions. Fields are listed by permission group; a different
+                form location is shown below the field name.
               </p>
             </details>
             <div
@@ -564,19 +568,20 @@ export function PermissionMatrix({
               <table className="permission-matrix">
                 <thead>
                   <tr>
-                    <th>Field group / field</th>
+                    <th>Permission group / field</th>
                     {fieldActions.map((a) => (
                       <th key={a}>{fieldLabels[a]}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {context.groups
+                  {orderedFieldGroups(context.groups)
                     .filter((g) => g.active)
                     .map((g) => (
                       <GroupRows
                         key={g.id}
                         group={g}
+                        groups={context.groups}
                         fields={context.fields.filter(
                           (f) => f.group_id === g.id && f.active,
                         )}
@@ -1172,6 +1177,7 @@ export function PermissionMatrix({
 
 function GroupRows({
   group,
+  groups,
   fields,
   expanded,
   toggle,
@@ -1179,12 +1185,14 @@ function GroupRows({
   effect,
 }: {
   group: Context["groups"][number];
+  groups: Context["groups"];
   fields: Context["fields"];
   expanded: boolean;
   toggle: () => void;
   cell: (key: string, original: string, label: string) => React.ReactNode;
   effect: (id: string, action: string) => string;
 }) {
+  const groupLabel = fieldGroupPath(groups, group.id);
   return (
     <>
       <tr className="permission-group-row">
@@ -1195,7 +1203,7 @@ function GroupRows({
             ) : (
               <ChevronRight size={14} aria-hidden />
             )}
-            {group.name}
+            {groupLabel}
           </button>
         </th>
         {fieldActions.map((a) => (
@@ -1203,7 +1211,7 @@ function GroupRows({
             {cell(
               `g:${group.id}:${a}`,
               effect(group.id, a),
-              `${group.name} ${fieldLabels[a]}`,
+              `${groupLabel} ${fieldLabels[a]}`,
             )}
           </td>
         ))}
@@ -1213,6 +1221,9 @@ function GroupRows({
           <tr key={f.id}>
             <th scope="row" className="permission-field-name">
               {f.label}
+              {f.form_group_id && f.form_group_id !== f.group_id && (
+                <small>Form: {fieldGroupPath(groups, f.form_group_id)}</small>
+              )}
               {f.sensitivity === "restricted" && <small>Restricted</small>}
             </th>
             {fieldActions.map((a) => (

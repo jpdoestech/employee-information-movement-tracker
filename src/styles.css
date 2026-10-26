@@ -4556,6 +4556,12 @@ dialog.employee-edit-dialog[open] {
 .permission-cell.allow { color: var(--primary); font-weight: 600; }
 .permission-group-row th button { display: flex; align-items: center; gap: 6px; background: transparent; border-color: transparent; font-size: 12px; }
 .permission-matrix .permission-field-name { padding-left: 30px; font-weight: 400; }
+.permission-table-scroll[aria-label="Field permissions"] .permission-matrix { table-layout: auto; min-width: 0; }
+.permission-group-row th button { width: auto; max-width: 260px; text-align: left; justify-content: flex-start; text-transform: none; letter-spacing: normal; white-space: normal; }
+.permission-field-name small { display: block; max-width: 240px; white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 760px), (pointer: coarse) {
+  .permission-group-row th button, .permission-field-name small { max-width: 180px; }
+}
 .permission-workspace small, .effective-access-dialog small { display: block; font-size: 11px; color: var(--muted); white-space: normal; }
 .permission-save-bar { display: flex; flex: none; align-items: end; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--paper); overflow-x: auto; }
 .permission-save-bar > label { flex: 1; min-width: 180px; margin: 0; }

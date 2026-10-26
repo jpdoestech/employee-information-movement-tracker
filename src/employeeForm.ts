@@ -4,6 +4,25 @@ import { governmentDefinitions } from "./governmentIds";
 import { addressDefinitions } from "./address/addressFields";
 import { normalizeText } from "./inputNormalization";
 
+export function fieldGroupPath(groups: Context["groups"], id: string) {
+  const group = groups.find((g) => g.id === id);
+  if (!group) return "Group";
+  const parent = groups.find((g) => g.id === group.parent_group_id);
+  return parent ? `${parent.name} / ${group.name}` : group.name;
+}
+export function orderedFieldGroups(groups: Context["groups"]) {
+  return [...groups].sort((a, b) => {
+    const rootA = groups.find((g) => g.id === a.parent_group_id) || a;
+    const rootB = groups.find((g) => g.id === b.parent_group_id) || b;
+    return (
+      (rootA.tab_order ?? 0) - (rootB.tab_order ?? 0) ||
+      rootA.name.localeCompare(rootB.name) ||
+      Number(!!a.parent_group_id) - Number(!!b.parent_group_id) ||
+      (a.display_order ?? 0) - (b.display_order ?? 0)
+    );
+  });
+}
+
 const profileKeys = new Set([
   "employee_number",
   "client_employee_number",

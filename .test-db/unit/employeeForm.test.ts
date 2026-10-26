@@ -1,7 +1,50 @@
 import { describe, expect, it } from "vitest";
-import { combinedName, employeeTabs } from "../../src/employeeForm";
+import {
+  combinedName,
+  employeeTabs,
+  fieldGroupPath,
+  orderedFieldGroups,
+} from "../../src/employeeForm";
 import type { Context, Field } from "../../src/domain";
 describe("employee names and form tabs", () => {
+  it("uses the same parent path and group order without changing source IDs or permissions", () => {
+    const groups = [
+      {
+        id: "compensation",
+        name: "Compensation",
+        parent_group_id: "employment",
+        display_order: 50,
+        active: true,
+        row_version: 1,
+      },
+      {
+        id: "personal",
+        name: "Personal Information",
+        tab_order: 0,
+        active: true,
+        row_version: 1,
+      },
+      {
+        id: "employment",
+        name: "Employment Details",
+        tab_order: 10,
+        active: true,
+        row_version: 1,
+      },
+    ];
+    const before = structuredClone(groups);
+    expect(fieldGroupPath(groups, "compensation")).toBe(
+      "Employment Details / Compensation",
+    );
+    expect(fieldGroupPath(groups, "employment")).toBe("Employment Details");
+    expect(fieldGroupPath(groups, "missing")).toBe("Group");
+    expect(orderedFieldGroups(groups).map((g) => g.id)).toEqual([
+      "personal",
+      "employment",
+      "compensation",
+    ]);
+    expect(groups).toEqual(before);
+  });
   it("keeps default sections before custom tabs even with earlier custom ordering", () => {
     const groups = [
       { id: "custom", name: "Extra", tab_order: 0 },

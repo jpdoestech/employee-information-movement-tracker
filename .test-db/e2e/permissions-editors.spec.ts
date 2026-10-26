@@ -31,7 +31,7 @@ for (const width of [375, 1366]) {
       .getByRole("button", { name: "Field permissions", exact: true })
       .click();
     await expect(
-      page.getByRole("columnheader", { name: "Field group / field" }),
+      page.getByRole("columnheader", { name: "Permission group / field" }),
     ).toBeVisible();
     await page
       .getByRole("button", { name: "Permission matrix", exact: true })
