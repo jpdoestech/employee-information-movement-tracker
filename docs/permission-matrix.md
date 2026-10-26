@@ -79,6 +79,20 @@ drafts are excluded. Inspection and administration remain Superadmin-only.
 
 ## Migration and rollback order
 
+Apply `20261026005346_employee_name_case_selection.sql` after the uppercase-name
+migration and before its frontend. This supersedes mandatory uppercase storage:
+the shared name inputs offer UPPER CASE (new-entry default), PROPER CASE, and
+USER DEFINED for each name part. Case choices stay with the open draft across
+form tabs; existing mixed-case values start as USER DEFINED. Only the resulting
+text is persisted, so reopening an employee preserves its recorded spelling.
+Name previews and duplicate review use the actual submitted components. The
+secured dispatcher continues whitespace cleanup, all validation, authorization,
+versioning, duplicate review and atomic writes while preserving selected casing.
+No existing data, grants or function ACLs change. Old uppercase-only frontends
+remain compatible; roll back the frontend without reintroducing forced server
+uppercase, which would destroy user-defined casing on subsequent saves.
+
+
 Apply `20261023151031_employee_names_uppercase.sql` after the text/category migration
 and before its frontend. Last/first/middle names, suffix and combined employee
 name are uppercase on entry and inside the existing secured mutation dispatcher.

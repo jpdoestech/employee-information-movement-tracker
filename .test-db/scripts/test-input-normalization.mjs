@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 
 export async function testInputNormalization({
   owner,
@@ -9,7 +10,47 @@ export async function testInputNormalization({
   revision,
   id,
 }) {
-  await test("text normalization uppercases employee names and preserves other case, paragraphs, exact tokens and untouched values", async () => {
+  await test("case-selection migration handles Windows SQL editor line endings without changing function access", async () => {
+    const acl = async () =>
+      (
+        await owner.query(
+          "select oid,proacl,prosecdef,proconfig from pg_proc where oid in ('public.tracker_mutate(text,jsonb,uuid)'::regprocedure,'app_private.combined_name(jsonb)'::regprocedure) order by oid",
+        )
+      ).rows;
+    const before = await acl();
+    await owner.query("begin");
+    try {
+      await owner.query(
+        await readFile(
+          new URL(
+            "../../supabase/migrations/20261023151031_employee_names_uppercase.sql",
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+      );
+      const migration = await readFile(
+        new URL(
+          "../../supabase/migrations/20261026005346_employee_name_case_selection.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      await owner.query(migration.replace(/\r?\n/g, "\r\n"));
+      assert.equal(
+        (
+          await owner.query(
+            'select app_private.combined_name(\'{"last_name":"McDonald","first_name":"JoAnne"}\') name',
+          )
+        ).rows[0].name,
+        "McDonald, JoAnne",
+      );
+      assert.deepEqual(await acl(), before);
+    } finally {
+      await owner.query("rollback");
+    }
+  });
+  await test("text normalization preserves selected name casing, paragraphs, exact tokens and untouched values", async () => {
     const input = {
       name: "  De   la\tCruz\u00a0 III  ",
       notes: "  First   paragraph \r\n\r\n Next\tline  ",
@@ -47,10 +88,10 @@ export async function testInputNormalization({
     let employee = (
       await q(id.sa, "employee", { id: created.id, include_history: false })
     ).employee;
-    assert.equal(employee.values.name, "DE LA CRUZ, ANA MARIA VAN DER III");
-    assert.equal(employee.values.last_name, "DE LA CRUZ");
-    assert.equal(employee.values.first_name, "ANA MARIA");
-    assert.equal(employee.values.middle_name, "VAN DER");
+    assert.equal(employee.values.name, "De la Cruz, Ana Maria van der III");
+    assert.equal(employee.values.last_name, "De la Cruz");
+    assert.equal(employee.values.first_name, "Ana Maria");
+    assert.equal(employee.values.middle_name, "van der");
     assert.equal(employee.values.department, "HR Operations");
     assert.equal(employee.values.position, "QA Lead");
     assert.equal(employee.values.remarks, "First paragraph\n\nNext line");
@@ -73,8 +114,8 @@ export async function testInputNormalization({
       await q(id.sa, "employee", { id: created.id, include_history: false })
     ).employee;
     assert.equal(employee.values.department, "Finance Team");
-    assert.equal(employee.values.first_name, "MARIA SANTOS");
-    assert.equal(employee.values.name, "DE LA CRUZ, MARIA SANTOS VAN DER III");
+    assert.equal(employee.values.first_name, "mAriA sAnToS");
+    assert.equal(employee.values.name, "De la Cruz, mAriA sAnToS van der III");
     assert.equal(employee.values.position, "Sr. QA Lead");
     assert.equal(employee.values.remarks, "Legacy   spacing");
     assert.equal(employee.values.employee_category, "Agency");
@@ -85,9 +126,9 @@ export async function testInputNormalization({
     employee = (
       await q(id.sa, "employee", { id: created.id, include_history: false })
     ).employee;
-    assert.equal(employee.values.first_name, "ANNA");
-    assert.equal(employee.values.suffix, "JR.");
-    assert.equal(employee.values.name, "DE LA CRUZ, ANNA VAN DER JR.");
+    assert.equal(employee.values.first_name, "aNnA");
+    assert.equal(employee.values.suffix, "jR.");
+    assert.equal(employee.values.name, "De la Cruz, aNnA van der jR.");
     const deny = randomUUID();
     await owner.query(
       "insert into public.field_access_policies(id,user_id,field_id,action,effect,scope_type) select $1,$2,id,'U','deny','all' from public.field_definitions where key='first_name'",

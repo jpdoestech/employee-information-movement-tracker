@@ -48,8 +48,7 @@ export function combinedName(values: Record<string, unknown>) {
       .join(" "),
   ]
     .filter(Boolean)
-    .join(", ")
-    .toUpperCase();
+    .join(", ");
 }
 export function employeeTabs(groups: Context["groups"], fields: Field[]) {
   const allowed = new Set(

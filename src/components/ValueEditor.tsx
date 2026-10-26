@@ -9,7 +9,13 @@ import { governmentIdError, normalizeGovernmentId } from "../governmentIds";
 import { valueWidth } from "../controlSizing";
 import { FieldTypeIcon, fieldTypeIcons } from "./FieldTypeIcon";
 import { fieldTextRole } from "../typography";
-import { employeeNameKeys, normalizeText } from "../inputNormalization";
+import {
+  applyNameCase,
+  employeeNameKeys,
+  nameCaseOptions,
+  normalizeText,
+  type NameCase,
+} from "../inputNormalization";
 
 function NumberInput({
   id,
@@ -63,23 +69,57 @@ export function ValueEditor({
   onChange,
   blind = false,
   clearable = true,
+  nameCase,
+  onNameCaseChange,
 }: {
   field: Field;
   value: unknown;
   onChange: (v: unknown) => void;
   blind?: boolean;
   clearable?: boolean;
+  nameCase?: NameCase;
+  onNameCaseChange?: (mode: NameCase) => void;
 }) {
   const f = field;
   const id = useId();
+  const [localNameCase, setLocalNameCase] = useState<NameCase>("upper");
+  const caseMode = nameCase ?? localNameCase;
   const showClear = clearable && (blind || (value != null && value !== ""));
   const idError = governmentIdError(f, value);
   return (
     <div className={`field ${fieldTextRole(f)}`}>
-      <label htmlFor={f.type === "select" ? undefined : id}>
-        {f.label}
-        {f.required ? " *" : ""}
-      </label>
+      {employeeNameKeys.has(f.key) ? (
+        <div className="field-label-row">
+          <label htmlFor={id}>
+            {f.label}
+            {f.required ? " *" : ""}
+          </label>
+          <div className="name-case-control">
+            <SearchFilterPicker
+              mode="single"
+              label={`Change case for ${f.label}`}
+              displayLabel="Aa"
+              options={nameCaseOptions}
+              value={[caseMode]}
+              clearable={false}
+              onChange={([selected]) => {
+                const mode = selected as NameCase;
+                setLocalNameCase(mode);
+                onNameCaseChange?.(mode);
+                if (typeof value === "string") {
+                  const next = applyNameCase(value, mode);
+                  if (next !== value) onChange(next);
+                }
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        <label htmlFor={f.type === "select" ? undefined : id}>
+          {f.label}
+          {f.required ? " *" : ""}
+        </label>
+      )}
       {blind && (
         <small>
           Current value is restricted. Entering a value does not reveal it.
@@ -147,7 +187,7 @@ export function ValueEditor({
               if (!["integer", "decimal", "date"].includes(f.type)) {
                 const text = normalizeText(e.target.value);
                 const clean = employeeNameKeys.has(f.key)
-                  ? text.toUpperCase()
+                  ? applyNameCase(text, caseMode)
                   : text;
                 if (clean !== e.target.value) onChange(clean);
               }
@@ -176,11 +216,11 @@ export function ValueEditor({
                 const text = input.value;
                 const start = input.selectionStart;
                 const end = input.selectionEnd;
-                input.value = text.toUpperCase();
+                input.value = applyNameCase(text, caseMode);
                 if (start !== null && end !== null)
                   input.setSelectionRange(
-                    text.slice(0, start).toUpperCase().length,
-                    text.slice(0, end).toUpperCase().length,
+                    applyNameCase(text.slice(0, start), caseMode).length,
+                    applyNameCase(text.slice(0, end), caseMode).length,
                   );
               }
               onChange(

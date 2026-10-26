@@ -3945,6 +3945,43 @@ dialog.employee-edit-dialog[open] {
   font-size: var(--text-label);
   font-weight: var(--weight-semibold);
 }
+.field-label-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+}
+.field-label-row > label {
+  color: var(--muted);
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+}
+.field .name-case-control .picker {
+  width: auto;
+}
+.field .name-case-control .picker-trigger {
+  width: 44px;
+  min-width: 44px;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 4px;
+  gap: 2px;
+  background: transparent;
+  border-color: transparent;
+}
+.field .name-case-control .picker-label {
+  font-size: 0;
+}
+.name-case-control .picker-label::after {
+  content: "Aa";
+  font-size: var(--text-compact);
+}
+@media (max-width: 760px), (pointer: coarse) {
+  .field .name-case-control .picker-trigger {
+    min-height: 44px;
+    height: 44px;
+  }
+}
 .employee-edit-dialog .employment-context {
   padding: 0 0 12px;
   margin-bottom: 16px;

@@ -50,7 +50,13 @@ import {
   type CSSProperties,
 } from "react";
 import { valueWidth } from "../controlSizing";
-import { employeeTabs, nameKeys, defaultEntryPriority } from "../employeeForm";
+import {
+  combinedName,
+  employeeTabs,
+  nameKeys,
+  defaultEntryPriority,
+} from "../employeeForm";
+import type { NameCase } from "../inputNormalization";
 import { displayFieldValue } from "../fieldValues";
 import { governmentIdError, requiredForEdit } from "../governmentIds";
 import { Dialog } from "../components/Dialog";
@@ -79,6 +85,7 @@ export function EmployeeEditor({
   const [editScope, setEditScope] = useState<string | null>(null);
   const [editorMounted, setEditorMounted] = useState(false);
   const [manualId, setManualId] = useState("");
+  const [nameCases, setNameCases] = useState<Record<string, NameCase>>({});
   const verticalTabs = false;
   const [values, setValues] = useState<Record<string, unknown>>({}),
     [changed, setChanged] = useState<Record<string, unknown>>({}),
@@ -686,7 +693,9 @@ export function EmployeeEditor({
               </span>
               <strong>
                 {typeof values.name === "string"
-                  ? values.name
+                  ? nameKeys.some((key) => Object.hasOwn(changed, key))
+                    ? combinedName(draft)
+                    : values.name
                   : "Employee record"}
               </strong>
             </div>
@@ -963,6 +972,23 @@ export function EmployeeEditor({
                                         </div>
                                       ) : (
                                         <ValueEditor
+                                          nameCase={
+                                            nameCases[f.key] ??
+                                            (row &&
+                                            typeof values[f.key] === "string" &&
+                                            values[f.key] !==
+                                              String(
+                                                values[f.key],
+                                              ).toUpperCase()
+                                              ? "user_defined"
+                                              : "upper")
+                                          }
+                                          onNameCaseChange={(mode) =>
+                                            setNameCases((current) => ({
+                                              ...current,
+                                              [f.key]: mode,
+                                            }))
+                                          }
                                           field={
                                             [
                                               "emergency_contact_relationship",

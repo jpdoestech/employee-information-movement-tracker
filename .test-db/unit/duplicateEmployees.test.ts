@@ -43,7 +43,7 @@ describe("Possible duplicate employee review", () => {
       90,
     );
     expect(review.total).toBe(2);
-    expect(review.items[0].candidate_name).toBe("BATCH, PERSON");
+    expect(review.items[0].candidate_name).toBe("Batch, Person");
     expect(employee.values.name).toBe("Sample, Alexandria");
     expect(employee.row_version).toBe(1);
   });

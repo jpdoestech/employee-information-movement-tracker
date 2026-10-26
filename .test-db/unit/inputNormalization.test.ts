@@ -1,5 +1,9 @@
 import { expect, it } from "vitest";
-import { normalizeInputs, normalizeText } from "../../src/inputNormalization";
+import {
+  applyNameCase,
+  normalizeInputs,
+  normalizeText,
+} from "../../src/inputNormalization";
 import { combinedName } from "../../src/employeeForm";
 
 it("cleans text without changing case, paragraphs, non-text values or exact inputs", () => {
@@ -13,7 +17,7 @@ it("cleans text without changing case, paragraphs, non-text values or exact inpu
       first_name: " Ana   Maria ",
       suffix: " III ",
     }),
-  ).toBe("DE LA CRUZ, ANA MARIA III");
+  ).toBe("De la Cruz, Ana Maria III");
   const exact = {
     password: "  pass  word  ",
     duplicate_review: " token ",
@@ -30,4 +34,21 @@ it("cleans text without changing case, paragraphs, non-text values or exact inpu
     name: "IT Operations",
     values: ["QA Lead", 0, false, null],
   });
+});
+
+it("applies the selected name case and keeps spelling in user-defined names and previews", () => {
+  expect(applyNameCase("mAriA sAnToS", "upper")).toBe("MARIA SANTOS");
+  expect(applyNameCase("dE lA PEÑA o’NEILL anne-MARIE", "proper")).toBe(
+    "De La Peña O’Neill Anne-Marie",
+  );
+  expect(applyNameCase("McDonald Ph.D.", "user_defined")).toBe(
+    "McDonald Ph.D.",
+  );
+  expect(
+    combinedName({
+      last_name: "McDonald",
+      first_name: "JoAnne",
+      suffix: "Ph.D.",
+    }),
+  ).toBe("McDonald, JoAnne Ph.D.");
 });

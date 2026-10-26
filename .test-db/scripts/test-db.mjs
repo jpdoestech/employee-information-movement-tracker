@@ -627,7 +627,7 @@ try {
     );
     assert.equal(
       (await q(id.sa, "employee", { id: e1 })).employee.values.name,
-      "TEST, SYNTHETIC RENAMED",
+      "Test, Synthetic Renamed",
     );
   });
   await test("future transfer preserves today; GiST prevents primary overlaps", async () => {
@@ -1490,7 +1490,7 @@ try {
     });
     for (const [i, r] of records.entries()) {
       const row = (await q(id.sa, "employee", { id: r.id })).employee;
-      assert.equal(row.values.name, "TEST, SYNTHETIC BULK CHANGED");
+      assert.equal(row.values.name, "Test, Synthetic bulk changed");
       assert.equal(row.values.email, "bulk@example.invalid");
       assert.equal(row.values.secret_note, "Hidden preserved " + i);
       assert(
@@ -2032,7 +2032,7 @@ try {
         (
           await owner.query(
             "select count(*) n from public.employees where name=$1",
-            [createPayload.values.name.toUpperCase()],
+            [createPayload.values.name],
           )
         ).rows[0].n,
       ),
@@ -2212,8 +2212,8 @@ try {
       },
     });
     const record = (await q(id.sa, "employee", { id: created.id })).employee;
-    assert.equal(record.values.name, "CRUZ, ANA MARIA JR.");
-    assert.equal(record.values.first_name, "ANA");
+    assert.equal(record.values.name, "Cruz, Ana Maria Jr.");
+    assert.equal(record.values.first_name, "Ana");
     await assert.rejects(
       m(id.sa, "employee_update", {
         id: created.id,
@@ -2224,7 +2224,7 @@ try {
     );
     const after = (await q(id.sa, "employee", { id: created.id })).employee;
     assert.equal(after.row_version, record.row_version);
-    assert.equal(after.values.last_name, "CRUZ");
+    assert.equal(after.values.last_name, "Cruz");
     const legacy = (
       await owner.query(
         "insert into public.employees(name) values('Preserved legacy identity') returning id",
@@ -2270,7 +2270,7 @@ try {
       .values;
     assert(!Object.hasOwn(values, "name"));
     assert(!Object.hasOwn(values, "middle_name"));
-    assert.equal(values.first_name, "ACCESSIBLE");
+    assert.equal(values.first_name, "Accessible");
     assert.equal(
       (await q(user, "employees", { search: "HiddenMarkerAlphabet" })).total,
       0,
@@ -2282,7 +2282,7 @@ try {
     });
     assert.equal(
       (await q(id.sa, "employee", { id: created.id })).employee.values.name,
-      "SAMPLE, ACCESSIBLE UPDATEDHIDDENMARKER",
+      "Sample, Accessible UpdatedHiddenMarker",
     );
     await owner.query(
       "insert into public.field_access_policies(user_id,field_id,action,effect) select $1,id,'U','deny' from public.field_definitions where key='first_name'",
