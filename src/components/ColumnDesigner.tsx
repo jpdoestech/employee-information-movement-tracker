@@ -26,17 +26,27 @@ export function ColumnDesigner({
   onApply,
   onClose,
   rowNumbersAllowed,
+  title = "Customize Columns",
+  initialName = "My employee view",
+  children,
+  extraDirty = false,
+  defaultColumnKeys = defaultColumns,
 }: {
   layout: Layout;
   fields: Field[];
   onApply: (draft: Layout, name: string) => Promise<void>;
   onClose: () => void;
   rowNumbersAllowed: boolean;
+  title?: string;
+  initialName?: string;
+  children?: import("react").ReactNode;
+  extraDirty?: boolean;
+  defaultColumnKeys?: string[];
 }) {
   const [storedDraft, setDraft] = useState(() =>
       reconcileLayout(structuredClone(layout), fields),
     ),
-    [name, setName] = useState("My employee view"),
+    [name, setName] = useState(initialName),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [tab, setTab] = useState("order"),
@@ -162,17 +172,20 @@ export function ColumnDesigner({
     }));
   return (
     <Dialog
-      title="Customize Columns"
+      title={title}
       onClose={onClose}
       wide
       className="column-designer-dialog"
+      closeDisabled={busy}
       isDirty={
         JSON.stringify(draft) !==
           JSON.stringify(reconcileLayout(layout, fields)) ||
-        name !== "My employee view"
+        name !== initialName ||
+        extraDirty
       }
     >
       <div className="dialog-body column-designer">
+        {children}
         <div className="column-designer-toolbar">
           <div className="column-visibility">
             <span>Visible columns</span>
@@ -596,7 +609,7 @@ export function ColumnDesigner({
               reconcileLayout(
                 {
                   ...layout,
-                  columns: defaultColumns.filter((k) =>
+                  columns: defaultColumnKeys.filter((k) =>
                     options.some((o) => o.id === k),
                   ),
                   pinned: ["employee_number", "name"],
@@ -608,7 +621,9 @@ export function ColumnDesigner({
         >
           Reset to default
         </button>
-        <button onClick={onClose}>Cancel</button>
+        <button disabled={busy} onClick={onClose}>
+          Cancel
+        </button>
         <button
           className="primary"
           disabled={busy || !draft.columns.length || !name.trim()}

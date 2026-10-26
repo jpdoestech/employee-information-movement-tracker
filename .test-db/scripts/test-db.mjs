@@ -1,6 +1,7 @@
 import { testPasswordReceipts } from "./test-password-receipts.mjs";
 import { testEmployeeImport } from "./test-employee-import.mjs";
 import { testParentInheritance } from "./test-parent-inheritance.mjs";
+import { testRegisterViews } from "./test-register-views.mjs";
 import { testPermissionMatrix } from "./test-permission-matrix.mjs";
 import { testEmergencyAddress } from "./test-emergency-address.mjs";
 import { testEmploymentRules } from "./test-employment-rules.mjs";
@@ -255,7 +256,9 @@ try {
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
-  if (process.env.TEST_PARENT_ONLY === "true") {
+  if (process.env.TEST_REGISTER_ONLY === "true") {
+    await testRegisterViews({ owner, test, as, q, id });
+  } else if (process.env.TEST_PARENT_ONLY === "true") {
     await testParentInheritance({owner,test,m,q,as,id,revision});
   } else if (process.env.TEST_IMPORT_ONLY === "true") {
     await testEmployeeImport({owner,test,m,q,as,id});
@@ -3370,6 +3373,7 @@ try {
     );
   });
   await testEmploymentRules({ owner, test, q, m, as, concurrent, revision, id, today, date });
+  await testRegisterViews({ owner, test, as, q, id });
   await testAuditFixes({ owner, test, q, m, worker, revision, id });
   await testFunctionFixes({ owner, test, m, worker, id });
   await testEmployeeCategory({ owner, test, m, q, revision, id });

@@ -75,3 +75,8 @@ The OAuth function validates user bearer authentication and single-use state; th
 Before any approved production release: verify staging apply and zero unexplained drift; run Auth/REST tests with separate accounts; verify OAuth and Google failure/retry cases; approve every workbook; test backup restoration; record migration versions and release commit; review grants, CSP and origins. Then explicitly approve the linked production project, migration dry-run and worker/frontend deployments. No such release was performed in this workspace.
 
 Back up canonical Supabase data using the project's supported backup/PITR plan, and rehearse restoration to a separate project. Sheets are projections, not backups. Preserve encryption keys securely with your recovery material; rotating the key requires re-encrypting tokens through a reviewed backend procedure or reconnecting OAuth. Restore migrations and data together; reauthorize grants, reconnect Google and reconcile only approved workbooks after recovery.
+# Managed register views
+
+Apply `20261026052137_managed_register_views.sql` after the parent-group permission
+migration and before its frontend. Existing views remain untouched until a
+superadmin saves a managed rule. See [managed view setup, precedence and rollback](managed-register-views.md).

@@ -35,6 +35,7 @@ import {
   type Field,
   type Filter,
   type Option,
+  type RegisterView,
 } from "./domain";
 const org: Option[] = [
   {
@@ -318,6 +319,9 @@ const context: Context = {
     row_numbers_allowed: true,
     row_version: 1,
     duplicate_name_threshold: 90,
+    managed_views: JSON.parse(
+      localStorage.getItem("eimt-synthetic-managed-views") || "[]",
+    ),
   },
   fields,
   groups: [
@@ -1411,6 +1415,38 @@ export async function demoMutate(op: string, p: any) {
         active: true,
         row_version: 1,
       });
+  } else if (op === "register_view") {
+    if (context.profile.role !== "superadmin")
+      throw new Error("Only a superadmin can manage column views");
+    if (p.expected_version !== context.register_settings.row_version)
+      throw new Error("Register settings changed; reload before saving");
+    const rules = (context.register_settings.managed_views || []).filter(
+      (r) => r.id !== p.id,
+    );
+    if (!p.remove) {
+      if (
+        rules.some(
+          (r) =>
+            r.user_id === p.user_id &&
+            r.scope_type === p.scope_type &&
+            r.scope_id === p.scope_id,
+        )
+      )
+        throw new Error(
+          "A view already exists for this account and location; edit that view",
+        );
+      rules.push({
+        id: p.id,
+        name: p.name,
+        user_id: p.user_id,
+        scope_type: p.scope_type,
+        scope_id: p.scope_id,
+        config: p.config,
+      } as RegisterView);
+    }
+    context.register_settings.managed_views = rules;
+    context.register_settings.row_version++;
+    localStorage.setItem("eimt-synthetic-managed-views", JSON.stringify(rules));
   } else if (op === "register_settings") {
     if (context.profile.role !== "superadmin")
       throw new Error("Only a superadmin can change register display policy");
@@ -1426,6 +1462,7 @@ export async function demoMutate(op: string, p: any) {
     if (p.expected_version !== context.register_settings.row_version)
       throw new Error("Register settings changed; reload before saving");
     context.register_settings = {
+      ...context.register_settings,
       duplicate_name_threshold:
         p.duplicate_name_threshold ??
         context.register_settings.duplicate_name_threshold ??

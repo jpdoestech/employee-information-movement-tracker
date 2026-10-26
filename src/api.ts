@@ -210,6 +210,7 @@ export async function mutate<T = any>(
     form_layout: "Save employee form tabs",
     save_view: "Save personal view",
     register_settings: "Save register display policy",
+    register_view: "Save managed column view",
     client_settings: "Save client entry settings",
     scope: "Change access scope",
     policy: "Change access policy",
@@ -236,15 +237,17 @@ export async function mutate<T = any>(
       requestId || pendingRequests.get(fingerprint) || crypto.randomUUID();
     pendingRequests.set(fingerprint, id);
     const { data, error } =
-      operation === "client_settings"
-        ? await supabase.rpc("set_client_settings", { p, request_id: id })
-        : operation === "register_settings"
-          ? await supabase.rpc("set_register_settings", { p, request_id: id })
-          : await supabase.rpc("tracker_mutate", {
-              operation,
-              p,
-              request_id: id,
-            });
+      operation === "register_view"
+        ? await supabase.rpc("set_register_view", { p, request_id: id })
+        : operation === "client_settings"
+          ? await supabase.rpc("set_client_settings", { p, request_id: id })
+          : operation === "register_settings"
+            ? await supabase.rpc("set_register_settings", { p, request_id: id })
+            : await supabase.rpc("tracker_mutate", {
+                operation,
+                p,
+                request_id: id,
+              });
     if (error)
       throw new Error(
         error.code === "23505" &&

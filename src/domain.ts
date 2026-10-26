@@ -54,6 +54,14 @@ export type Layout = {
   filter: Filter;
   showRowNumbers?: boolean;
 };
+export type RegisterView = {
+  id: string;
+  name: string;
+  user_id: string | null;
+  scope_type: "all" | "head_office" | "branch" | "client";
+  scope_id: string | null;
+  config: Pick<Layout, "columns" | "pinned" | "showRowNumbers">;
+};
 export type Context = {
   profile: { id: string; display_name: string; role: string };
   today: string;
@@ -62,6 +70,7 @@ export type Context = {
     row_numbers_allowed: boolean;
     row_version: number;
     duplicate_name_threshold?: number;
+    managed_views?: RegisterView[];
   };
   fields: Field[];
   groups: {

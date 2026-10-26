@@ -55,6 +55,7 @@ import { ColumnDesigner } from "./components/ColumnDesigner";
 import { EmployeeEditor } from "./screens/EmployeeEditor";
 import { EmployeeImport } from "./screens/EmployeeImport";
 import { canImport } from "./employeeImport";
+import { applyRegisterView, managedRegisterView } from "./registerViews";
 import { BulkEditor } from "./screens/BulkEditor";
 import { MovementEditor } from "./screens/MovementEditor";
 import { Organization, FieldBuilder } from "./screens/Configuration";
@@ -337,7 +338,19 @@ export default function App() {
   const fields = ctx?.fields || [];
   const can = (c: string) => ctx?.capabilities.includes(c);
   const readable = fields.filter((f) => f.actions.includes("R") && f.active);
-  const tableLayout = { ...layout, filter };
+  const managedView =
+    ctx &&
+    managedRegisterView(
+      ctx.register_settings.managed_views || [],
+      ctx.profile.id,
+      filter,
+      options,
+    );
+  const tableLayout = applyRegisterView(
+    { ...layout, filter },
+    managedView,
+    fields,
+  );
   const currentNav = nav.find((n) => n.id === page) || nav[0];
   const visibleNav = nav.filter(
     (n) =>
@@ -358,7 +371,7 @@ export default function App() {
     try {
       const exported = await query("export", filter);
       const blob = new Blob(
-        [csv(exported.items, exported.fields, layout.columns)],
+        [csv(exported.items, exported.fields, tableLayout.columns)],
         { type: "text/csv;charset=utf-8;" },
       );
       const url = URL.createObjectURL(blob),
@@ -744,7 +757,12 @@ export default function App() {
                   <div className="actions">
                     <button
                       aria-label="Customize Columns"
-                      title="Customize columns"
+                      title={
+                        managedView
+                          ? `Columns managed by ${managedView.name}. Change these in Permissions > Register settings.`
+                          : "Customize columns"
+                      }
+                      disabled={!!managedView}
                       onClick={() => setDialog("columns")}
                     >
                       <Columns3 size={16} />
@@ -764,7 +782,11 @@ export default function App() {
                       <span className="action-label">Export CSV</span>
                     </button>
                     {canImport(ctx) && (
-                      <button aria-label="Import employees" title="Import employees" onClick={() => setDialog("import")}>
+                      <button
+                        aria-label="Import employees"
+                        title="Import employees"
+                        onClick={() => setDialog("import")}
+                      >
                         <Upload size={16} />
                         <span className="action-label">Import</span>
                       </button>
@@ -796,6 +818,14 @@ export default function App() {
                 context={ctx}
                 onSaved={refresh}
               >
+                {managedView && (
+                  <span
+                    className="managed-view-source"
+                    title="This managed column view overrides personal column settings. Field permissions still apply."
+                  >
+                    Managed: {managedView.name}
+                  </span>
+                )}
                 <SearchFilterPicker
                   mode="single"
                   label="Saved view"
@@ -1056,7 +1086,12 @@ export default function App() {
         />
       )}
       {ctx && dialog === "import" && canImport(ctx) && (
-        <EmployeeImport context={ctx} options={options} onClose={() => setDialog(null)} onSaved={refresh} />
+        <EmployeeImport
+          context={ctx}
+          options={options}
+          onClose={() => setDialog(null)}
+          onSaved={refresh}
+        />
       )}
       {ctx && dialog === "bulk" && (
         <BulkEditor

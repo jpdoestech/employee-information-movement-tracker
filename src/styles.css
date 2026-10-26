@@ -4608,3 +4608,13 @@ dialog.employee-edit-dialog[open] {
 @media (pointer: coarse), (max-width: 760px) {
   .permission-matrix .permission-cell, .permission-toolbar > button, .permission-save-bar > button { min-height: 44px; }
 }
+.managed-view-heading, .managed-view-targets { display: flex; align-items: center; gap: 12px; }
+.managed-view-heading { justify-content: space-between; }
+.managed-register-views { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 16px; min-width: 0; }
+.managed-view-table { max-height: 280px; overflow: auto; margin-block: 12px; }
+.managed-view-table table { width: max-content; min-width: 100%; }
+.managed-view-table thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.managed-view-table tbody th { position: static; text-align: left; text-transform: none; font-size: 12px; font-weight: 600; background: inherit; }
+.managed-view-targets > * { flex: 1; min-width: 0; }
+.managed-view-source { font-size: 11px; white-space: nowrap; color: var(--muted); }
+@media (max-width: 600px) { .managed-view-targets { flex-direction: column; align-items: stretch; gap: 8px; } }
