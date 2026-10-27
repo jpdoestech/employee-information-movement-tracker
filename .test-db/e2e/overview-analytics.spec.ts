@@ -211,9 +211,9 @@ test("PRF confirmation cancellation keeps draft, saves once, updates fill rate a
     .getByRole("dialog", { name: "PRF Employment Type options", exact: true })
     .getByRole("option", { name: "Regular", exact: true })
     .click();
-  await editor.getByLabel("Department", { exact: true }).fill("Operations");
+  await editor.getByRole("textbox", { name: /^Department(?: \*)?$/ }).fill("Operations");
   await editor
-    .getByLabel("Position required", { exact: true })
+    .getByRole("textbox", { name: /^Position required(?: \*)?$/ })
     .fill("Coordinator");
   await editor.getByLabel("Required headcount").fill("20");
   await editor.getByRole("button", { name: "Save PRF", exact: true }).click();

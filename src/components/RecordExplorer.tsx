@@ -16,6 +16,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { query } from "../api";
+import { staffingVacancies } from "../jobCatalog";
 import { contentWidths, useFontMetrics } from "../tableSizing";
 import { RowsPerPage } from "./RowsPerPage";
 import { movementTypes, type Option } from "../domain";
@@ -287,13 +288,14 @@ export function RecordExplorer({
         <th>Departments / positions</th>
         <th>Required</th>
         <th>Filled</th>
+        <th>Vacant</th>
         {heading("effective_on", "Starts on")}
         <th>Ends before</th>
         <th>Status</th>
         <th>Actions</th>
       </>
     );
-    columns = 10;
+    columns = 11;
   } else {
     headers = (
       <>
@@ -318,6 +320,7 @@ export function RecordExplorer({
           "Departments / positions",
           "Required",
           "Filled",
+          "Vacant",
           "Starts on",
           "Ends before",
           "Status",
@@ -367,7 +370,11 @@ export function RecordExplorer({
               )
               .join("; "),
             String(r.required_headcount),
-            String(r.filled_headcount ?? "�"),
+            String(r.filled_headcount ?? "—"),
+            String(
+              staffingVacancies(r.required_headcount, r.filled_headcount) ??
+                "—",
+            ),
             r.starts_on || "",
             r.ends_on || "—",
             r.active ? "Active" : "Inactive",
@@ -404,7 +411,7 @@ export function RecordExplorer({
     ),
     60,
     kind === "staffing"
-      ? ["text-id", "", "", "", "", "", "text-date", "text-date"]
+      ? ["text-id", "", "", "", "", "", "", "text-date", "text-date"]
       : kind === "movements"
         ? ["", "", "", "", "text-date"]
         : kind === "audit"
@@ -647,7 +654,13 @@ export function RecordExplorer({
                         .join("; ") || "Not configured"}
                     </td>
                     <td>{r.required_headcount}</td>
-                    <td>{r.filled_headcount ?? "�"}</td>
+                    <td>{r.filled_headcount ?? "—"}</td>
+                    <td>
+                      {staffingVacancies(
+                        r.required_headcount,
+                        r.filled_headcount,
+                      ) ?? "—"}
+                    </td>
                     <td className="text-date">{r.starts_on}</td>
                     <td className="text-date">{r.ends_on || "—"}</td>
                     <td>{r.active ? "Active" : "Inactive"}</td>

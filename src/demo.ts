@@ -747,7 +747,7 @@ export async function demoQuery(op: string, q: any = {}) {
         row.lines.map((line) => ({
           ...line,
           label: row.reference,
-          context: `${line.department} � ${line.position} � ${row.employment_type}`,
+          context: `${line.department} · ${line.position} · ${row.employment_type}`,
           employment_type: row.employment_type,
           available:
             line.active !== false &&
@@ -950,6 +950,22 @@ export async function demoImport(p: any, previewOnly = false) {
 export async function demoMutate(op: string, p: any) {
   p = normalizeInputs(p);
   if (op === "employee_import") return demoImport(p);
+  if (op === "job_choices") {
+    if (context.profile.role !== "superadmin")
+      throw new Error("Only a Superadmin can configure official job choices");
+    const field = fields.find(
+      (entry) =>
+        entry.key === p.key && ["department", "position"].includes(entry.key),
+    );
+    if (!field || field.row_version !== p.expected_version)
+      throw new Error("Job choices changed; reload before saving");
+    const invalid = fieldConfigurationError({ ...field, options: p.options });
+    if (invalid) throw new Error(invalid);
+    field.options = p.options;
+    field.row_version++;
+    context.revision++;
+    return { key: field.key, row_version: field.row_version };
+  }
   if (op === "staffing_requisition") {
     const existing = staffingRequirements.find((r) => r.id === p.id);
     if (

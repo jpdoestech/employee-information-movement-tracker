@@ -13,6 +13,8 @@ import { FloatingNotification } from "../components/FloatingNotification";
 import { confirmTransaction } from "../components/TransactionConfirmation";
 import { FieldTypeIcon } from "../components/FieldTypeIcon";
 import { fieldTextRole } from "../typography";
+import { mapJobEntries } from "../jobCatalog";
+import { JobImportReview } from "../components/JobImportReview";
 
 export function EmployeeImport({
   context,
@@ -37,6 +39,7 @@ export function EmployeeImport({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [validated, setValidated] = useState("");
+  const [jobMappings, setJobMappings] = useState<Record<string, string>>({});
   const destinations: Option[] = [
     { id: "unassigned", kind: "unassigned", label: "Unassigned", active: true },
     ...options.filter((o) => o.active),
@@ -80,7 +83,8 @@ export function EmployeeImport({
       return { error: (e as Error).message };
     }
   }, [file, access, ready, mode, ids.mode]);
-  const rows = parsed && !("error" in parsed) ? parsed.rows : [];
+  const sourceRows = parsed && !("error" in parsed) ? parsed.rows : [];
+  const rows = mapJobEntries(sourceRows, fields, jobMappings);
   const headers = parsed && !("error" in parsed) ? parsed.headers : [];
   const payload = { ...destination, rows };
   const fingerprint = key + JSON.stringify(payload);
@@ -235,6 +239,21 @@ export function EmployeeImport({
             </p>
           )}
         </details>
+        <JobImportReview
+          rows={sourceRows}
+          fields={fields}
+          mappings={jobMappings}
+          disabled={busy}
+          onChange={(id, official) => {
+            setJobMappings((current) => {
+              const next = { ...current };
+              if (official) next[id] = official;
+              else delete next[id];
+              return next;
+            });
+            setValidated("");
+          }}
+        />
         {file && (
           <p>
             {file.name} · {rows.length} employees

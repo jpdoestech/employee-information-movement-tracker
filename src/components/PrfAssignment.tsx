@@ -68,6 +68,12 @@ export function PrfAssignment({
   return (
     <div className="field form-control">
       <span>{field.label}</span>
+      {!employeeId && !clientId && (
+        <small>
+          Select the client in Initial organization above to see its PRFs. A
+          branch alone does not select a client.
+        </small>
+      )}
       <SearchFilterPicker
         icon={ClipboardList}
         mode="single"

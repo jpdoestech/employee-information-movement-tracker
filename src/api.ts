@@ -209,6 +209,7 @@ export async function mutate<T = any>(
     void_movement: "Void or correct movement",
     organization: "Save organization",
     staffing_requisition: "Save staffing PRF",
+    job_choices: "Save official job choices",
     field: "Save field definition",
     group: "Save field group",
     form_layout: "Save employee form tabs",
@@ -241,8 +242,13 @@ export async function mutate<T = any>(
       requestId || pendingRequests.get(fingerprint) || crypto.randomUUID();
     pendingRequests.set(fingerprint, id);
     const { data, error } =
-      operation === "staffing_requisition"
-        ? await supabase.rpc("set_staffing_requisition", { p, request_id: id })
+      operation === "staffing_requisition" || operation === "job_choices"
+        ? await supabase.rpc(
+            operation === "job_choices"
+              ? "set_job_choices"
+              : "set_staffing_requisition",
+            { p, request_id: id },
+          )
         : operation === "register_view"
           ? await supabase.rpc("set_register_view", { p, request_id: id })
           : operation === "client_settings"

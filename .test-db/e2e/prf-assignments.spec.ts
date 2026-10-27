@@ -41,9 +41,9 @@ for (const [width, height] of [
       .getByRole("dialog", { name: "PRF Employment Type options", exact: true })
       .getByRole("option", { name: "Regular", exact: true })
       .click();
-    await prf.getByLabel("Department", { exact: true }).fill("Operations");
+    await prf.getByRole("textbox", { name: /^Department(?: \*)?$/ }).fill("Operations");
     await prf
-      .getByLabel("Position required", { exact: true })
+      .getByRole("textbox", { name: /^Position required(?: \*)?$/ })
       .fill("Coordinator");
     await prf.getByLabel("Required headcount", { exact: true }).fill("2");
     await prf
@@ -53,9 +53,9 @@ for (const [width, height] of [
       name: "Requirement 2",
       exact: true,
     });
-    await second.getByLabel("Department", { exact: true }).fill("Finance");
+    await second.getByRole("textbox", { name: /^Department(?: \*)?$/ }).fill("Finance");
     await second
-      .getByLabel("Position required", { exact: true })
+      .getByRole("textbox", { name: /^Position required(?: \*)?$/ })
       .fill("Bookkeeper");
     await expect(prf).toContainText("Total required: 3");
     expect(
@@ -115,7 +115,7 @@ for (const [width, height] of [
       });
       await picker.getByRole("option", { name: new RegExp(job) }).click();
       await expect(
-        employee.getByLabel("Department", { exact: true }),
+        employee.getByRole("textbox", { name: /^Department(?: \*)?$/ }),
       ).toHaveValue(department);
       await expect(
         employee.getByLabel("Position", { exact: true }),

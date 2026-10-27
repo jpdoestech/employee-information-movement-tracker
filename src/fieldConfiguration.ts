@@ -1,4 +1,5 @@
 import type { Field } from "./domain";
+import { isJobField } from "./jobCatalog";
 
 export const textFieldTypes = ["short_text", "long_text", "email", "phone"];
 // Shared with the definition form and synthetic demo. PostgreSQL is authoritative.
@@ -38,18 +39,25 @@ export function fieldConfigurationError(
   )
     return "Minimum must not exceed maximum.";
   if (
-    field.type === "select" &&
-    (!field.options?.length ||
-      field.options.some((v) => !v.trim()) ||
-      new Set(field.options.map((v) => v.trim().toLowerCase())).size !==
-        field.options.length)
+    (field.type === "select" || isJobField(field.key || "")) &&
+    ((!isJobField(field.key || "") && !field.options?.length) ||
+      (field.options || []).some(
+        (v) =>
+          !v.trim() || (isJobField(field.key || "") && v.trim().length > 200),
+      ) ||
+      new Set((field.options || []).map((v) => v.trim().toLowerCase())).size !==
+        (field.options || []).length)
   )
     return "Add distinct, nonempty dropdown choices.";
   const value = field.default_value;
   if (value === undefined || value === null) return;
   if (field.type === "checkbox" && typeof value !== "boolean")
     return "Choose a checked or unchecked default.";
-  if (field.type === "select" && !field.options?.includes(String(value)))
+  if (
+    field.type === "select" &&
+    !isJobField(field.key || "") &&
+    !field.options?.includes(String(value))
+  )
     return "The default must be one of the dropdown choices.";
   if (
     ["integer", "decimal"].includes(field.type ?? "") &&

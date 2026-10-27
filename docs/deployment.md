@@ -1,5 +1,9 @@
 # Deployment and migrations
 
+Shared optional job choices require `20261027010000_shared_job_choices.sql`
+after PRF employee assignments. Temporary Department/Position values remain
+allowed; existing values are preserved. See [shared job choices](shared-job-choices.md).
+
 PRF employee links and multiple department/position requirements need
 `20261027000000_prf_employee_assignments.sql` after both Overview migrations and
 before publishing their frontend. Existing employees remain unassigned; existing

@@ -1,5 +1,6 @@
 import { testOverviewAnalytics } from "./test-overview-analytics.mjs";
 import { testPrfAssignments } from "./test-prf-assignments.mjs";
+import { testJobChoices } from "./test-job-choices.mjs";
 import { testPasswordReceipts } from "./test-password-receipts.mjs";
 import { testEmployeeImport } from "./test-employee-import.mjs";
 import { testParentInheritance } from "./test-parent-inheritance.mjs";
@@ -261,6 +262,7 @@ try {
   if (process.env.TEST_PRF_ONLY === "true") {
     await testOverviewAnalytics({ owner, test, as, q, id, today, date });
     await testPrfAssignments({ owner, test, as, q, m, id, today, revision });
+    await testJobChoices({ owner, test, as, q, m, id, today });
   } else if (process.env.TEST_ANALYTICS_ONLY === "true") {
     await testOverviewAnalytics({ owner, test, q, as, id, today, date });
   } else if (process.env.TEST_REGISTER_ONLY === "true") {
@@ -3393,6 +3395,7 @@ try {
   await testPasswordReceipts({ owner, test, as, id });
   await testOverviewAnalytics({ owner, test, q, as, id, today, date });
   await testPrfAssignments({ owner, test, as, q, m, id, today, revision });
+  await testJobChoices({ owner, test, as, q, m, id, today });
   await testPermissionMatrix({ owner, test, m, q, as, id, revision });
   }
   await mkdir(".test-db/reports/verification", { recursive: true });

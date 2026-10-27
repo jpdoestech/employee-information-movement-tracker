@@ -5,6 +5,8 @@ import type { Context, Option } from "../domain";
 import { Dialog } from "./Dialog";
 import { RecordExplorer } from "./RecordExplorer";
 import { SearchFilterPicker } from "./SearchFilterPicker";
+import { JobValueEditor } from "./JobValueEditor";
+import { staffingVacancies } from "../jobCatalog";
 import { FloatingNotification } from "./FloatingNotification";
 
 export type StaffingLine = {
@@ -276,40 +278,41 @@ export function StaffingRequisitions({
                     disabled={busy}
                   >
                     <legend>Requirement {index + 1}</legend>
-                    <label>
-                      Department
-                      <span className="value-control has-type-icon">
-                        <span className="value-type-icon">
-                          <FieldTypeIcon type="short_text" size={14} />
-                        </span>
-                        <input
-                          required
-                          readOnly={line.job_locked}
-                          maxLength={200}
-                          value={line.department}
-                          onChange={(e) =>
-                            changeLine(line.id, { department: e.target.value })
-                          }
-                        />
-                      </span>
-                    </label>
-                    <label>
-                      Position required
-                      <span className="value-control has-type-icon">
-                        <span className="value-type-icon">
-                          <FieldTypeIcon type="short_text" size={14} />
-                        </span>
-                        <input
-                          required
-                          readOnly={line.job_locked}
-                          maxLength={200}
-                          value={line.position}
-                          onChange={(e) =>
-                            changeLine(line.id, { position: e.target.value })
-                          }
-                        />
-                      </span>
-                    </label>
+                    <JobValueEditor
+                      field={{
+                        key: "department",
+                        label: "Department",
+                        required: true,
+                        validation: { max_length: 200 },
+                        options: context.fields.find(
+                          (field) => field.key === "department",
+                        )?.options,
+                      }}
+                      value={line.department}
+                      disabled={busy}
+                      readOnly={line.job_locked}
+                      clearable={false}
+                      onChange={(value) =>
+                        changeLine(line.id, { department: value || "" })
+                      }
+                    />
+                    <JobValueEditor
+                      field={{
+                        key: "position",
+                        label: "Position required",
+                        required: true,
+                        options: context.fields.find(
+                          (field) => field.key === "position",
+                        )?.options,
+                      }}
+                      value={line.position}
+                      disabled={busy}
+                      readOnly={line.job_locked}
+                      clearable={false}
+                      onChange={(value) =>
+                        changeLine(line.id, { position: value || "" })
+                      }
+                    />
                     <label>
                       Required headcount
                       <span className="value-control has-type-icon">
@@ -332,7 +335,13 @@ export function StaffingRequisitions({
                       </span>
                     </label>
                     <div className="staffing-line-actions">
-                      <span>Filled: {line.filled_headcount ?? "—"}</span>
+                      <span>
+                        Filled: {line.filled_headcount ?? "—"} · Vacant:{" "}
+                        {staffingVacancies(
+                          line.required_headcount,
+                          line.filled_headcount,
+                        ) ?? "—"}
+                      </span>
                       <button
                         type="button"
                         disabled={draft.lines.length === 1}

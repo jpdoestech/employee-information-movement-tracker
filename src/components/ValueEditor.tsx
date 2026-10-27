@@ -9,6 +9,8 @@ import { governmentIdError, normalizeGovernmentId } from "../governmentIds";
 import { valueWidth } from "../controlSizing";
 import { FieldTypeIcon, fieldTypeIcons } from "./FieldTypeIcon";
 import { fieldTextRole } from "../typography";
+import { isJobField } from "../jobCatalog";
+import { JobValueEditor } from "./JobValueEditor";
 import {
   applyNameCase,
   employeeNameKeys,
@@ -86,6 +88,16 @@ export function ValueEditor({
   const caseMode = nameCase ?? localNameCase;
   const showClear = clearable && (blind || (value != null && value !== ""));
   const idError = governmentIdError(f, value);
+  if (isJobField(f.key))
+    return (
+      <JobValueEditor
+        field={f}
+        value={value}
+        onChange={onChange}
+        clearable={clearable}
+        blind={blind}
+      />
+    );
   return (
     <div className={`field ${fieldTextRole(f)}`}>
       {employeeNameKeys.has(f.key) ? (

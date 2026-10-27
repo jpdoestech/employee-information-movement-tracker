@@ -4689,3 +4689,12 @@ main:has(> .management-analytics) { display: flex; flex-direction: column; overf
 .staffing-line legend { font-size: 11px; padding: 0 4px; }
 .staffing-line-actions { grid-column: 1 / -1; }
 @media (max-width: 600px) { .staffing-line { grid-template-columns: minmax(0, 1fr); } .staffing-lines-heading { align-items: flex-start; flex-direction: column; gap: 4px; } }
+.job-value-row { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+.job-value-row > .value-control { flex: 1; min-width: 0; }
+.job-value-row > .picker { flex: 0 0 auto; }
+.job-field { min-width: 0; }
+.job-field > small { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.job-match-action { align-self: flex-start; }
+.job-import-mapping { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; margin: 8px 0; }
+.job-import-mapping > span { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .job-import-mapping { grid-template-columns: minmax(0, 1fr); } }

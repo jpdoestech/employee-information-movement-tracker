@@ -81,3 +81,5 @@ Local implementation is verified separately from deployment. A new Supabase proj
 All test source, runners, configurations and generated evidence are under `.test-db/`: `unit/`, `e2e/`, `scripts/`, `runs/`, `results/`, `reports/` and `cache/`. Source/configuration are tracked; generated database files, reports, traces and caches are ignored. Existing archived test databases in `.test-db/` are preserved.
 
 PRFs support multiple department/position requirements and optional employee links through PRF No. See [PRF employee assignments](docs/prf-employee-assignments.md) for setup, fill-rate semantics and migration order.
+
+Shared [Department/Position choices](docs/shared-job-choices.md) are configured in Field Builder. Temporary manual and imported job names stay allowed, with consistency information and optional links to official names.

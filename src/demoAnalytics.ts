@@ -19,8 +19,12 @@ export function demoLineFilled(
       employee.values.status === "Active" &&
       employee.values.client === client?.label &&
       employee.values.branch === client?.context &&
-      employee.values.department === line.department &&
-      employee.values.position === line.position &&
+      String(employee.values.department || "")
+        .trim()
+        .toLowerCase() === line.department.trim().toLowerCase() &&
+      String(employee.values.position || "")
+        .trim()
+        .toLowerCase() === line.position.trim().toLowerCase() &&
       employee.values.employment_type === requirement.employment_type,
   ).length;
 }

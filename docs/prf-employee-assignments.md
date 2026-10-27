@@ -5,6 +5,11 @@ Applicant tracking and approval workflows remain outside this change.
 
 ## PRFs and job requirements
 
+[Shared job choices](shared-job-choices.md) provide official Department/Position
+names with nonblocking temporary entry and optional import linking. Users can
+choose existing names or type temporary ones. New hires still select the client
+before opening PRF No.; approved manning stays fixed while vacancies decrease.
+
 A client PRF has a PRF No., Employment Type, effective dates, and 1–100 requirement
 lines. Each line contains Department, Position required, and a positive whole
 headcount. Duplicate department/position pairs are combined into one line. The

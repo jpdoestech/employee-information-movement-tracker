@@ -13,6 +13,8 @@ import { ValueEditor } from "../components/ValueEditor";
 import { fieldTypeLabel } from "../fieldValues";
 import type { Context, Field, Option } from "../domain";
 import { fieldGroupPath, orderedFieldGroups } from "../employeeForm";
+import { isJobField } from "../jobCatalog";
+import { JobChoicesDialog } from "../components/JobChoicesDialog";
 export function Organization({
   options,
   canManage,
@@ -155,6 +157,7 @@ export function FieldBuilder({
   options: Option[];
   onSaved: () => void;
 }) {
+  const [jobField, setJobField] = useState<Field>();
   const [schema, setSchema] = useState<any>(),
     [editingTabs, setEditingTabs] = useState(false),
     [draft, setDraft] = useState<any>(),
@@ -278,7 +281,7 @@ export function FieldBuilder({
               aria-label="Search fields"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search definitions�"
+              placeholder="Search definitions…"
             />
           </label>
           <SearchFilterPicker
@@ -363,7 +366,7 @@ export function FieldBuilder({
                             <strong>{fieldGroupPath(groups, g.id)}</strong>
                             <small>
                               {matching.length} fields
-                              {!g.active ? " � Inactive group" : ""}
+                              {!g.active ? " · Inactive group" : ""}
                             </small>
                             <button
                               onClick={() =>
@@ -422,6 +425,15 @@ export function FieldBuilder({
                                 aria-label={`Edit field ${f.label}`}
                               >
                                 Edit field
+                              </button>
+                            )}
+                            {isJobField(f.key) && (
+                              <button
+                                disabled={context.profile.role !== "superadmin"}
+                                aria-label={`Manage ${f.label} choices`}
+                                onClick={() => setJobField(f)}
+                              >
+                                Choices
                               </button>
                             )}
                           </td>
@@ -959,7 +971,10 @@ export function FieldBuilder({
             </label>
             <div className="form-control">
               <span>Parent group</span>
-              <small>Child groups inherit this group's access policies. Changing the parent changes inherited access and requires Superadmin.</small>
+              <small>
+                Child groups inherit this group's access policies. Changing the
+                parent changes inherited access and requires Superadmin.
+              </small>
               <SearchFilterPicker
                 mode="single"
                 label="Parent group"
@@ -1023,6 +1038,13 @@ export function FieldBuilder({
         <FormTabEditor
           groups={groups}
           onClose={() => setEditingTabs(false)}
+          onSaved={onSaved}
+        />
+      )}
+      {jobField && (
+        <JobChoicesDialog
+          field={jobField}
+          onClose={() => setJobField(undefined)}
           onSaved={onSaved}
         />
       )}

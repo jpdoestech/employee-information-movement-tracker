@@ -17,6 +17,7 @@ import {
   type Field,
 } from "../domain";
 import { ValueEditor } from "../components/ValueEditor";
+import { JobValueEditor } from "../components/JobValueEditor";
 import { mutate, query, preview as validatePreview } from "../api";
 export function MovementEditor({
   rows,
@@ -209,14 +210,16 @@ export function MovementEditor({
                 onChange={(v) => setValue(v[0] || "")}
               />
             ) : typ === "position" ? (
-              <label>
-                New position
-                <input
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  maxLength={200}
-                />
-              </label>
+              <JobValueEditor
+                field={{
+                  ...employeeFields.find((field) => field.key === "position"),
+                  key: "position",
+                  label: "New position",
+                }}
+                value={value}
+                onChange={(next) => setValue(next || "")}
+                disabled={busy}
+              />
             ) : (
               <>
                 <SearchFilterPicker
@@ -418,7 +421,7 @@ export function MovementEditor({
             </p>
             {separating && (
               <p>
-                {separationCategory} � {separationReason}
+                {separationCategory} · {separationReason}
                 {separationReason === "Others (specify)"
                   ? `: ${separationDetails}`
                   : ""}

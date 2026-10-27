@@ -282,7 +282,7 @@ export function ManagementAnalytics({
               "Fill rate",
               display(report?.fill_rate, true),
               report?.staffing?.required
-                ? `${report.staffing.filled} filled / ${report.staffing.required} required today`
+                ? `${report.staffing.filled} filled / ${report.staffing.required} required today · ${Math.max(0, report.staffing.required - report.staffing.filled)} vacant`
                 : "No authorized active staffing requirement",
             ],
             [
@@ -367,7 +367,12 @@ export function ManagementAnalytics({
               <span className="muted">Active employees today</span>
             </div>
             {genders.length ? (
-              <div className="data-scroll-region analytics-mix" tabIndex={0} role="region" aria-label="Age and gender mix">
+              <div
+                className="data-scroll-region analytics-mix"
+                tabIndex={0}
+                role="region"
+                aria-label="Age and gender mix"
+              >
                 <table>
                   <thead>
                     <tr>
