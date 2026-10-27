@@ -229,6 +229,7 @@ export function SearchFilterPicker({
         <button
           type="button"
           className="picker-clear"
+          disabled={disabled}
           aria-label={`Clear ${label}`}
           onClick={() => onChange([])}
         >

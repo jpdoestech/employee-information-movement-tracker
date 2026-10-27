@@ -48,6 +48,12 @@ for (const [width, height] of [
     await expect(
       editor.getByRole("button", { name: "Applies to", exact: true }),
     ).toBeDisabled();
+    await expect(
+      editor.getByRole("button", { name: "Clear Accounts", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      editor.getByRole("button", { name: "Clear Applies to", exact: true }),
+    ).toBeDisabled();
     await editor
       .getByRole("button", { name: "Visible columns", exact: true })
       .click();
