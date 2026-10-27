@@ -368,43 +368,28 @@ export function ManagementAnalytics({
             </div>
             {genders.length ? (
               <div
-                className="data-scroll-region analytics-mix"
-                tabIndex={0}
+                className="analytics-mix"
                 role="region"
                 aria-label="Age and gender mix"
               >
-                <table>
-                  <thead>
-                    <tr>
-                      <th scope="col">Age range</th>
-                      {genders.map((gender) => (
-                        <th key={gender} scope="col">
-                          {gender}
-                        </th>
-                      ))}
-                      <th scope="col">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ages.map((age) => {
-                      const rows = report!.age_gender.filter(
-                        (r) => r.age === age,
-                      );
-                      return (
-                        <tr key={age}>
-                          <th scope="row">{age}</th>
-                          {genders.map((gender) => (
-                            <td key={gender}>
-                              {rows.find((r) => r.gender === gender)?.count ||
-                                0}
-                            </td>
-                          ))}
-                          <td>{rows.reduce((sum, r) => sum + r.count, 0)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <Distribution
+                  rows={ages.map((age) => {
+                    const rows = report!.age_gender.filter(
+                      (r) => r.age === age,
+                    );
+                    return {
+                      label: age,
+                      count: rows.reduce((sum, r) => sum + r.count, 0),
+                      context: genders
+                        .map(
+                          (gender) =>
+                            `${gender}: ${(rows.find((r) => r.gender === gender)?.count || 0).toLocaleString()}`,
+                        )
+                        .join(" · "),
+                    };
+                  })}
+                  total={headcount || 0}
+                />
               </div>
             ) : (
               <p className="analytics-empty">

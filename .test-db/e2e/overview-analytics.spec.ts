@@ -118,8 +118,32 @@ for (const [width, height] of [
       name: "Age and gender mix",
       exact: true,
     });
-    await mix.focus();
-    await expect(mix).toBeFocused();
+    await expect(mix.getByRole("table")).toHaveCount(0);
+    await expect(mix.locator(".analytics-distribution-row")).toHaveCount(6);
+    await expect(mix).toContainText("18–25");
+    await expect(mix).toContainText("61+");
+    await expect(mix.locator(".analytics-category").first()).toContainText(":");
+    expect(
+      await mix.locator(".analytics-distribution").evaluate((element) => ({
+        overflow: getComputedStyle(element).overflowY,
+        clipped: element.scrollHeight > element.clientHeight,
+      })),
+    ).toEqual({ overflow: "visible", clipped: false });
+    const firstAge = mix.locator(".analytics-distribution-row").first();
+    await firstAge.scrollIntoViewIfNeeded();
+    const scrollBefore = await page
+      .locator(".analytics-scroll")
+      .evaluate((e) => e.scrollTop);
+    await firstAge.hover();
+    await page.mouse.wheel(0, 150);
+    await expect
+      .poll(() =>
+        page.locator(".analytics-scroll").evaluate((e) => e.scrollTop),
+      )
+      .toBeGreaterThan(scrollBefore);
+    await page.screenshot({
+      path: `.test-db/reports/screenshots/age-gender-${width}x${height}.png`,
+    });
     await page.locator(".analytics-scroll").evaluate((e) => {
       e.scrollTop = 0;
     });
@@ -211,7 +235,9 @@ test("PRF confirmation cancellation keeps draft, saves once, updates fill rate a
     .getByRole("dialog", { name: "PRF Employment Type options", exact: true })
     .getByRole("option", { name: "Regular", exact: true })
     .click();
-  await editor.getByRole("textbox", { name: /^Department(?: \*)?$/ }).fill("Operations");
+  await editor
+    .getByRole("textbox", { name: /^Department(?: \*)?$/ })
+    .fill("Operations");
   await editor
     .getByRole("textbox", { name: /^Position required(?: \*)?$/ })
     .fill("Coordinator");
