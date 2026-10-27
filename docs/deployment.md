@@ -1,5 +1,10 @@
 # Deployment and migrations
 
+Calculated Age and Length of Service columns require
+`20261027020000_derived_employee_columns.sql` after shared job choices and before
+the frontend. Employee data and existing column selections are preserved. See
+[calculated register columns](derived-register-columns.md).
+
 Shared optional job choices require `20261027010000_shared_job_choices.sql`
 after PRF employee assignments. Temporary Department/Position values remain
 allowed; existing values are preserved. See [shared job choices](shared-job-choices.md).

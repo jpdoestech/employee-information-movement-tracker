@@ -1,4 +1,5 @@
 import { demoAnalytics, demoLineFilled } from "./demoAnalytics";
+import { fullYears, lengthOfService } from "./employeeOverview";
 import type { StaffingRequirement } from "./components/StaffingRequisitions";
 import {
   duplicateEmployees,
@@ -132,6 +133,24 @@ const fields: Field[] = base.map(([key, label, type], i) => ({
   actions: ["C", "R", "U", "D"],
 }));
 fields.push(
+  ...[
+    ["age", "Age", "personal"],
+    ["length_of_service", "Length of Service", "employment"],
+  ].map(([key, label, group]) => ({
+    id: `field-${key}`,
+    key,
+    label,
+    group_id: group,
+    group_name: group,
+    type: "system",
+    active: true,
+    required: false,
+    sensitivity: "normal",
+    list_eligible: true,
+    scope_mode: "all",
+    row_version: 1,
+    actions: ["R"],
+  })),
   ...governmentDefinitions.map(({ digits, ...f }) => ({
     ...f,
     id: `field-${f.key}`,
@@ -526,7 +545,22 @@ const demoAccess = {
   reporting: [] as string[],
   departments: ["Operations", "Head Office"],
 };
+function serviceDays(employee: Employee) {
+  const end =
+    employee.values.status === "Active"
+      ? context.today
+      : employee.values.status_effective_date;
+  return (
+    (Date.parse(String(end)) - Date.parse(String(employee.values.date_hired))) /
+    86400000
+  );
+}
 export async function demoQuery(op: string, q: any = {}) {
+  for (const employee of employees) {
+    employee.values.age = fullYears(employee.values.birth_date, context.today);
+    const service = lengthOfService(employee.values, context.today);
+    employee.values.length_of_service = service === "—" ? null : service;
+  }
   if (op === "access_configuration")
     return structuredClone({
       ...demoAccess,
@@ -703,12 +737,28 @@ export async function demoQuery(op: string, q: any = {}) {
           f.predicates.every((p) => matchesFilterValue(v[p.key], p))
         );
       })
-      .sort(
-        (a, b) =>
+      .sort((a, b) => {
+        if (["age", "length_of_service"].includes(f.sort)) {
+          if (a.values[f.sort] == null || b.values[f.sort] == null)
+            return (
+              Number(a.values[f.sort] == null) -
+                Number(b.values[f.sort] == null) || a.id.localeCompare(b.id)
+            );
+          const difference =
+            f.sort === "age"
+              ? Number(a.values.age) - Number(b.values.age)
+              : serviceDays(a) - serviceDays(b);
+          return (
+            difference * (f.direction === "asc" ? 1 : -1) ||
+            a.id.localeCompare(b.id)
+          );
+        }
+        return (
           String(a.values[f.sort] ?? "").localeCompare(
             String(b.values[f.sort] ?? ""),
-          ) * (f.direction === "asc" ? 1 : -1) || a.id.localeCompare(b.id),
-      );
+          ) * (f.direction === "asc" ? 1 : -1) || a.id.localeCompare(b.id)
+        );
+      });
     return {
       items: structuredClone(rows.slice(f.offset, f.offset + f.limit)),
       total: rows.length,

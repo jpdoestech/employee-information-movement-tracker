@@ -882,7 +882,13 @@ export function EmployeeEditor({
                             </legend>
                             <div className="form-grid field-entry-grid">
                               {displayFields
-                                .filter((f) => f.group_id === g.id)
+                                .filter(
+                                  (f) =>
+                                    f.group_id === g.id &&
+                                    !["age", "length_of_service"].includes(
+                                      f.key,
+                                    ),
+                                )
                                 .sort((a, b) => {
                                   if (
                                     !employmentDisplayOrder.includes(a.key) &&

@@ -58,6 +58,8 @@ export function EmployeeOverview({
     "middle_name",
     "suffix",
     "status_reason",
+    "age",
+    "length_of_service",
   ]);
   function add(groupId: string, entry: Entry) {
     entries.set(groupId, [...(entries.get(groupId) || []), entry]);
