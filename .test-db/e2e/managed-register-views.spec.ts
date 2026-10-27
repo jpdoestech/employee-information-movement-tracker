@@ -158,7 +158,7 @@ for (const size of [
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Customize Columns", exact: true }),
-    ).toBeDisabled();
+    ).toBeEnabled();
     const keys = await page.locator(".table-region thead th").allTextContents();
     expect(keys.join(" ")).toContain("Date Hired");
     expect(keys.join(" ")).toContain("Gender");
@@ -167,7 +167,7 @@ for (const size of [
     await page.goto("/#employees");
     await expect(
       page.getByRole("button", { name: "Customize Columns", exact: true }),
-    ).toBeDisabled();
+    ).toBeEnabled();
     await page.goto("/#permissions");
     await page
       .getByRole("button", { name: "Register settings", exact: true })

@@ -52,11 +52,13 @@ import {
   type Filter,
   type Layout,
   type Option,
+  type RegisterView,
 } from "./domain";
 import { FilterBar } from "./components/FilterBar";
 import { EmployeeTable } from "./components/EmployeeTable";
 import { SearchFilterPicker } from "./components/SearchFilterPicker";
 import { ColumnDesigner } from "./components/ColumnDesigner";
+import { ManagedColumnViewEditor } from "./components/ManagedRegisterViews";
 import { EmployeeEditor } from "./screens/EmployeeEditor";
 import { EmployeeImport } from "./screens/EmployeeImport";
 import { canImport } from "./employeeImport";
@@ -128,6 +130,8 @@ export default function App() {
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false);
   const loadedUser = useRef<string | null>(null);
+  const [editingColumnRule, setEditingColumnRule] =
+    useState<RegisterView | null>(null);
   function clearRecovery() {
     sessionStorage.removeItem("eimt-password-recovery");
     const route = new URL(location.href);
@@ -701,11 +705,20 @@ export default function App() {
                       aria-label="Customize Columns"
                       title={
                         managedView
-                          ? `Columns managed by ${managedView.name}. Change these in Permissions > Register settings.`
+                          ? ctx.profile.role === "superadmin"
+                            ? `Edit managed column view: ${managedView.name}`
+                            : `Columns managed by ${managedView.name}. Contact a superadmin to change this view.`
                           : "Customize columns"
                       }
-                      disabled={!!managedView}
-                      onClick={() => setDialog("columns")}
+                      disabled={
+                        !!managedView && ctx.profile.role !== "superadmin"
+                      }
+                      onClick={() => {
+                        setEditingColumnRule(
+                          managedView ? structuredClone(managedView) : null,
+                        );
+                        setDialog("columns");
+                      }}
                     >
                       <Columns3 size={16} />
                       <span className="action-label">Customize Columns</span>
@@ -999,19 +1012,33 @@ export default function App() {
           <span>Asia/Manila · Employee records</span>
         </footer>
       </div>
-      {ctx && dialog === "columns" && (
-        <ColumnDesigner
-          layout={tableLayout}
-          rowNumbersAllowed={ctx.register_settings.row_numbers_allowed}
-          fields={fields}
-          onClose={() => setDialog(null)}
-          onApply={async (draft, name) => {
-            await mutate("personal_view", { name, config: draft });
-            setLayout(draft);
-            refresh();
-          }}
-        />
-      )}
+      {ctx &&
+        dialog === "columns" &&
+        (editingColumnRule ? (
+          ctx.profile.role === "superadmin" && (
+            <ManagedColumnViewEditor
+              rule={editingColumnRule}
+              context={ctx}
+              options={options}
+              users={[ctx.profile]}
+              targetsReadOnly
+              onClose={() => setDialog(null)}
+              onSaved={refresh}
+            />
+          )
+        ) : (
+          <ColumnDesigner
+            layout={tableLayout}
+            rowNumbersAllowed={ctx.register_settings.row_numbers_allowed}
+            fields={fields}
+            onClose={() => setDialog(null)}
+            onApply={async (draft, name) => {
+              await mutate("personal_view", { name, config: draft });
+              setLayout(draft);
+              refresh();
+            }}
+          />
+        ))}
       {ctx && dialog === "employee" && (
         <EmployeeEditor
           row={editing}

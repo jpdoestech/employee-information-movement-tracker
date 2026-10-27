@@ -13,13 +13,14 @@ import { FloatingNotification } from "./FloatingNotification";
 
 type Account = { id: string; display_name: string };
 
-function ViewEditor({
+export function ManagedColumnViewEditor({
   rule,
   context,
   options,
   users,
   onClose,
   onSaved,
+  targetsReadOnly = false,
 }: {
   rule: RegisterView;
   context: Context;
@@ -27,6 +28,7 @@ function ViewEditor({
   users: Account[];
   onClose: () => void;
   onSaved: () => void;
+  targetsReadOnly?: boolean;
 }) {
   const [user, setUser] = useState(rule.user_id || "all");
   const [scope, setScope] = useState(rule.scope_id || rule.scope_type);
@@ -68,6 +70,7 @@ function ViewEditor({
         <SearchFilterPicker
           mode="single"
           label="Accounts"
+          disabled={targetsReadOnly}
           value={[user]}
           options={[
             { id: "all", label: "All accounts" },
@@ -78,6 +81,7 @@ function ViewEditor({
         <SearchFilterPicker
           mode="single"
           label="Applies to"
+          disabled={targetsReadOnly}
           value={[scope]}
           options={[
             { id: "all", label: "All branches and clients" },
@@ -89,9 +93,20 @@ function ViewEditor({
         />
       </div>
       <small>
-        Overrides personal columns. Client rules take priority over branch
-        rules, then all locations. At the same location, the selected account
-        takes priority over all accounts. Field permissions still apply.
+        {targetsReadOnly ? (
+          rule.user_id ? (
+            "Saving updates the managed columns for your account at this location."
+          ) : (
+            "Saving updates this shared managed view for all accounts at this location."
+          )
+        ) : (
+          <>
+            Overrides personal columns. Client rules take priority over branch
+            rules, then all locations. At the same location, the selected
+            account takes priority over all accounts. Field permissions still
+            apply.
+          </>
+        )}
       </small>
     </ColumnDesigner>
   );
@@ -232,7 +247,7 @@ export function ManagedRegisterViews({
         next matching rule or the user’s personal columns.
       </small>
       {editing && (
-        <ViewEditor
+        <ManagedColumnViewEditor
           key={editing.id}
           rule={editing}
           context={context}
