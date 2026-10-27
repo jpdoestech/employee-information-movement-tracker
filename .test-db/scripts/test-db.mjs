@@ -2,6 +2,7 @@ import { testOverviewAnalytics } from "./test-overview-analytics.mjs";
 import { testPrfAssignments } from "./test-prf-assignments.mjs";
 import { testJobChoices } from "./test-job-choices.mjs";
 import { testDerivedColumns } from "./test-derived-columns.mjs";
+import { testColumnPreview } from "./test-column-preview.mjs";
 import { testPasswordReceipts } from "./test-password-receipts.mjs";
 import { testEmployeeImport } from "./test-employee-import.mjs";
 import { testParentInheritance } from "./test-parent-inheritance.mjs";
@@ -260,7 +261,9 @@ try {
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
-  if (process.env.TEST_DERIVED_ONLY === "true") {
+  if (process.env.TEST_COLUMN_ONLY === "true") {
+    await testColumnPreview({ owner, test, as, q, id });
+  } else if (process.env.TEST_DERIVED_ONLY === "true") {
     await testDerivedColumns({ owner, test, as, q, m, id, today });
   } else if (process.env.TEST_PRF_ONLY === "true") {
     await testOverviewAnalytics({ owner, test, as, q, id, today, date });
@@ -3400,6 +3403,7 @@ try {
   await testPrfAssignments({ owner, test, as, q, m, id, today, revision });
   await testJobChoices({ owner, test, as, q, m, id, today });
   await testDerivedColumns({ owner, test, as, q, m, id, today });
+  await testColumnPreview({ owner, test, as, q, id });
   await testPermissionMatrix({ owner, test, m, q, as, id, revision });
   }
   await mkdir(".test-db/reports/verification", { recursive: true });

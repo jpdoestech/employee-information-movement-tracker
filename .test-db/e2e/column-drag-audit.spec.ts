@@ -18,31 +18,31 @@ for (const width of [375, 1366]) {
     await expect(
       dialog.getByRole("tab", { name: "Column order", exact: true }),
     ).toHaveAttribute("aria-selected", "true");
-    await expect(dialog.getByLabel("Live column preview")).toHaveCount(0);
+    await expect(dialog.getByLabel("Live column preview")).toBeVisible();
     await dialog
       .getByRole("checkbox", {
-        name: "Select Employee Name to move",
+        name: "Select Employee Category to move",
         exact: true,
       })
       .check();
     await dialog
       .getByRole("checkbox", {
-        name: "Select ID to move",
+        name: "Select Position to move",
         exact: true,
       })
       .check();
     const list = dialog.locator(".column-list");
     await list.evaluate((el) => {
-      el.scrollTop = 0;
+      el.scrollTop = 104;
     });
     const handle = dialog.getByRole("button", {
-      name: "Drag name",
+      name: "Drag employee_category",
       exact: true,
     });
     await handle.scrollIntoViewIfNeeded();
     const source = (await handle.boundingBox())!;
     const target = (await dialog
-      .locator('[data-column-key="employee_number"]')
+      .locator('[data-column-key="client_employee_number"]')
       .boundingBox())!;
     await page.mouse.move(
       source.x + source.width / 2,
@@ -53,16 +53,16 @@ for (const width of [375, 1366]) {
       steps: 10,
     });
     await expect(
-      dialog.locator('[data-column-key="employee_number"]'),
+      dialog.locator('[data-column-key="client_employee_number"]'),
     ).toHaveClass(/column-drop-before/);
     await page.mouse.up();
-    await expect(list.locator("li").nth(0)).toHaveAttribute(
+    await expect(list.locator("li").nth(2)).toHaveAttribute(
       "data-column-key",
-      "name",
+      "employee_category",
     );
-    await expect(list.locator("li").nth(1)).toHaveAttribute(
+    await expect(list.locator("li").nth(3)).toHaveAttribute(
       "data-column-key",
-      "client_employee_number",
+      "position",
     );
     await expect(
       dialog.getByRole("button", {
@@ -108,13 +108,13 @@ for (const width of [375, 1366]) {
         .getByLabel("Scrollable employee table")
         .locator("thead th:not(.row-ordinal):not(.selection)")
         .first(),
-    ).toContainText("Employee Name");
+    ).toContainText("System ID");
     await page
       .getByRole("button", { name: "Customize Columns", exact: true })
       .click();
     await expect(dialog.locator(".column-list li").first()).toHaveAttribute(
       "data-column-key",
-      "name",
+      "employee_number",
     );
     expect(
       await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
@@ -143,9 +143,7 @@ for (const width of [375, 1366]) {
       .click();
     await editor.getByLabel("Last Name", { exact: true }).fill("TEST");
     await editor.getByLabel("First Name", { exact: true }).fill("JUAN");
-    await editor
-      .getByRole("button", { name: "Save", exact: true })
-      .click();
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
     await page
       .getByRole("dialog", { name: "Save employee changes", exact: true })
       .getByRole("button", { name: "Continue", exact: true })
@@ -158,9 +156,7 @@ for (const width of [375, 1366]) {
       .getByRole("button", { name: "Edit details", exact: true })
       .click();
     await editor.getByLabel("First Name", { exact: true }).fill("JUANA");
-    await editor
-      .getByRole("button", { name: "Save", exact: true })
-      .click();
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
     await page
       .getByRole("dialog", { name: "Save employee changes", exact: true })
       .getByRole("button", { name: "Continue", exact: true })

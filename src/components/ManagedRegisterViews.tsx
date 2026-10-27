@@ -30,6 +30,7 @@ function ViewEditor({
 }) {
   const [user, setUser] = useState(rule.user_id || "all");
   const [scope, setScope] = useState(rule.scope_id || rule.scope_type);
+  const [expectedVersion] = useState(context.register_settings.row_version);
   const target = options.find((o) => o.id === scope);
   return (
     <ColumnDesigner
@@ -57,7 +58,7 @@ function ViewEditor({
             pinned: layout.pinned,
             showRowNumbers: layout.showRowNumbers !== false,
           },
-          expected_version: context.register_settings.row_version,
+          expected_version: expectedVersion,
           reason: "Configure managed employee column view",
         });
         onSaved();

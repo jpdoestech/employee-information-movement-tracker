@@ -1006,13 +1006,7 @@ export default function App() {
           fields={fields}
           onClose={() => setDialog(null)}
           onApply={async (draft, name) => {
-            await mutate("save_view", { name, config: draft });
-            await mutate(
-              "save_view",
-              { name: "__active__", config: draft },
-              undefined,
-              true,
-            );
+            await mutate("personal_view", { name, config: draft });
             setLayout(draft);
             refresh();
           }}

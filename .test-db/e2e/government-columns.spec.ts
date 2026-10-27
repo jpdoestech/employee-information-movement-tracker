@@ -57,7 +57,7 @@ for (const [width, height] of [
       await ids
         .getByRole("checkbox", { name: new RegExp(`^${label}`) })
         .check();
-    await expect(dialog.getByLabel("Live column preview")).toHaveCount(0);
+    await expect(dialog.getByLabel("Live column preview")).toBeVisible();
     await dialog
       .getByRole("tab", { name: "Column order", exact: true })
       .click();

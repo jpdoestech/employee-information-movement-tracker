@@ -1,5 +1,9 @@
 # Deployment and migrations
 
+Column-preview and atomic personal-view fixes require
+`20261027030000_atomic_personal_views.sql` after calculated columns and before the
+frontend. Existing data and views are preserved. See [column preview](column-preview.md).
+
 Calculated Age and Length of Service columns require
 `20261027020000_derived_employee_columns.sql` after shared job choices and before
 the frontend. Employee data and existing column selections are preserved. See

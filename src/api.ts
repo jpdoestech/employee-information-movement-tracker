@@ -214,6 +214,7 @@ export async function mutate<T = any>(
     group: "Save field group",
     form_layout: "Save employee form tabs",
     save_view: "Save personal view",
+    personal_view: "Save personal view",
     register_settings: "Save register display policy",
     register_view: "Save managed column view",
     client_settings: "Save client entry settings",
@@ -249,20 +250,22 @@ export async function mutate<T = any>(
               : "set_staffing_requisition",
             { p, request_id: id },
           )
-        : operation === "register_view"
-          ? await supabase.rpc("set_register_view", { p, request_id: id })
-          : operation === "client_settings"
-            ? await supabase.rpc("set_client_settings", { p, request_id: id })
-            : operation === "register_settings"
-              ? await supabase.rpc("set_register_settings", {
-                  p,
-                  request_id: id,
-                })
-              : await supabase.rpc("tracker_mutate", {
-                  operation,
-                  p,
-                  request_id: id,
-                });
+        : operation === "personal_view"
+          ? await supabase.rpc("save_personal_view", { p, request_id: id })
+          : operation === "register_view"
+            ? await supabase.rpc("set_register_view", { p, request_id: id })
+            : operation === "client_settings"
+              ? await supabase.rpc("set_client_settings", { p, request_id: id })
+              : operation === "register_settings"
+                ? await supabase.rpc("set_register_settings", {
+                    p,
+                    request_id: id,
+                  })
+                : await supabase.rpc("tracker_mutate", {
+                    operation,
+                    p,
+                    request_id: id,
+                  });
     if (error)
       throw new Error(
         error.code === "23505" &&

@@ -511,8 +511,8 @@ for (const width of [375, 1440]) {
       .getByRole("tab", { name: "Column order", exact: true })
       .click();
     await expect(
-      dialog.getByRole("heading", { name: "Live preview", exact: true }),
-    ).toHaveCount(0);
+      dialog.getByRole("heading", { name: /^Live preview/ }),
+    ).toBeVisible();
     expect(
       await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);

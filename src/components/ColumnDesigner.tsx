@@ -13,6 +13,8 @@ import {
 import { FieldTypeIcon } from "./FieldTypeIcon";
 import { Dialog } from "./Dialog";
 import { SearchFilterPicker } from "./SearchFilterPicker";
+import { EmployeeTable } from "./EmployeeTable";
+import { columnPreviewRows } from "../columnPreview";
 import {
   defaultColumns,
   moveColumnGroup,
@@ -69,6 +71,16 @@ export function ColumnDesigner({
   // Apply current permissions/eligibility to existing views and open drafts.
   const draft = reconcileLayout(storedDraft, fields);
   const selection = draft.columns.filter((key) => selected.includes(key));
+  const previewRows = columnPreviewRows(fields);
+  function canMove(keys: string[], target: string | undefined) {
+    return (
+      !!target &&
+      keys.length > 0 &&
+      keys.every(
+        (key) => draft.pinned.includes(key) === draft.pinned.includes(target),
+      )
+    );
+  }
   function stopDrag() {
     gesture.current = null;
     if (frame.current !== null) cancelAnimationFrame(frame.current);
@@ -106,7 +118,8 @@ export function ColumnDesigner({
     return element &&
       list.current?.contains(element) &&
       key &&
-      !keys.includes(key)
+      !keys.includes(key) &&
+      canMove(keys, key)
       ? {
           key,
           after:
@@ -184,7 +197,11 @@ export function ColumnDesigner({
         extraDirty
       }
     >
-      <div className="dialog-body column-designer">
+      <div
+        className="dialog-body column-designer"
+        inert={busy}
+        aria-busy={busy}
+      >
         {children}
         <div className="column-designer-toolbar">
           <div className="column-visibility">
@@ -269,331 +286,376 @@ export function ColumnDesigner({
             </button>
           ))}
         </div>
-        <section
-          role="tabpanel"
-          id={`${tabId}-settings-panel`}
-          aria-labelledby={`${tabId}-settings-tab`}
-          hidden={tab !== "settings"}
-          className="column-tab-panel column-view-settings"
-        >
-          <label>
-            Saved view name
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              maxLength={80}
-            />
-          </label>
-          <label className="row-number-preference">
-            <input
-              type="checkbox"
-              disabled={!rowNumbersAllowed}
-              checked={rowNumbersAllowed && draft.showRowNumbers !== false}
-              onChange={(event) =>
-                setDraft({ ...draft, showRowNumbers: event.target.checked })
-              }
-            />
-            Show row numbers{" "}
-            <small>
-              {rowNumbersAllowed
-                ? "Fixed first column"
-                : "Disabled by the superadmin"}
-            </small>
-          </label>
-        </section>
-        {governmentFields.length > 0 && (
-          <div
+        <div className="column-designer-grid">
+          <section
             role="tabpanel"
-            id={`${tabId}-government-panel`}
-            aria-labelledby={`${tabId}-government-tab`}
-            hidden={tab !== "government"}
-            className="column-tab-panel"
+            id={`${tabId}-settings-panel`}
+            aria-labelledby={`${tabId}-settings-tab`}
+            hidden={tab !== "settings"}
+            className="column-tab-panel column-view-settings"
           >
-            <section
-              className="government-column-settings"
-              aria-label="Government ID columns"
-            >
-              <div className="government-column-heading">
-                <h3>
-                  <ShieldCheck size={15} aria-hidden="true" /> Government IDs
-                </h3>
-                <span>
-                  <LockKeyhole size={12} aria-hidden="true" /> Explicit Read
-                  access only · optional
-                </span>
-              </div>
-              <div className="government-column-choices">
-                {governmentFields.map((field) => (
-                  <label key={field.key}>
-                    <input
-                      type="checkbox"
-                      checked={draft.columns.includes(field.key)}
-                      onChange={() => toggleColumn(field.key)}
-                    />
-                    <span>
-                      {field.label}
-                      <small>
-                        {field.validation!.government_id_digits} digits
-                      </small>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </section>
-          </div>
-        )}
-        <section
-          className="column-order column-tab-panel"
-          role="tabpanel"
-          id={`${tabId}-order-panel`}
-          aria-labelledby={`${tabId}-order-tab`}
-          hidden={tab !== "order"}
-        >
-          <div className="column-selection-toolbar">
             <label>
+              Saved view name
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                maxLength={80}
+              />
+            </label>
+            <label className="row-number-preference">
               <input
                 type="checkbox"
-                aria-label="Select all columns to move"
-                checked={
-                  draft.columns.length > 0 &&
-                  selection.length === draft.columns.length
-                }
-                ref={(node) => {
-                  if (node)
-                    node.indeterminate =
-                      selection.length > 0 &&
-                      selection.length < draft.columns.length;
-                }}
+                disabled={!rowNumbersAllowed}
+                checked={rowNumbersAllowed && draft.showRowNumbers !== false}
                 onChange={(event) =>
-                  setSelected(event.target.checked ? draft.columns : [])
+                  setDraft({ ...draft, showRowNumbers: event.target.checked })
                 }
               />
-              {selection.length ? `${selection.length} selected` : "Select all"}
-            </label>
-            {selection.length > 0 && (
-              <div>
-                <button
-                  type="button"
-                  aria-label="Move selected columns up"
-                  disabled={draft.columns.indexOf(selection[0]) === 0}
-                  onClick={() => {
-                    const first = Math.min(
-                      ...selection.map((key) => draft.columns.indexOf(key)),
-                    );
-                    reorder(
-                      moveColumnGroup(
-                        draft.columns,
-                        selection,
-                        draft.columns[first - 1],
-                      ),
-                    );
-                    setAnnouncement(`${selection.length} columns moved up.`);
-                  }}
-                >
-                  <ArrowUp size={15} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Move selected columns down"
-                  disabled={
-                    Math.max(
-                      ...selection.map((key) => draft.columns.indexOf(key)),
-                    ) ===
-                    draft.columns.length - 1
-                  }
-                  onClick={() => {
-                    const last = Math.max(
-                      ...selection.map((key) => draft.columns.indexOf(key)),
-                    );
-                    reorder(
-                      moveColumnGroup(
-                        draft.columns,
-                        selection,
-                        draft.columns[last + 1],
-                        true,
-                      ),
-                    );
-                    setAnnouncement(`${selection.length} columns moved down.`);
-                  }}
-                >
-                  <ArrowDown size={15} aria-hidden="true" />
-                </button>
-                <button type="button" onClick={() => setSelected([])}>
-                  Deselect
-                </button>
-                <button
-                  type="button"
-                  aria-label="Hide selected columns"
-                  onClick={() => {
-                    const columns = draft.columns.filter(
-                      (key) => !selection.includes(key),
-                    );
-                    setDraft({
-                      ...draft,
-                      columns,
-                      pinned: draft.pinned.filter((key) =>
-                        columns.includes(key),
-                      ),
-                    });
-                    setSelected([]);
-                  }}
-                >
-                  <EyeOff size={15} aria-hidden="true" />
-                  Hide
-                </button>
-              </div>
-            )}
-            {!selection.length && (
-              <small className="column-summary">
-                {draft.columns.length} columns · {draft.pinned.length} pinned
+              Show row numbers{" "}
+              <small>
+                {rowNumbersAllowed
+                  ? "Fixed first column"
+                  : "Disabled by the superadmin"}
               </small>
-            )}
-          </div>
-          <p className="sr-only" id={`${tabId}-drag-help`}>
-            Select several columns, then drag any selected handle to move them
-            together.
-          </p>
-          <p className="sr-only" role="status" aria-live="polite">
-            {announcement}
-          </p>
-          <ol
-            ref={list}
-            className="column-list"
-            aria-label="Column order"
-            aria-describedby={`${tabId}-drag-help`}
-          >
-            {draft.columns.map((k, index) => (
-              <li
-                key={k}
-                data-column-key={k}
-                className={`${selection.includes(k) ? "column-selected" : ""} ${dragging.includes(k) ? "column-dragging" : ""} ${drop?.key === k ? (drop.after ? "column-drop-after" : "column-drop-before") : ""}`}
+            </label>
+          </section>
+          {governmentFields.length > 0 && (
+            <div
+              role="tabpanel"
+              id={`${tabId}-government-panel`}
+              aria-labelledby={`${tabId}-government-tab`}
+              hidden={tab !== "government"}
+              className="column-tab-panel"
+            >
+              <section
+                className="government-column-settings"
+                aria-label="Government ID columns"
               >
+                <div className="government-column-heading">
+                  <h3>
+                    <ShieldCheck size={15} aria-hidden="true" /> Government IDs
+                  </h3>
+                  <span>
+                    <LockKeyhole size={12} aria-hidden="true" /> Explicit Read
+                    access only · optional
+                  </span>
+                </div>
+                <div className="government-column-choices">
+                  {governmentFields.map((field) => (
+                    <label key={field.key}>
+                      <input
+                        type="checkbox"
+                        checked={draft.columns.includes(field.key)}
+                        onChange={() => toggleColumn(field.key)}
+                      />
+                      <span>
+                        {field.label}
+                        <small>
+                          {field.validation!.government_id_digits} digits
+                        </small>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
+          <section
+            className="column-order column-tab-panel"
+            role="tabpanel"
+            id={`${tabId}-order-panel`}
+            aria-labelledby={`${tabId}-order-tab`}
+            hidden={tab !== "order"}
+          >
+            <div className="column-selection-toolbar">
+              <label>
                 <input
                   type="checkbox"
-                  aria-label={`Select ${options.find((o) => o.id === k)?.label || k} to move`}
-                  checked={selection.includes(k)}
+                  aria-label="Select all columns to move"
+                  checked={
+                    draft.columns.length > 0 &&
+                    selection.length === draft.columns.length
+                  }
+                  ref={(node) => {
+                    if (node)
+                      node.indeterminate =
+                        selection.length > 0 &&
+                        selection.length < draft.columns.length;
+                  }}
                   onChange={(event) =>
-                    setSelected(
-                      event.target.checked
-                        ? [...selection, k]
-                        : selection.filter((key) => key !== k),
-                    )
+                    setSelected(event.target.checked ? draft.columns : [])
                   }
                 />
-                <button
-                  type="button"
-                  className="column-drag-handle"
-                  aria-label={`Drag ${k}`}
-                  title="Drag this column or the selected columns"
-                  aria-pressed={dragging.includes(k)}
-                  onPointerDown={(event) => {
-                    if (busy || event.button !== 0) return;
-                    event.currentTarget.setPointerCapture(event.pointerId);
-                    gesture.current = {
-                      keys: selection.includes(k)
-                        ? draft.columns.filter((key) => selection.includes(key))
-                        : [k],
-                      x: event.clientX,
-                      y: event.clientY,
-                      startX: event.clientX,
-                      startY: event.clientY,
-                      active: false,
-                      drop: null,
-                    };
-                    frame.current = requestAnimationFrame(trackDrag);
-                  }}
-                  onPointerMove={(event) => {
-                    const current = gesture.current;
-                    if (!current) return;
-                    current.x = event.clientX;
-                    current.y = event.clientY;
-                    if (
-                      !current.active &&
-                      Math.hypot(
-                        current.x - current.startX,
-                        current.y - current.startY,
-                      ) > 6
-                    ) {
-                      current.active = true;
-                      setDragging(current.keys);
-                      setAnnouncement(`Moving ${current.keys.length} columns.`);
+                {selection.length
+                  ? `${selection.length} selected`
+                  : "Select all"}
+              </label>
+              {selection.length > 0 && (
+                <div>
+                  <button
+                    type="button"
+                    aria-label="Move selected columns up"
+                    disabled={
+                      !canMove(
+                        selection,
+                        draft.columns[draft.columns.indexOf(selection[0]) - 1],
+                      )
                     }
-                  }}
-                  onPointerUp={(event) => {
-                    const current = gesture.current;
-                    const target =
-                      current &&
-                      locateDrop(event.clientX, event.clientY, current.keys);
-                    if (current?.active && target) {
+                    onClick={() => {
+                      const first = Math.min(
+                        ...selection.map((key) => draft.columns.indexOf(key)),
+                      );
                       reorder(
                         moveColumnGroup(
                           draft.columns,
-                          current.keys,
-                          target.key,
-                          target.after,
+                          selection,
+                          draft.columns[first - 1],
                         ),
                       );
-                      setAnnouncement(`${current.keys.length} columns moved.`);
-                    }
-                    stopDrag();
-                  }}
-                  onPointerCancel={stopDrag}
-                  onLostPointerCapture={stopDrag}
-                >
-                  <GripVertical size={16} aria-hidden="true" />
-                </button>
-                <span className="column-number">{index + 1}</span>
-                <FieldTypeIcon
-                  type={options.find((o) => o.id === k)?.field_type || "system"}
-                />
-                <div
-                  className="column-label"
-                  title={options.find((o) => o.id === k)?.label}
-                >
-                  <strong>{options.find((o) => o.id === k)?.label}</strong>
-                  <small
-                    className="column-group-label"
-                    title={options.find((o) => o.id === k)?.context}
+                      setAnnouncement(`${selection.length} columns moved up.`);
+                    }}
                   >
-                    {options.find((o) => o.id === k)?.context}
-                  </small>
-                </div>
-                <div className="column-row-actions">
-                  {fields.find((f) => f.key === k)?.sensitivity ===
-                    "restricted" && (
-                    <LockKeyhole
-                      size={13}
-                      className="column-restricted-icon"
-                      aria-label="Restricted field"
-                    />
-                  )}
+                    <ArrowUp size={15} aria-hidden="true" />
+                  </button>
                   <button
-                    aria-pressed={draft.pinned.includes(k)}
-                    aria-label={`Pin ${k}`}
-                    title={`${draft.pinned.includes(k) ? "Unpin" : "Pin"} ${options.find((o) => o.id === k)?.label || k} (maximum two pinned)`}
                     type="button"
-                    onClick={() =>
+                    aria-label="Move selected columns down"
+                    disabled={
+                      !canMove(
+                        selection,
+                        draft.columns[
+                          Math.max(
+                            ...selection.map((key) =>
+                              draft.columns.indexOf(key),
+                            ),
+                          ) + 1
+                        ],
+                      )
+                    }
+                    onClick={() => {
+                      const last = Math.max(
+                        ...selection.map((key) => draft.columns.indexOf(key)),
+                      );
+                      reorder(
+                        moveColumnGroup(
+                          draft.columns,
+                          selection,
+                          draft.columns[last + 1],
+                          true,
+                        ),
+                      );
+                      setAnnouncement(
+                        `${selection.length} columns moved down.`,
+                      );
+                    }}
+                  >
+                    <ArrowDown size={15} aria-hidden="true" />
+                  </button>
+                  <button type="button" onClick={() => setSelected([])}>
+                    Deselect
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Hide selected columns"
+                    onClick={() => {
+                      const columns = draft.columns.filter(
+                        (key) => !selection.includes(key),
+                      );
                       setDraft({
                         ...draft,
-                        pinned: draft.pinned.includes(k)
-                          ? draft.pinned.filter((c) => c !== k)
-                          : [...draft.pinned, k].slice(-2),
-                      })
-                    }
+                        columns,
+                        pinned: draft.pinned.filter((key) =>
+                          columns.includes(key),
+                        ),
+                      });
+                      setSelected([]);
+                    }}
                   >
-                    <Pin size={16} />
+                    <EyeOff size={15} aria-hidden="true" />
+                    Hide
                   </button>
                 </div>
-              </li>
-            ))}
-          </ol>
-          {!draft.columns.length && (
-            <p className="column-empty">
-              <Columns3 size={16} aria-hidden="true" /> Select columns to build
-              your view.
+              )}
+              {!selection.length && (
+                <small className="column-summary">
+                  {draft.columns.length} columns · {draft.pinned.length} pinned
+                </small>
+              )}
+            </div>
+            <p className="sr-only" id={`${tabId}-drag-help`}>
+              Select several columns, then drag any selected handle to move them
+              together. Pinned columns stay first; unpin them before moving them after other columns.
             </p>
-          )}
-        </section>
+            <p className="sr-only" role="status" aria-live="polite">
+              {announcement}
+            </p>
+            <ol
+              ref={list}
+              className="column-list"
+              aria-label="Column order"
+              aria-describedby={`${tabId}-drag-help`}
+            >
+              {draft.columns.map((k, index) => (
+                <li
+                  key={k}
+                  data-column-key={k}
+                  className={`${selection.includes(k) ? "column-selected" : ""} ${dragging.includes(k) ? "column-dragging" : ""} ${drop?.key === k ? (drop.after ? "column-drop-after" : "column-drop-before") : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${options.find((o) => o.id === k)?.label || k} to move`}
+                    checked={selection.includes(k)}
+                    onChange={(event) =>
+                      setSelected(
+                        event.target.checked
+                          ? [...selection, k]
+                          : selection.filter((key) => key !== k),
+                      )
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="column-drag-handle"
+                    aria-label={`Drag ${k}`}
+                    title="Drag this column or the selected columns"
+                    aria-pressed={dragging.includes(k)}
+                    onPointerDown={(event) => {
+                      if (busy || event.button !== 0) return;
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      gesture.current = {
+                        keys: selection.includes(k)
+                          ? draft.columns.filter((key) =>
+                              selection.includes(key),
+                            )
+                          : [k],
+                        x: event.clientX,
+                        y: event.clientY,
+                        startX: event.clientX,
+                        startY: event.clientY,
+                        active: false,
+                        drop: null,
+                      };
+                      frame.current = requestAnimationFrame(trackDrag);
+                    }}
+                    onPointerMove={(event) => {
+                      const current = gesture.current;
+                      if (!current) return;
+                      current.x = event.clientX;
+                      current.y = event.clientY;
+                      if (
+                        !current.active &&
+                        Math.hypot(
+                          current.x - current.startX,
+                          current.y - current.startY,
+                        ) > 6
+                      ) {
+                        current.active = true;
+                        setDragging(current.keys);
+                        setAnnouncement(
+                          `Moving ${current.keys.length} columns.`,
+                        );
+                      }
+                    }}
+                    onPointerUp={(event) => {
+                      const current = gesture.current;
+                      const target =
+                        current &&
+                        locateDrop(event.clientX, event.clientY, current.keys);
+                      if (current?.active && target) {
+                        reorder(
+                          moveColumnGroup(
+                            draft.columns,
+                            current.keys,
+                            target.key,
+                            target.after,
+                          ),
+                        );
+                        setAnnouncement(
+                          `${current.keys.length} columns moved.`,
+                        );
+                      }
+                      stopDrag();
+                    }}
+                    onPointerCancel={stopDrag}
+                    onLostPointerCapture={stopDrag}
+                  >
+                    <GripVertical size={16} aria-hidden="true" />
+                  </button>
+                  <span className="column-number">{index + 1}</span>
+                  <FieldTypeIcon
+                    type={
+                      options.find((o) => o.id === k)?.field_type || "system"
+                    }
+                  />
+                  <div
+                    className="column-label"
+                    title={options.find((o) => o.id === k)?.label}
+                  >
+                    <strong>{options.find((o) => o.id === k)?.label}</strong>
+                    <small
+                      className="column-group-label"
+                      title={options.find((o) => o.id === k)?.context}
+                    >
+                      {options.find((o) => o.id === k)?.context}
+                    </small>
+                  </div>
+                  <div className="column-row-actions">
+                    {fields.find((f) => f.key === k)?.sensitivity ===
+                      "restricted" && (
+                      <LockKeyhole
+                        size={13}
+                        className="column-restricted-icon"
+                        aria-label="Restricted field"
+                      />
+                    )}
+                    <button
+                      aria-pressed={draft.pinned.includes(k)}
+                      aria-label={`Pin ${k}`}
+                      title={`${draft.pinned.includes(k) ? "Unpin" : "Pin"} ${options.find((o) => o.id === k)?.label || k} (maximum two pinned)`}
+                      type="button"
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          pinned: draft.pinned.includes(k)
+                            ? draft.pinned.filter((c) => c !== k)
+                            : [...draft.pinned, k].slice(-2),
+                        })
+                      }
+                    >
+                      <Pin size={16} />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            {!draft.columns.length && (
+              <p className="column-empty">
+                <Columns3 size={16} aria-hidden="true" /> Select columns to
+                build your view.
+              </p>
+            )}
+          </section>
+          <section
+            className="column-live-preview"
+            aria-label="Column layout preview"
+          >
+            <h3>
+              Live preview{" "}
+              <small>Synthetic examples · pinned columns stay first</small>
+            </h3>
+            {draft.columns.length ? (
+              <EmployeeTable
+                rows={previewRows}
+                fields={fields}
+                layout={draft}
+                preview
+                rowNumbersAllowed={rowNumbersAllowed}
+              />
+            ) : (
+              <p>Select columns to preview your view.</p>
+            )}
+          </section>
+        </div>
         {error && (
           <FloatingNotification onDismiss={() => setError("")}>
             {error}
@@ -603,6 +665,7 @@ export function ColumnDesigner({
       <footer>
         <button
           className="column-reset"
+          disabled={busy}
           aria-label="Clear custom column layout"
           onClick={() =>
             setDraft(

@@ -130,12 +130,13 @@ export function reconcileLayout(layout: Layout, fields: Field[]): Layout {
       .map((f) => f.key),
   );
   const columns = [...new Set(layout.columns)].filter((k) => known.has(k));
+  const pinned = [...new Set(layout.pinned)]
+    .filter((k) => columns.includes(k))
+    .slice(0, 2);
   return {
     ...layout,
-    columns,
-    pinned: [...new Set(layout.pinned)]
-      .filter((k) => columns.includes(k))
-      .slice(0, 2),
+    columns: [...pinned, ...columns.filter((k) => !pinned.includes(k))],
+    pinned,
   };
 }
 export function moveColumn(columns: string[], key: string, delta: number) {

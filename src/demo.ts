@@ -1793,6 +1793,19 @@ export async function demoMutate(op: string, p: any) {
       row_numbers_allowed: p.row_numbers_allowed,
       row_version: context.register_settings.row_version + 1,
     };
+  } else if (op === "personal_view") {
+    if (!p.name?.trim() || p.name === "__active__" || p.name.length > 80)
+      throw new Error(
+        "Enter a view name of at most 80 characters; the active-view name is reserved",
+      );
+    const next = structuredClone(context.views);
+    for (const name of [p.name, "__active__"]) {
+      const view = next.find((view) => view.name === name);
+      if (view) view.config = p.config;
+      else next.push({ id: crypto.randomUUID(), name, config: p.config });
+    }
+    localStorage.setItem("eimt-synthetic-views", JSON.stringify(next));
+    context.views = next;
   } else if (op === "save_view") {
     const v = context.views.find((v) => v.name === p.name);
     if (v) v.config = p.config;
