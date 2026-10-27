@@ -4689,9 +4689,10 @@ main:has(> .management-analytics) { display: flex; flex-direction: column; overf
 .staffing-line legend { font-size: 11px; padding: 0 4px; }
 .staffing-line-actions { grid-column: 1 / -1; }
 @media (max-width: 600px) { .staffing-line { grid-template-columns: minmax(0, 1fr); } .staffing-lines-heading { align-items: flex-start; flex-direction: column; gap: 4px; } }
-.job-value-row { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
-.job-value-row > .value-control { flex: 1; min-width: 0; }
-.job-value-row > .picker { flex: 0 0 auto; }
+.job-value-row { display: grid; gap: 6px; min-width: 0; }
+.job-value-row > .value-control, .job-value-row > .value-control > input { width: 100%; min-width: 0; }
+.job-value-row > .picker { justify-self: start; width: auto; max-width: 100%; }
+.job-value-row > .picker > .picker-trigger { width: auto; max-width: 100%; font-size: var(--text-compact); }
 .job-field { min-width: 0; }
 .job-field > small { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
 .job-match-action { align-self: flex-start; }

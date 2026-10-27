@@ -77,27 +77,34 @@ export function JobValueEditor({
             </button>
           )}
         </span>
-        <SearchFilterPicker
-          mode="single"
-          icon={List}
-          label={`Choose existing ${field.label}`}
-          displayLabel="Choose existing"
-          disabled={disabled || readOnly || !choices.length}
-          clearable={false}
-          value={[]}
-          options={choices.map((choice) => ({ id: choice, label: choice }))}
-          onChange={([choice]) => onChange(choice || null)}
-        />
+        {choices.length > 0 && (
+          <SearchFilterPicker
+            mode="single"
+            icon={List}
+            label={`Choose existing ${field.label}`}
+            displayLabel="Choose existing"
+            disabled={disabled || readOnly || !choices.length}
+            clearable={false}
+            value={[]}
+            options={choices.map((choice) => ({ id: choice, label: choice }))}
+            onChange={([choice]) => onChange(choice || null)}
+          />
+        )}
       </div>
       <small
         id={`${id}-info`}
         className={temporary ? "job-temporary-note" : ""}
+        title={
+          temporary
+            ? "Check spelling and consistency before making this an official choice in Field Builder, or choose an existing official name."
+            : undefined
+        }
       >
         {temporary
-          ? "Temporary entry. Check spelling and consistency; choose an official value or ask a Superadmin to add it in Field Builder. Saving is allowed."
+          ? "Temporary entry. Check spelling. Saving is allowed."
           : choices.length
             ? "Choose an official value or type a temporary entry."
-            : "No official choices configured. Temporary entry is allowed; a Superadmin can set the shared list in Field Builder."}
+            : "No official choices yet. Temporary names are allowed."}
       </small>
       {match && !readOnly && (
         <button

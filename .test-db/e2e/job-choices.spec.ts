@@ -93,6 +93,20 @@ for (const [width, height] of [
       .getByRole("textbox", { name: "Position", exact: true })
       .fill("Temporary specialist");
     await expect(employee).toContainText("Saving is allowed.");
+    for (const name of ["Department", "Position"]) {
+      const input = employee.getByRole("textbox", { name, exact: true });
+      const chooser = employee.getByRole("button", {
+        name: `Choose existing ${name}`,
+        exact: true,
+      });
+      const inputBox = (await input.boundingBox())!;
+      const chooserBox = (await chooser.boundingBox())!;
+      expect(inputBox.width).toBeGreaterThan(150);
+      expect(chooserBox.y).toBeGreaterThanOrEqual(inputBox.y + inputBox.height);
+      expect(chooserBox.x + chooserBox.width).toBeLessThanOrEqual(
+        inputBox.x + inputBox.width + 1,
+      );
+    }
     expect(
       await employee.evaluate(
         (element) => element.scrollWidth <= element.clientWidth,
@@ -114,15 +128,13 @@ for (const [width, height] of [
       name: "Import employees",
       exact: true,
     });
-    await importer
-      .locator('input[type="file"]')
-      .setInputFiles({
-        name: "temporary-jobs.csv",
-        mimeType: "text/csv",
-        buffer: Buffer.from(
-          "last_name,first_name,department,position\nJOBCATALOG,LANTERN,production,Incoming specialist\n",
-        ),
-      });
+    await importer.locator('input[type="file"]').setInputFiles({
+      name: "temporary-jobs.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        "last_name,first_name,department,position\nJOBCATALOG,LANTERN,production,Incoming specialist\n",
+      ),
+    });
     await importer.getByText(/Review Department \/ Position names/).click();
     await expect(importer).toContainText("can be imported without blocking");
     await importer

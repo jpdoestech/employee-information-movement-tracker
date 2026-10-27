@@ -63,6 +63,16 @@ describe("shared official job choices with temporary entry", () => {
     expect(html).toContain('value="New team"');
     expect(html).toContain("Temporary entry.");
     expect(html).toContain("Saving is allowed.");
+    const withoutChoices = renderToStaticMarkup(
+      <JobValueEditor
+        field={{ ...fields[0], options: [] }}
+        value="New team"
+        onChange={() => {}}
+      />,
+    );
+    expect(withoutChoices).not.toContain(
+      'aria-label="Choose existing Department"',
+    );
     expect(
       fieldConfigurationError({ ...fields[0], default_value: "New team" }),
     ).toBeUndefined();
