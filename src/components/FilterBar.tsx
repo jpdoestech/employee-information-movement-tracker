@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   RotateCcw,
   Search,
@@ -37,18 +37,23 @@ function DirectFilter({
       : predicate?.op === "eq"
         ? [JSON.stringify(predicate.value)]
         : [];
+  const load = useCallback(
+    (search: string) =>
+      query<Option[]>("filter_values", {
+        key: field.key,
+        client_id: clientId,
+        branches: filter.branches,
+        clients: filter.clients,
+        search,
+      }),
+    [field.key, clientId, filter.branches, filter.clients],
+  );
   return (
     <SearchFilterPicker
       mode="multiple"
       label={field.label}
       icon={fieldTypeIcons[field.type]}
-      load={(search) =>
-        query<Option[]>("filter_values", {
-          key: field.key,
-          client_id: clientId,
-          search,
-        })
-      }
+      load={load}
       value={values}
       options={values.map((id) => ({ id, label: String(JSON.parse(id)) }))}
       onChange={(ids) =>
@@ -99,6 +104,11 @@ export function FilterBar({
     [settingsOpen, setSettingsOpen] = useState(false);
   useEffect(() => {
     let active = true;
+    const assigned = context.register_settings.quick_filter_keys;
+    if (assigned != null) {
+      setKeys(assigned);
+      return;
+    }
     setKeys(["status"]);
     if (clientId)
       query("client_settings", { client_id: clientId })
@@ -111,7 +121,7 @@ export function FilterBar({
     return () => {
       active = false;
     };
-  }, [clientId, context.revision]);
+  }, [clientId, context.revision, context.register_settings.quick_filter_keys]);
   const set = (patch: Partial<Filter>) =>
     setFilter({ ...filter, ...patch, offset: 0 });
   return (

@@ -36,6 +36,7 @@ export async function query<T = any>(
     );
   const special = [
     "client_settings",
+    "quick_filter_settings",
     "filter_values",
     "employee_duplicates",
     "access_configuration",
@@ -218,6 +219,7 @@ export async function mutate<T = any>(
     register_settings: "Save register display policy",
     register_view: "Save managed column view",
     client_settings: "Save client entry settings",
+    quick_filters: "Save user quick filters",
     scope: "Change access scope",
     policy: "Change access policy",
     policy_batch: "Change access policy",
@@ -254,18 +256,23 @@ export async function mutate<T = any>(
           ? await supabase.rpc("save_personal_view", { p, request_id: id })
           : operation === "register_view"
             ? await supabase.rpc("set_register_view", { p, request_id: id })
-            : operation === "client_settings"
-              ? await supabase.rpc("set_client_settings", { p, request_id: id })
-              : operation === "register_settings"
-                ? await supabase.rpc("set_register_settings", {
+            : operation === "quick_filters"
+              ? await supabase.rpc("set_quick_filters", { p, request_id: id })
+              : operation === "client_settings"
+                ? await supabase.rpc("set_client_settings", {
                     p,
                     request_id: id,
                   })
-                : await supabase.rpc("tracker_mutate", {
-                    operation,
-                    p,
-                    request_id: id,
-                  });
+                : operation === "register_settings"
+                  ? await supabase.rpc("set_register_settings", {
+                      p,
+                      request_id: id,
+                    })
+                  : await supabase.rpc("tracker_mutate", {
+                      operation,
+                      p,
+                      request_id: id,
+                    });
     if (error)
       throw new Error(
         error.code === "23505" &&

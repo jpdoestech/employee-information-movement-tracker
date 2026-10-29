@@ -71,6 +71,7 @@ export type Context = {
     row_version: number;
     duplicate_name_threshold?: number;
     managed_views?: RegisterView[];
+    quick_filter_keys?: string[] | null;
   };
   fields: Field[];
   groups: {

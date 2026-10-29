@@ -112,6 +112,10 @@ const clientSettings = new Map<
     default_values: Record<string, unknown>;
   }
 >();
+const quickFilters = new Map<
+  string,
+  { row_version: number; filter_keys: string[] | null }
+>();
 const fields: Field[] = base.map(([key, label, type], i) => ({
   id: `field-${key}`,
   key,
@@ -622,6 +626,10 @@ export async function demoQuery(op: string, q: any = {}) {
       revision: context.revision,
     };
   }
+  if (op === "quick_filter_settings")
+    return structuredClone(
+      quickFilters.get(q.user_id) || { row_version: 0, filter_keys: null },
+    );
   if (op === "client_settings")
     return {
       client_id: q.client_id,
@@ -1160,6 +1168,34 @@ export async function demoMutate(op: string, p: any) {
         )
         .join(" · ");
     return { from_value: endpoint(before), to_value: endpoint(after) };
+  }
+  if (op === "quick_filters") {
+    if (context.profile.role !== "superadmin")
+      throw new Error("Only a superadmin can assign quick filters");
+    const prior = quickFilters.get(p.user_id);
+    if ((prior?.row_version ?? 0) !== p.expected_version)
+      throw new Error("Quick filters changed; close and reopen before saving");
+    if (
+      p.filter_keys !== null &&
+      (!Array.isArray(p.filter_keys) ||
+        p.filter_keys.length > 5 ||
+        new Set(p.filter_keys).size !== p.filter_keys.length ||
+        p.filter_keys.some(
+          (k: string) =>
+            !fields.some((f) => f.key === k && f.active && f.list_eligible) ||
+            ["branch", "client"].includes(k),
+        ))
+    )
+      throw new Error("Choose up to five distinct available quick filters");
+    const result = {
+      row_version: (prior?.row_version ?? 0) + 1,
+      filter_keys: structuredClone(p.filter_keys),
+    };
+    quickFilters.set(p.user_id, result);
+    if (p.user_id === context.profile.id)
+      context.register_settings.quick_filter_keys = result.filter_keys;
+    context.revision++;
+    return result;
   }
   if (op === "client_settings") {
     const prior = clientSettings.get(p.client_id);

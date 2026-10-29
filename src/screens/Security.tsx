@@ -4,6 +4,7 @@ import { PermissionMatrix } from "../components/PermissionMatrix";
 import { FloatingNotification } from "../components/FloatingNotification";
 import { FieldTypeIcon } from "../components/FieldTypeIcon";
 import { ManagedRegisterViews } from "../components/ManagedRegisterViews";
+import { UserQuickFilters } from "../components/UserQuickFilters";
 import { useEffect, useState } from "react";
 import {
   query,
@@ -232,6 +233,7 @@ export function Security({
         {tab === "register" && (
           <div className="panel register-policy">
             <h3>Employee register</h3>
+            <UserQuickFilters context={context} users={data?.users || []} onSaved={onSaved} />
             <ManagedRegisterViews context={context} options={options} users={data?.users || []} onSaved={onSaved} />
             <p>
               Allow row numbers in the fixed first column. Users can hide them

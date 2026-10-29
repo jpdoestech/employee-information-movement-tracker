@@ -1,3 +1,4 @@
+import { testQuickFilters } from "./test-quick-filters.mjs";
 import { testOverviewAnalytics } from "./test-overview-analytics.mjs";
 import { testPrfAssignments } from "./test-prf-assignments.mjs";
 import { testJobChoices } from "./test-job-choices.mjs";
@@ -261,7 +262,9 @@ try {
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
-  if (process.env.TEST_COLUMN_ONLY === "true") {
+  if (process.env.TEST_QUICK_FILTERS_ONLY === "true") {
+    await testQuickFilters({ owner, test, as, q, m, id });
+  } else if (process.env.TEST_COLUMN_ONLY === "true") {
     await testColumnPreview({ owner, test, as, q, id });
   } else if (process.env.TEST_DERIVED_ONLY === "true") {
     await testDerivedColumns({ owner, test, as, q, m, id, today });
@@ -3403,6 +3406,7 @@ try {
   await testPrfAssignments({ owner, test, as, q, m, id, today, revision });
   await testJobChoices({ owner, test, as, q, m, id, today });
   await testDerivedColumns({ owner, test, as, q, m, id, today });
+  await testQuickFilters({ owner, test, as, q, m, id });
   await testColumnPreview({ owner, test, as, q, id });
   await testPermissionMatrix({ owner, test, m, q, as, id, revision });
   }
