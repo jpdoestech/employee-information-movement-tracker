@@ -127,7 +127,7 @@ export function FilterBar({
           <input
             type="search"
             aria-label="Search employees"
-            placeholder="Search…"
+            placeholder="Search employees…"
             value={filter.search}
             onChange={(e) => set({ search: e.target.value })}
           />

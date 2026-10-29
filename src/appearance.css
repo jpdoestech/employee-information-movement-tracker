@@ -342,8 +342,25 @@ dialog.app-dialog.column-designer-dialog {
 .workspace-toolbar .toolbar-actions,
 .workspace-toolbar > .actions { margin-left: auto; }
 .workspace-toolbar .filter-reset { margin-left: 0; flex: none; }
+.register { container: employee-register / inline-size; }
+.workspace-toolbar .toolbar-views { display: flex; align-items: center; gap: 8px; }
+.workspace-toolbar .managed-view-source { padding-inline: 8px; border-left: 1px solid var(--line); }
+.register .direct-filterbar.workspace-toolbar > .search-control,
+.register .direct-filterbar.workspace-toolbar > .search-control:focus-within {
+  flex: 0 0 200px;
+  max-width: 200px;
+}
 .workspace-toolbar button { white-space: nowrap; }
 .workspace-toolbar:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+@container employee-register (max-width: 1550px) {
+  .workspace-toolbar .actions button:not(.primary) .action-label,
+  .workspace-toolbar .filter-reset > span { display: none; }
+  .workspace-toolbar .actions button:not(.primary),
+  .workspace-toolbar .filter-reset { min-width: 36px; padding-inline: 8px; }
+}
+@media (min-width: 761px) and (pointer: fine) {
+  .workspace-toolbar button { min-height: 36px; }
+}
 @media (max-width: 1200px) {
   .workspace-toolbar .actions button:not(.primary) .action-label { display: none; }
 }
@@ -351,4 +368,6 @@ dialog.app-dialog.column-designer-dialog {
   .filterbar.workspace-toolbar { min-height: 64px; }
   .workspace-toolbar button { min-height: 44px; }
   .workspace-toolbar .actions button { min-width: 44px; }
+  .workspace-toolbar .filter-reset { min-width: 44px; }
+  .filterbar.workspace-toolbar > .search-control { height: 44px; min-height: 44px; }
 }

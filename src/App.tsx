@@ -776,9 +776,9 @@ export default function App() {
                 {managedView && (
                   <span
                     className="managed-view-source"
-                    title="This managed column view overrides personal column settings. Field permissions still apply."
+                    title={`Managed: ${managedView.name}. Overrides personal columns; field permissions still apply.`}
                   >
-                    Managed: {managedView.name}
+                    Managed view
                   </span>
                 )}
                 <SearchFilterPicker

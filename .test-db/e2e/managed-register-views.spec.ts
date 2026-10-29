@@ -45,7 +45,7 @@ test("register changes managed columns with branch/client filters", async ({
   await page.getByRole("button", { name: "Explore synthetic demo" }).click();
   await page.goto("/#employees");
   await expect(
-    page.getByText("Managed: Everyone", { exact: true }),
+    page.locator(".managed-view-source[title^='Managed: Everyone.']"),
   ).toBeVisible();
   await page.getByRole("button", { name: "Branches", exact: true }).click();
   await page
@@ -53,13 +53,13 @@ test("register changes managed columns with branch/client filters", async ({
     .click();
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(
-    page.getByText("Managed: North register", { exact: true }),
+    page.locator(".managed-view-source[title^='Managed: North register.']"),
   ).toBeVisible();
   await page.getByRole("button", { name: "Clients", exact: true }).click();
   await page.getByRole("option", { name: /^Example Client / }).click();
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(
-    page.getByText("Managed: Client register", { exact: true }),
+    page.locator(".managed-view-source[title^='Managed: Client register.']"),
   ).toBeVisible();
   await expect(
     page
@@ -154,7 +154,9 @@ for (const size of [
     });
     await page.goto("/#employees");
     await expect(
-      page.getByText("Managed: Standard employee view", { exact: true }),
+      page.locator(
+        ".managed-view-source[title^='Managed: Standard employee view.']",
+      ),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Customize Columns", exact: true }),
