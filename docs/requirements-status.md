@@ -1,0 +1,44 @@
+# v1.8 implementation review
+
+Reviewed 2026-10-11 against the entire cumulative `00001_employee_information_movement_tracker_codex_requirements_v1_8_full.md`. Later numbered amendments and the user's subsequent UI/address/client-ID instructions take precedence. This is an implementation and local-evidence review, not production acceptance.
+
+The architecture remains a static React/TypeScript/Vite frontend, Supabase Auth/PostgreSQL as the authoritative database, narrowly granted RPCs with shared permission evaluation, and a backend-only asynchronous Google outbox worker. Versioned SQL and frontend deployment remain separate. Reference repositories remain read-only; the verified reference files/commits and independently implemented behavior are recorded in `design-reference.md`.
+
+| Requirements | Current implementation | Evidence / remaining acceptance |
+| --- | --- | --- |
+| §§1–7: organization, permanent identity, dynamic metadata, seven effective-dated movements | Single Head Office, branches and branch-owned clients; metadata-driven fields; primary exclusion constraint; additional/temporary assignments; status/position histories; audited void/correction | Native transaction/interval tests; browser record-list and editor checks. Staging business workflow review remains necessary. |
+| §§9–10, 17–21: responsive lists, frozen columns, live preview, unified search | Shared `SearchFilterPicker`, `PickerSurface`, `FilterBar`, `RecordExplorer`, private saved views, compact stationary toolbar/pagination, scrolling data region and floating feedback | Chromium phone/tablet/laptop/desktop/ultrawide tests. Physical touch, Safari/Firefox and actual 200% browser zoom remain manual gates. |
+| §§15, 22, 24: per-user/scope/group/column CRUD and default deny | SQL evaluator intersects effective primary organization scope, applicability and field/group policy; separate C/R/U/D; explicit deny/restricted exceptions; live account and scope revocation; no ordinary raw-table access | Native ACL/RLS and malicious-key/projection checks. Distinct real Auth JWT/REST harness exists in CI; its latest hosted result is not established locally. |
+| §§6, 17, 23: new fields, inherited access, applicability and duplicate prevention | Group inheritance applies only when configured; restricted fields need direct grants; immutable keys and normalized unique indexes include inactive definitions; versioned lifecycle preserves values | Database races, inheritance and retention tests. Creation/edit applicability previews now include authorized counts and bounded identity samples; matching definitions offer reuse or reactivation without an implicit write. |
+| §§17, 24: safe bulk changes/search/counts/export | Bounded 100-row all-or-nothing patches, readable old-value previews, blind updates, revisions, audited/outbox writes; query projection precedes search/counts/export | Native rollback/security tests and browser selection/confirmation checks. Column filters now use type-specific operators and numeric/date/choice/boolean editors; no JSON range entry. |
+| §15: concurrent CRUD, retries, load evidence | Actor/payload-bound idempotency, expected row versions, configuration/employee locks, primary exclusion constraints and exclusive worker leases | Configurable 20–50-user native workload measures profile edits, create retries, independent creates, branch update races, competing transfers and worker claims. Generated reports include latency, expected conflicts, errors, backlog and zero live Google requests. This is not hosted throughput evidence. |
+| §§15–16, 24: Google integration | Personal-account OAuth, encrypted backend token, stable per-branch/Head Office workbook mapping, explicit row/column/sharing approval, latest canonical snapshots, lease/backoff/reconciliation and literal cell values | Local sharing/formula/token/failure unit tests and database approval/routing/lease tests. Actual personal-account OAuth, API writes, sharing changes, quota/storage failures and transfer reconciliation remain unverified. |
+| §§15–16, 25: deployment and SQL consistency | Forward migrations, disposable native and full Supabase CI jobs, enforced zero-drift gate, Vercel configuration and Pages alternative, gated/manual production workflow, backup/restore instructions | Twenty-one migrations apply to a disposable database. No staging/production migrations or deployment were performed; target migration history and drift remain unknown. |
+| User extensions | System ID plus per-client five-digit identity; optional pinned No. column; Windows setup/start launchers; local Philippine Home/Current Address and emergency contacts | Dedicated native/unit/responsive tests and integration guides. Address references are local, postal codes manual, hierarchy validated before and within mutations. |
+
+## Changes made after this review
+
+1. Extended the server applicability preview to new definitions, with counts and at most five readable identity samples. Inaccessible scopes and identity columns are omitted; previews write nothing. Empty selected scopes cannot be saved. Failed previews can be retried without discarding the draft.
+2. Corrected `app_private.capability()` to return false for missing/inactive profiles, including when a capability grant remains. SQL NULL previously could bypass an `IF NOT` guard. Added revocation and Auth/REST regression coverage.
+3. Added the configurable mixed concurrency workload and released per-request test connections between phases. Disposable database ports are allocated by the OS to avoid Windows reserved ranges.
+4. Added typed filter editors/operators and validation, plus pre-save active/inactive matching-field guidance and draft-preserving reuse/reactivation confirmation. Database constraints remain the authoritative duplicate check, including full Unicode case folding.
+5. Restored placeholder-only `.env.example`; existing local settings were not edited.
+
+Migration `20261011000300_creation_applicability_preview.sql` changes only the capability helper and read preview RPC. The address and register migrations precede it. Apply repository migrations before dependent frontend code using the separately approved environment workflow in `deployment.md`. No browser action runs migrations.
+
+## Remaining work and order
+
+The structured-name and tabbed-entry amendment is implemented in migration
+`20261011000400_employee_names_and_form_tabs.sql`. New profiles require separate
+first and last names; existing identities are preserved. Superadmin tab settings
+merge presentation groups without changing policies. See
+[employee-names-and-tabs.md](employee-names-and-tabs.md) for permissions, legacy
+records, layout settings and migration prerequisites.
+
+1. Run the full disposable Supabase Auth/PostgREST/drift CI job at the final commit. Native PostgreSQL with simulated `auth.uid()` does not substitute for it. The REST harness checks creation preview scope and same-JWT revocation, structured-name validation/redaction/blind updates, concurrent profile edits and replay-safe form-tab changes. Its applicability sample assertion uses the structured identity format. CI now fails on unexplained schema statements instead of only uploading a diff. These updated REST scenarios and the actual CLI diff remain unexecuted locally because Docker/Supabase CLI are unavailable.
+2. Configure and verify a standalone staging target, Auth redirects/trusted accounts, migration history/diff, realistic branch volumes, and backup restoration. Public frontend values alone do not establish staging ownership or permission to apply SQL.
+3. Configure the consumer Google OAuth application/account and backend secrets, approve workbook policies and sharing, then verify provisioning, transfer cleanup, retries/revocation/network/quota failures and reconciliation against actual Sheets. App CRUD must continue during failures.
+4. Finish cross-browser/physical-device/zoom checks and review synthetic business workflows. Measure hosted query/worker volume before increasing the documented limits.
+5. Obtain explicit production release approval, then apply database migrations before worker/frontend deployment and record the deployed Git/schema versions and smoke-test results.
+
+These external checks are genuine release blockers. Local test success cannot establish live Google synchronization, hosted schema consistency, or a completed production deployment. No new HRIS/cooperative business modules are required.

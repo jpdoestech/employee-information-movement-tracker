@@ -1,0 +1,16 @@
+.env*
+.vercel/
+.vite/
+dist/
+node_modules/
+.test-db/
+.agents/
+.github/
+docs/
+supabase/
+scripts/
+artifacts/
+test-results/
+playwright-report/
+*.tsbuildinfo
+*.bat
