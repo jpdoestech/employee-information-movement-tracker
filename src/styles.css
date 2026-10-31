@@ -4705,3 +4705,16 @@ dialog.app-dialog.column-designer-dialog { width: min(1120px, calc(100vw - 24px)
 }
 
 .column-designer-grid > .column-order { overflow: hidden; }
+.employee-data-deletion { max-width: 920px; }
+.employee-data-deletion h3, .purge-warning { display: flex; align-items: flex-start; gap: 8px; }
+.purge-warning { padding: 12px; background: var(--danger-bg); color: var(--danger); border-radius: var(--radius); }
+.purge-warning svg { flex-shrink: 0; }
+.purge-preview { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.purge-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.purge-counts > div { display: flex; justify-content: space-between; gap: 12px; padding: 8px; background: var(--paper); }
+.purge-counts dd { margin: 0; font-weight: 600; }
+.purge-sample { max-height: 210px; overflow: auto; margin-block: 12px; }
+.purge-sample table { min-width: 100%; width: max-content; }
+.purge-sample thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.purge-preview > label { display: grid; gap: 4px; margin-top: 12px; }
+@media (max-width: 600px) { .purge-counts { grid-template-columns: minmax(0, 1fr); } }

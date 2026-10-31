@@ -42,6 +42,7 @@ export async function query<T = any>(
     "access_configuration",
     "staffing_options",
     "effective_access",
+    "preview_employee_purge",
   ].includes(operation)
     ? operation
     : operation === "record_page"
@@ -205,6 +206,7 @@ export async function mutate<T = any>(
     employee_import: "Import employees",
     employee_update: "Save employee changes",
     employee_delete: "Archive employee",
+    employee_purge: "Permanently delete employee data",
     bulk_update: "Update selected employees",
     movement: "Record movement",
     void_movement: "Void or correct movement",
@@ -233,7 +235,9 @@ export async function mutate<T = any>(
   if (!confirmed) {
     await requireConfirmation(
       labels[operation] || "Confirm changes",
-      "Continue with this transaction? Review your entries before saving.",
+      operation === "employee_purge"
+        ? `${(p as { confirmation: string }).confirmation}. Permanently delete the reviewed employee records and their full history? This cannot be undone in the app.`
+        : "Continue with this transaction? Review your entries before saving.",
     );
   }
   return trackTransaction(labels[operation] || "Saving changes", async () => {
@@ -245,7 +249,9 @@ export async function mutate<T = any>(
       requestId || pendingRequests.get(fingerprint) || crypto.randomUUID();
     pendingRequests.set(fingerprint, id);
     const { data, error } =
-      operation === "staffing_requisition" || operation === "job_choices"
+      operation === "employee_purge"
+        ? await supabase.rpc("hard_delete_employees", { p, request_id: id })
+        : operation === "staffing_requisition" || operation === "job_choices"
         ? await supabase.rpc(
             operation === "job_choices"
               ? "set_job_choices"

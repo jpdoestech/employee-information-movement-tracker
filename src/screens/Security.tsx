@@ -5,6 +5,7 @@ import { FloatingNotification } from "../components/FloatingNotification";
 import { FieldTypeIcon } from "../components/FieldTypeIcon";
 import { ManagedRegisterViews } from "../components/ManagedRegisterViews";
 import { UserQuickFilters } from "../components/UserQuickFilters";
+import { EmployeeDataDeletion } from "../components/EmployeeDataDeletion";
 import { useEffect, useState } from "react";
 import {
   query,
@@ -91,6 +92,7 @@ export function Security({
             ["accounts", "Users", UsersRound],
             ["rules", "Access rules", ShieldCheck],
             ["register", "Register settings", Settings2],
+            ...(context.profile.role === "superadmin" ? [["data", "Data management", Settings2] as const] : []),
           ] as const
         ).map(([id, label, Icon]) => (
           <button
@@ -127,6 +129,7 @@ export function Security({
         </>
       )}
       <div className="admin-scroll-region data-scroll-region">
+        {tab === "data" && context.profile.role === "superadmin" && <EmployeeDataDeletion options={options} onSaved={onSaved} />}
         {tab === "rules" && (
           <PermissionMatrix
             context={context}

@@ -98,3 +98,9 @@ Back up canonical Supabase data using the project's supported backup/PITR plan, 
 Apply `20261026052137_managed_register_views.sql` after the parent-group permission
 migration and before its frontend. Existing views remain untouched until a
 superadmin saves a managed rule. See [managed view setup, precedence and rollback](managed-register-views.md).
+# Employee hard deletion
+
+Apply `20261031072807_employee_hard_delete.sql` after the preceding migrations,
+then publish the frontend. Installation deletes no employee records. The new
+**Permissions > Data management** flow is restricted to native superadmins.
+See [scope, confirmation, cleanup and rollback details](employee-hard-delete.md).

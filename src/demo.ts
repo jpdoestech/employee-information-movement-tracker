@@ -246,6 +246,7 @@ let employees: Employee[] = Array.from({ length: 34 }, (_, i) => ({
 const clientCounters = new Map<string, number>();
 const clientIdentities = new Map<string, string>();
 const archivedEmployees: Employee[] = [];
+let purgePreview: { token: string; ids: string[]; revision: number; expires: number } | undefined;
 function uniqueDemoError(
   candidates: Employee[],
   definitions = fields,
@@ -560,6 +561,21 @@ function serviceDays(employee: Employee) {
   );
 }
 export async function demoQuery(op: string, q: any = {}) {
+  if (op === "preview_employee_purge") {
+    if (context.profile.role !== "superadmin") throw new Error("Only a superadmin can permanently delete employee data");
+    const target = org.find(o=>o.id===q.scope_id);
+    const candidates = [...employees,...archivedEmployees].filter(e=>{
+      const branch=org.find(o=>o.kind==="branch" && o.label===e.values.branch);
+      const client=org.find(o=>o.kind==="client" && o.branch_id===branch?.id);
+      return q.scope_type==="all" || q.scope_type==="head_office" && e.values.branch==="Head Office"
+        || q.scope_type==="branch" && branch?.id===q.scope_id || q.scope_type==="client" && client?.id===q.scope_id;
+    });
+    purgePreview={token:crypto.randomUUID(),ids:candidates.map(e=>e.id),revision:context.revision,expires:Date.now()+600000};
+    return {token:purgePreview.token,scope_type:q.scope_type,scope_label:target?.label || (q.scope_type==="all" ? "All employee data" : "Head Office"),
+      expires_at:new Date(purgePreview.expires).toISOString(),confirmation:`DELETE ${candidates.length} EMPLOYEES`,
+      counts:{employees:candidates.length,archived:candidates.filter(e=>archivedEmployees.includes(e)).length,assignments:candidates.length,movements:0,other_location_history:0,linked_accounts:0},
+      sample:candidates.slice(0,10).map(e=>({employee_number:e.values.employee_number,name:e.values.name}))};
+  }
   for (const employee of employees) {
     employee.values.age = fullYears(employee.values.birth_date, context.today);
     const service = lengthOfService(employee.values, context.today);
@@ -1007,6 +1023,18 @@ export async function demoImport(p: any, previewOnly = false) {
 }
 export async function demoMutate(op: string, p: any) {
   p = normalizeInputs(p);
+  if (op === "employee_purge") {
+    if (context.profile.role !== "superadmin") throw new Error("Only a superadmin can permanently delete employee data");
+    if (!purgePreview || p.token!==purgePreview.token || purgePreview.revision!==context.revision || purgePreview.expires<=Date.now()) throw new Error("Deletion preview expired or data changed. Review a fresh preview before deleting");
+    if (!p.reason?.trim() || p.confirmation!==`DELETE ${purgePreview.ids.length} EMPLOYEES` || !purgePreview.ids.length) throw new Error("Type the exact confirmation phrase from the preview");
+    const ids=new Set(purgePreview.ids);
+    employees=employees.filter(e=>!ids.has(e.id));
+    for(let i=archivedEmployees.length-1;i>=0;i--) if(ids.has(archivedEmployees[i].id)) archivedEmployees.splice(i,1);
+    for(let i=history.length-1;i>=0;i--) if(ids.has(history[i].employee_id)) history.splice(i,1);
+    for(let i=audit.length-1;i>=0;i--) if(ids.has(audit[i].entity_id)) audit.splice(i,1);
+    purgePreview=undefined; context.revision++;
+    return {deleted_employees:ids.size,deleted_movements:0};
+  }
   if (op === "employee_import") return demoImport(p);
   if (op === "job_choices") {
     if (context.profile.role !== "superadmin")

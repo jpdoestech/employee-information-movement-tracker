@@ -13,6 +13,7 @@ import { testEmergencyAddress } from "./test-emergency-address.mjs";
 import { testEmploymentRules } from "./test-employment-rules.mjs";
 import { testAuditFixes } from "./test-audit-fixes.mjs";
 import { testFunctionFixes } from "./test-function-fixes.mjs";
+import { testEmployeePurge } from "./test-employee-purge.mjs";
 import { testEmployeeCategory } from "./test-employee-category.mjs";
 import { testInputNormalization } from "./test-input-normalization.mjs";
 import { testAccessReview } from "./test-access-review.mjs";
@@ -262,7 +263,9 @@ try {
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
-  if (process.env.TEST_QUICK_FILTERS_ONLY === "true") {
+  if (process.env.TEST_PURGE_ONLY === "true") {
+    await testEmployeePurge({ owner, test, m, as, id });
+  } else if (process.env.TEST_QUICK_FILTERS_ONLY === "true") {
     await testQuickFilters({ owner, test, as, q, m, id });
   } else if (process.env.TEST_COLUMN_ONLY === "true") {
     await testColumnPreview({ owner, test, as, q, id });
@@ -3409,6 +3412,7 @@ try {
   await testQuickFilters({ owner, test, as, q, m, id });
   await testColumnPreview({ owner, test, as, q, id });
   await testPermissionMatrix({ owner, test, m, q, as, id, revision });
+  await testEmployeePurge({ owner, test, m, as, id });
   }
   await mkdir(".test-db/reports/verification", { recursive: true });
   await writeFile(
