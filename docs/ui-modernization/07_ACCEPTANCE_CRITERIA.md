@@ -35,7 +35,7 @@ Apply the same reviewed tokens and shared primitives to Employees, Movements, PR
 - [x] Production build and all 175 unit checks pass. The 29 existing appearance/typography/toolbar browser checks passed; all five new design-system checks passed after correcting the test's keyboard modality and required-field label lookup.
 - [x] Rendered light/dark desktop/mobile screenshots inspected. Evidence: `.test-db/reports/ui-modernization/ui01-register-{theme}-{width}.png` and `ui01-editor-{theme}-{width}.png` for light/dark at 390px and 1440px.
 - [x] No business logic, API, permission, schema, synchronization or dependency changes.
-- [ ] Separate UI-01 pull request includes validation and intentional differences.
+- [x] Separate [UI-01 draft PR #4](https://github.com/jpdoestech/employee-information-movement-tracker/pull/4) includes validation and intentional differences; based on the UI-00 review branch to keep the phase diff separate.
 
 Commands: `npm run build`, `npm test`, and `npx playwright test --config .test-db/playwright.config.ts design-system.spec.ts appearance.spec.ts typography.spec.ts toolbar-ux.spec.ts`. The five new checks were rerun independently with `design-system.spec.ts`; no runtime edit was required after the existing 29 checks passed. Coverage includes reduced motion, local fonts, light/dark text and editable-border contrast, stable filled search focus, visible keyboard focus, picker bounds, draft cancellation, stationary footers, scroll bounds and a coarse-pointer tablet. Existing unit/browser tests remain unchanged.
 
