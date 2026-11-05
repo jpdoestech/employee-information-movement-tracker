@@ -78,6 +78,18 @@ GitHub Pages: enable Actions as the Pages source, configure the same two reposit
 
 ## Backend worker
 
+Incremental sync requires `20261028040000_incremental_sheet_sync.sql` before the
+updated worker. It retains legacy snapshot compatibility, adds private resumable
+progress, and supports bounded 200-record pages beyond the old 1,000-row limit.
+See [incremental sync and free-tier budgets](incremental-google-sync.md).
+
+For the personal-account Apps Script connection, use [Apps Script setup](apps-script-sync.md).
+Apply `20261028000000_apps_script_connection.sql` and
+`20261028010000_existing_spreadsheet_mapping.sql` and
+`20261028020000_branch_export_columns.sql` first. Its owner-run trigger
+replaces pg_cron and supplies short-lived tokens; no manual OAuth client is needed.
+The OAuth secrets and scheduler instructions below apply only to the legacy mode.
+
 Fill a private, ignored Edge Function secret file using `supabase/functions/.env.example`. Supabase supplies its URL/service-role environment; the backend service role must never be a frontend key. Generate independent random encryption and scheduler secrets. Keep the secret file outside Git.
 
 ```powershell
@@ -104,3 +116,27 @@ Apply `20261031072807_employee_hard_delete.sql` after the preceding migrations,
 then publish the frontend. Installation deletes no employee records. The new
 **Permissions > Data management** flow is restricted to native superadmins.
 See [scope, confirmation, cleanup and rollback details](employee-hard-delete.md).
+
+## Pending source reconciliation — 2026-11-05
+
+The Apps Script connection, owned spreadsheet mapping, dynamic export columns,
+safe sync errors, incremental synchronization and organization scope editor are
+released together with their tests and documentation. All six `20261028*`
+migrations were already applied to the intended tracker project; verify migration
+history before rollout rather than replaying them. The version 3 Sheets worker
+and its source hashes matched the earlier incremental rollout, so this release
+does not replace its secret, owner binding, timer, workbooks or worker deployment.
+
+Read-only hosted checks confirmed Apps Script mode, an existing owner binding,
+three approved/mapped workbooks reporting Synced, private progress RLS, service-only
+worker access, and batch scope validation/review. No employee or permission changes
+and no forced Google reconciliation were performed. The frontend publishes the
+matching scope selector and sync controls while retaining the responsive employee
+workspace. Export policy controls lock during confirmation/save and cancellation
+preserves the draft.
+
+Rollback the frontend to the prior Vercel deployment if needed; retain the additive
+database migrations. Old singular scope callers remain compatible. See the worker
+rollback instructions in [incremental sync](incremental-google-sync.md) before any
+separate worker rollback. Hosted status is not visual verification of sheet cells
+or a large Google round trip; those remain separate operational checks.

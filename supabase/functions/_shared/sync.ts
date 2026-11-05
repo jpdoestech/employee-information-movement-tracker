@@ -110,15 +110,15 @@ export function replacementRequests(
         updateSheetProperties: {
           properties: {
             sheetId: s.properties.sheetId,
+            hidden: tab.title === "Sync_Metadata",
             gridProperties: {
               rowCount: Math.max(rows.length, 100),
               columnCount: Math.max(tab.rows[0].length, 26),
               frozenRowCount: 1,
-              hidden: undefined,
             },
           },
           fields:
-            "gridProperties.rowCount,gridProperties.columnCount,gridProperties.frozenRowCount",
+            "hidden,gridProperties.rowCount,gridProperties.columnCount,gridProperties.frozenRowCount",
         },
       },
       {

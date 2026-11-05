@@ -3,7 +3,9 @@ import { ChevronDown, ChevronRight, Eye, Plus } from "lucide-react";
 import { isDemo, mutate, query, reviewAccessChange } from "../api";
 import type { Context, Option } from "../domain";
 import { fieldGroupPath, orderedFieldGroups } from "../employeeForm";
-import { accessPresets, grantStatus, scopeLabel } from "../accessReview";
+import { grantStatus, scopeLabel } from "../accessReview";
+import { scopeDraftChanges, type ScopeGrant } from "../scopeDraft";
+import { OrganizationScopeEditor } from "./OrganizationScopeEditor";
 import { Dialog } from "./Dialog";
 import { AccessChangeReview } from "./AccessChangeReview";
 import { trackTransaction } from "../transactions";
@@ -76,15 +78,11 @@ export function PermissionMatrix({
     [reason, setReason] = useState(""),
     [scope, setScope] = useState("all"),
     [descendants, setDescendants] = useState(false),
-    [preset, setPreset] = useState(""),
-    [grantActions, setGrantActions] = useState(["R"]),
-    [grant, setGrant] = useState(false),
-    [starts, setStarts] = useState(context.today),
-    [ends, setEnds] = useState(""),
+    [scopeDraft, setScopeDraft] = useState<ScopeGrant[] | null>(null),
+    [scopeBaseline, setScopeBaseline] = useState<ScopeGrant[] | null>(null),
     [memberships, setMemberships] = useState<string[] | null>(null),
     [recordRule, setRecordRule] = useState<Rule | null>(null),
     [reports, setReports] = useState<string[] | null>(null),
-    [revoked, setRevoked] = useState<string[]>([]),
     [expanded, setExpanded] = useState<string[]>([]),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -95,18 +93,26 @@ export function PermissionMatrix({
     [newRole, setNewRole] = useState(false),
     [roleName, setRoleName] = useState(""),
     [roleCode, setRoleCode] = useState("");
-  const applicableActions = [...new Set(config?.modules.flatMap(m => m.actions) || [])];
-  const actions = [
-    ...actionOrder.filter(a => applicableActions.includes(a)),
-    ...applicableActions.filter(a => !actionOrder.includes(a)),
+  const applicableActions = [
+    ...new Set(config?.modules.flatMap((m) => m.actions) || []),
   ];
+  const actions = [
+    ...actionOrder.filter((a) => applicableActions.includes(a)),
+    ...applicableActions.filter((a) => !actionOrder.includes(a)),
+  ];
+  const scopeChanges = scopeDraftChanges(
+    scopeBaseline || config?.scopes || [],
+    scopeDraft || config?.scopes || [],
+  );
+  const scopesChanged =
+    scopeChanges.scope_grants.length > 0 ||
+    scopeChanges.revoke_scopes.length > 0;
   const dirty =
     Object.keys(edits).length > 0 ||
     memberships !== null ||
     recordRule !== null ||
     reports !== null ||
-    grant ||
-    revoked.length > 0;
+    scopesChanged;
   const account = users.find((u) => u.id === user);
   const scopes: Option[] = [
     { id: "all", label: "All organization scopes", kind: "all" },
@@ -129,10 +135,9 @@ export function PermissionMatrix({
     setMemberships(null);
     setRecordRule(null);
     setReports(null);
-    setGrant(false);
-    setRevoked([]);
+    setScopeDraft(null);
+    setScopeBaseline(null);
     setReason("");
-    setPreset("");
   }
   async function changeSubject(nextUser: string, nextRole: string) {
     if (nextUser === user && nextRole === role) return;
@@ -253,17 +258,14 @@ export function PermissionMatrix({
       ...(memberships !== null ? { memberships } : {}),
       ...(recordRule !== null ? { record_rule: recordRule } : {}),
       ...(reports !== null ? { reports, record_rule: rule } : {}),
-      ...(grant
+      ...(scopesChanged
         ? {
-            scope_grant: {
-              ...scopeData,
-              actions: grantActions,
-              starts_on: starts,
-              ends_on: ends || null,
-            },
+            ...scopeChanges,
+            scope_snapshot_ids: (scopeBaseline || config!.scopes).map(
+              (g) => g.id,
+            ),
           }
         : {}),
-      revoke_scopes: revoked,
     };
     const review = await reviewAccessChange("access_matrix", payload);
     await requireConfirmation(
@@ -344,15 +346,42 @@ export function PermissionMatrix({
           </p>
         )}
         {reports !== null && <p>{reports.length} direct reports.</p>}
-        {grant && (
-          <p>
-            Add {grantActions.join("/")} organization grant at{" "}
-            {scopeLabel(scopeData, options)}, starting {starts}
-            {ends ? ` until ${ends} (exclusive)` : " with no end date"}.
-          </p>
-        )}
-        {revoked.length > 0 && (
-          <p>Revoke {revoked.length} organization grants.</p>
+        {scopesChanged && (
+          <>
+            <p>
+              Grants to add: {scopeChanges.scope_grants.length}. Grants to
+              remove: {scopeChanges.revoke_scopes.length}.
+            </p>
+            <strong>Allowed locations after saving</strong>
+            {scopeDraft?.length ? (
+              <ul>
+                {scopeDraft.map((g) => (
+                  <li key={g.id}>
+                    {scopeLabel(g, options)}:{" "}
+                    {g.actions
+                      .map((a) => (a === "D" ? "Delete" : fieldLabels[a]))
+                      .join(" / ")}{" "}
+                    · {grantStatus(g, context.today)} · {g.starts_on}
+                    {g.ends_on
+                      ? ` to ${g.ends_on} (exclusive)`
+                      : "; no end date"}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No organization grants.</p>
+            )}
+            {scopeChanges.revoke_scopes.length > 0 && (
+              <p>
+                Removing:{" "}
+                {(scopeBaseline || config?.scopes || [])
+                  .filter((g) => scopeChanges.revoke_scopes.includes(g.id))
+                  .map((g) => scopeLabel(g, options))
+                  .join("; ")}
+                .
+              </p>
+            )}
+          </>
         )}
         <AccessChangeReview
           impact={{
@@ -496,9 +525,9 @@ export function PermissionMatrix({
               <p className="muted">
                 Inherit uses roles and existing grants. Allow grants only this
                 action. Deny overrides ordinary grants. Record scopes and field
-                policies still apply.
-                Import is available to Superadmin by default. To authorize another user,
-                allow Employees Import and Create, then configure their creation scope and fields.
+                policies still apply. Import is available to Superadmin by
+                default. To authorize another user, allow Employees Import and
+                Create, then configure their creation scope and fields.
               </p>
             </details>
             <div
@@ -563,15 +592,15 @@ export function PermissionMatrix({
                 individual fields. Group allows cover normal fields; restricted
                 fields require an individual allow. Clear value does not archive
                 an employee. Child groups inherit their parent group's policies.
-                Fields inherit their permission group's policies. Inherit removes
-                the selected user's or role's direct setting at this scope;
-                other matching user and role policies still apply. Root groups
-                have no parent and default to denied when no matching policy
-                allows access. Any matching field, group or parent
-                Deny wins. Follow the parent links to adjust inherited policies;
-                View effective access shows the saved outcome and source.
-                Fields are listed by permission group; a different
-                form location is shown below the field name.
+                Fields inherit their permission group's policies. Inherit
+                removes the selected user's or role's direct setting at this
+                scope; other matching user and role policies still apply. Root
+                groups have no parent and default to denied when no matching
+                policy allows access. Any matching field, group or parent Deny
+                wins. Follow the parent links to adjust inherited policies; View
+                effective access shows the saved outcome and source. Fields are
+                listed by permission group; a different form location is shown
+                below the field name.
               </p>
             </details>
             <div
@@ -611,9 +640,16 @@ export function PermissionMatrix({
                         cell={cell}
                         effect={fieldEffect}
                         goToGroup={(id) => {
-                          setExpanded(old => old.includes(id) ? old : [...old, id]);
-                          const button = document.getElementById(`permission-group-${id}`);
-                          button?.scrollIntoView({ block: "nearest", inline: "nearest" });
+                          setExpanded((old) =>
+                            old.includes(id) ? old : [...old, id],
+                          );
+                          const button = document.getElementById(
+                            `permission-group-${id}`,
+                          );
+                          button?.scrollIntoView({
+                            block: "nearest",
+                            inline: "nearest",
+                          });
                           button?.focus({ preventScroll: true });
                         }}
                       />
@@ -663,165 +699,23 @@ export function PermissionMatrix({
               </p>
             ) : (
               <>
-                <div className="form-grid">
-                  <div className="form-control">
-                    <span>Access preset</span>
-                    <SearchFilterPicker
-                      mode="single"
-                      label="Access preset"
-                      value={preset ? [preset] : []}
-                      options={accessPresets.map((p) => ({
-                        id: p.id,
-                        label: p.label,
-                      }))}
-                      onChange={(v) => {
-                        if (
-                          Object.keys(edits).some((k) => !k.startsWith("m:"))
-                        ) {
-                          setError(
-                            "Save field changes before applying another scope preset.",
-                          );
-                          return;
-                        }
-                        const p = accessPresets.find((p) => p.id === v[0]);
-                        if (!p) {
-                          setPreset("");
-                          return;
-                        }
-                        setPreset(p.id);
-                        setGrantActions([...p.actions]);
-                        setDescendants(p.descendants);
-                        setGrant(true);
-                        setScope(
-                          ["all", "head_office"].includes(p.kind)
-                            ? p.kind
-                            : target?.kind === p.kind
-                              ? scope
-                              : "",
-                        );
-                      }}
-                    />
-                  </div>
-                  <div className="form-control">
-                    <span>Organization scope</span>
-                    <SearchFilterPicker
-                      mode="single"
-                      label="Organization scope"
-                      options={scopes}
-                      value={scope ? [scope] : []}
-                      onChange={(v) => {
-                        if (
-                          Object.keys(edits).some((k) => !k.startsWith("m:"))
-                        ) {
-                          setError(
-                            "Save field changes before changing their scope.",
-                          );
-                          return;
-                        }
-                        setScope(v[0] || "");
-                        setPreset("");
-                      }}
-                    />
-                  </div>
-                </div>
-                <p className="muted">
-                  Presets prepare an organization grant. Module and field
-                  permissions remain separate matrix choices in the same save.
-                </p>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={grant}
-                    onChange={(e) => setGrant(e.target.checked)}
-                  />
-                  Add an organization grant with this save
-                </label>
-                {grant && (
-                  <>
-                    <div className="checks">
-                      {fieldActions.map((a) => (
-                        <label key={a}>
-                          <input
-                            type="checkbox"
-                            checked={grantActions.includes(a)}
-                            onChange={(e) => {
-                              setPreset("");
-                              setGrantActions((old) =>
-                                e.target.checked
-                                  ? [...old, a]
-                                  : old.filter((x) => x !== a),
-                              );
-                            }}
-                          />
-                          {fieldLabels[a]}
-                        </label>
-                      ))}
-                    </div>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={descendants}
-                        disabled={target?.kind !== "branch"}
-                        onChange={(e) => {
-                          setDescendants(e.target.checked);
-                          setPreset("");
-                        }}
-                      />
-                      Include branch clients
-                    </label>
-                    <div className="form-grid">
-                      <label>
-                        Starts
-                        <input
-                          type="date"
-                          value={starts}
-                          onChange={(e) => setStarts(e.target.value)}
-                        />
-                      </label>
-                      <label>
-                        Ends (exclusive)
-                        <input
-                          type="date"
-                          value={ends}
-                          onChange={(e) => setEnds(e.target.value)}
-                        />
-                      </label>
-                    </div>
-                  </>
+                {account?.role === "superadmin" && (
+                  <p className="notice">
+                    Superadmin retains access to all locations through the
+                    trusted override.
+                  </p>
                 )}
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Existing organization scope</th>
-                      <th>Actions</th>
-                      <th>Status</th>
-                      <th>Remove on save</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {config?.scopes.map((g) => (
-                      <tr key={g.id}>
-                        <td>{scopeLabel(g, options)}</td>
-                        <td>{g.actions.join(" / ")}</td>
-                        <td>{grantStatus(g, context.today)}</td>
-                        <td>
-                          <input
-                            type="checkbox"
-                            aria-label={`Revoke ${scopeLabel(g, options)}`}
-                            checked={revoked.includes(g.id)}
-                            onChange={(e) =>
-                              setRevoked((old) =>
-                                e.target.checked
-                                  ? [...old, g.id]
-                                  : old.filter((id) => id !== g.id),
-                              )
-                            }
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <OrganizationScopeEditor
+                  key={user}
+                  value={scopeDraft || config?.scopes || []}
+                  options={scopes}
+                  today={context.today}
+                  disabled={busy || !user || !config}
+                  onChange={(value) => {
+                    setScopeBaseline((old) => old || config!.scopes);
+                    setScopeDraft(value);
+                  }}
+                />
                 <h3>Record restrictions</h3>
                 <p className="muted">
                   These restrict organization grants further. They never grant
@@ -929,11 +823,14 @@ export function PermissionMatrix({
             !reason.trim() ||
             (!user && !role) ||
             !config ||
-            (grant &&
-              (!scope ||
-                !grantActions.length ||
-                !starts ||
-                Boolean(ends && ends <= starts))) ||
+            Boolean(
+              scopeDraft?.some(
+                (g) =>
+                  !g.actions.length ||
+                  !g.starts_on ||
+                  Boolean(g.ends_on && g.ends_on <= g.starts_on),
+              ),
+            ) ||
             (["self", "direct_reports"].includes(rule.mode) &&
               !rule.employee_id)
           }
@@ -1111,9 +1008,17 @@ export function PermissionMatrix({
                                       : "Direct user policy"}
                                     : {f.actions[a].policy.effect}
                                     {f.actions[a].policy.group_id && (
-                                      <> · {fieldGroupPath(context.groups, f.actions[a].policy.group_id)}</>
+                                      <>
+                                        {" "}
+                                        ·{" "}
+                                        {fieldGroupPath(
+                                          context.groups,
+                                          f.actions[a].policy.group_id,
+                                        )}
+                                      </>
                                     )}
-                                    {" · "}{scopeLabel(f.actions[a].policy, options)}
+                                    {" · "}
+                                    {scopeLabel(f.actions[a].policy, options)}
                                   </small>
                                 )}
                               </td>

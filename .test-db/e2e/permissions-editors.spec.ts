@@ -46,7 +46,7 @@ for (const width of [375, 1366]) {
       "Keep this access draft",
     );
     await expect(
-      page.getByRole("button", { name: "Organization scope", exact: true }),
+      page.getByRole("button", { name: "Allowed locations", exact: true }),
     ).toContainText("Head Office");
     await page
       .getByRole("navigation", { name: "Access configuration" })

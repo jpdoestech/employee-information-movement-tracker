@@ -76,6 +76,7 @@ export async function testDerivedColumns({ owner, test, as, q, m, id, today }) {
         false,
       );
       const page = await q(id.viewer, "employees", {
+        search: "CALCULATED",
         sort: "id",
         limit: 25,
         offset: 0,
@@ -105,6 +106,7 @@ export async function testDerivedColumns({ owner, test, as, q, m, id, today }) {
     detail = await q(id.viewer, "employee", { id: employee.id });
     assert.equal(detail.employee.values.length_of_service, null);
     const page = await q(id.viewer, "employees", {
+      search: "CALCULATED",
       sort: "id",
       limit: 25,
       offset: 0,
@@ -194,6 +196,7 @@ export async function testDerivedColumns({ owner, test, as, q, m, id, today }) {
     });
     for (const sort of ["age", "length_of_service"]) {
       const page = await q(id.sa, "employees", {
+        search: "CALCULATED",
         sort,
         direction: "asc",
         limit: 100,
@@ -205,7 +208,7 @@ export async function testDerivedColumns({ owner, test, as, q, m, id, today }) {
         async (c) =>
           (
             await c.query("select public.export_employees($1) r", [
-              { sort, direction: "asc" },
+              { search: "CALCULATED", sort, direction: "asc" },
             ])
           ).rows[0].r,
       );

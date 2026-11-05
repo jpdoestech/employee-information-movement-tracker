@@ -6,6 +6,8 @@ node_modules/
 .test-db/
 .agents/
 .github/
+.gs/
+google-apps-script/
 docs/
 supabase/
 scripts/

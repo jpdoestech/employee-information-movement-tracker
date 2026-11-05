@@ -1,11 +1,11 @@
 import { Dialog } from "../components/Dialog";
-import { requireConfirmation } from "../components/TransactionConfirmation";
 import { FloatingNotification } from "../components/FloatingNotification";
 import { useEffect, useState } from "react";
-import { isDemo, mutate, query, supabase } from "../api";
+import { mutate, query } from "../api";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import type { Context, Option } from "../domain";
 import { refreshContext } from "../refreshContext";
+import { googleSpreadsheetId } from "../googleSheets";
 export function Sync({
   context,
   options,
@@ -79,33 +79,13 @@ export function Sync({
           {data?.pending || 0} pending events. Changes can still be saved during
           Google outages.
         </p>
-        <button
-          disabled={busy || isDemo()}
-          onClick={() =>
-            run(async () => {
-              await requireConfirmation(
-                "Connect Google account",
-                "Continue to Google to authorize this account connection?",
-              );
-              if (!supabase)
-                throw new Error("The application connection is unavailable.");
-              const { data, error } = await supabase.functions.invoke(
-                "google-oauth",
-                { body: { action: "start" } },
-              );
-              if (error) throw error;
-              window.open(
-                data.url,
-                "google-oauth",
-                "popup,width=600,height=760",
-              );
-            })
-          }
-        >
-          Connect personal Google account
-        </button>
+        <p>
+          For Apps Script setup, the workbook owner runs setupTrackerSync once
+          in the Google Apps Script editor. Its five-minute trigger processes
+          approved workbooks; Reconcile queues a refresh for the next run.
+        </p>
         <small>
-          OAuth refresh tokens remain encrypted in the backend. Workbook
+          Apps Script tokens are short-lived and are never stored. Workbook
           policies and actual Drive sharing must both be approved.
         </small>
       </div>
@@ -118,14 +98,21 @@ export function Sync({
             </h3>
             <span className="badge">{b.status}</span>
             <p>Last successful sync: {b.last_success || "Never"}</p>
+            {b.last_error && ["Failed", "Suspended"].includes(b.status) && (
+              <p role="status">{b.last_error}</p>
+            )}
             <p>
               {b.approved
                 ? "Export policy approved"
                 : "Suspended until explicit policy approval"}
             </p>
             <button
+              disabled={busy}
               onClick={() => {
-                setBook(structuredClone(b));
+                setBook({
+                  ...structuredClone(b),
+                  target_spreadsheet_id: b.spreadsheet_id || "",
+                });
                 setReason("");
               }}
             >
@@ -144,11 +131,31 @@ export function Sync({
         <Dialog
           title="Workbook export policy"
           onClose={() => setBook(undefined)}
+          closeDisabled={busy}
         >
           <div className="dialog-body">
+            <label>
+              Google Sheets URL or spreadsheet ID
+              <input
+                value={book.target_spreadsheet_id}
+                disabled={busy || Boolean(book.spreadsheet_id)}
+                placeholder="Leave blank to create a new spreadsheet"
+                onChange={(e) =>
+                  setBook({ ...book, target_spreadsheet_id: e.target.value })
+                }
+              />
+              <small>
+                Use a spreadsheet owned by the connected Google account, or
+                leave blank to create one. Sync replaces Employees_Current,
+                Assignments_Current, Movement_History and Sync_Metadata; other
+                tabs and your spreadsheet title are preserved. Saved
+                destinations stay fixed to prevent stale copies.
+              </small>
+            </label>
             <SearchFilterPicker
               mode="multiple"
               label="Approved non-sensitive columns"
+              disabled={busy}
               options={context.fields
                 .filter((f) => f.active && f.sensitivity === "normal")
                 .map((f) => ({
@@ -162,6 +169,7 @@ export function Sync({
             <SearchFilterPicker
               mode="multiple"
               label="Approved client rows"
+              disabled={busy}
               options={options.filter(
                 (o) => o.kind === "client" && o.branch_id === book.branch_id,
               )}
@@ -172,6 +180,7 @@ export function Sync({
               <input
                 type="checkbox"
                 checked={book.include_branch}
+                disabled={busy}
                 onChange={(e) =>
                   setBook({ ...book, include_branch: e.target.checked })
                 }
@@ -182,6 +191,7 @@ export function Sync({
             <label>
               Approved sharing emails (one per line)
               <textarea
+                disabled={busy}
                 value={book.sharing_emails.join("\n")}
                 onChange={(e) =>
                   setBook({
@@ -198,6 +208,7 @@ export function Sync({
               <input
                 type="checkbox"
                 checked={book.approved}
+                disabled={busy}
                 onChange={(e) =>
                   setBook({ ...book, approved: e.target.checked })
                 }
@@ -208,6 +219,7 @@ export function Sync({
             <label>
               Policy reason
               <input
+                disabled={busy}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />
@@ -216,11 +228,17 @@ export function Sync({
           <footer>
             <button onClick={() => setBook(undefined)}>Cancel</button>
             <button
-              disabled={busy || !reason}
+              disabled={busy || !reason.trim()}
               className="primary"
               onClick={() =>
                 run(async () => {
-                  await mutate("workbook", { ...book, reason });
+                  await mutate("workbook", {
+                    ...book,
+                    target_spreadsheet_id: googleSpreadsheetId(
+                      book.target_spreadsheet_id,
+                    ),
+                    reason,
+                  });
                   setBook(undefined);
                 })
               }

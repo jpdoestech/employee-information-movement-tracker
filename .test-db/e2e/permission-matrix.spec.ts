@@ -32,12 +32,27 @@ for (const [width, height] of [
     );
     await parent.click();
     await child.click();
-    const childRow=page.getByRole("row").filter({has:child});
+    const childRow = page.getByRole("row").filter({ has: child });
     await expect(childRow).toContainText("Parent group:");
-    await childRow.getByRole("button",{name:"Go to parent group Employment Details",exact:true}).click();
+    await childRow
+      .getByRole("button", {
+        name: "Go to parent group Employment Details",
+        exact: true,
+      })
+      .click();
     await expect(parent).toBeFocused();
-    await expect(page.getByRole("button",{name:"Go to permission group for Daily Rate",exact:true})).toBeVisible();
-    await page.getByRole("button",{name:"Go to permission group for Daily Rate",exact:true}).click();
+    await expect(
+      page.getByRole("button", {
+        name: "Go to permission group for Daily Rate",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", {
+        name: "Go to permission group for Daily Rate",
+        exact: true,
+      })
+      .click();
     await expect(child).toBeFocused();
     const bank = page
       .getByRole("row")
@@ -109,6 +124,7 @@ async function setup(
   page: Page,
   largeMatrix = false,
   compensationFixture = false,
+  locationFixture = false,
 ) {
   await page.goto("/");
   const fixture = await page.evaluate(async () => {
@@ -117,6 +133,7 @@ async function setup(
     return {
       context: await demo.demoQuery("context"),
       config: await demo.demoQuery("access_configuration"),
+      dashboard: await demo.demoQuery("dashboard"),
     };
   });
   if (compensationFixture) {
@@ -173,6 +190,19 @@ async function setup(
     role: "admin",
     active: true,
   };
+  if (locationFixture)
+    fixture.config.scopes = [
+      {
+        id: "saved-broad-grant",
+        scope_type: "all",
+        scope_id: null,
+        include_descendants: false,
+        actions: ["R", "U"],
+        starts_on: "2026-01-01",
+        ends_on: null,
+        active: true,
+      },
+    ];
   fixture.context.profile.id = user.id;
   const state = {
     writes: [] as any[],
@@ -255,10 +285,26 @@ async function setup(
           kind: "branch",
           label: "North",
         },
+        ...(locationFixture
+          ? [
+              {
+                id: "client-one",
+                kind: "client",
+                label: "Client One",
+                context: "North",
+              },
+              {
+                id: "client-two",
+                kind: "client",
+                label: "Client Two",
+                context: "North",
+              },
+              { id: "branch-two", kind: "branch", label: "South" },
+            ]
+          : []),
       ];
     else if (body.operation === "employees") result = { items: [], total: 0 };
-    else if (body.operation === "dashboard")
-      result = { total: 0, statuses: {}, placements: {} };
+    else if (body.operation === "dashboard") result = fixture.dashboard;
     if (largeMatrix && path.endsWith("/effective_access")) {
       result.modules.push(
         ...Array.from({ length: 24 }, (_, i) => ({
@@ -300,6 +346,118 @@ async function setup(
   return { state, fixture };
 }
 
+for (const [width, height] of [
+  [375, 740],
+  [768, 1024],
+  [1366, 768],
+  [812, 375],
+])
+  test(`complete location selection replaces broad access only after Continue at ${width}x${height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const { state } = await setup(page, false, false, true);
+    await page
+      .getByRole("button", { name: "Scope & assignments", exact: true })
+      .click();
+    await expect(
+      page.getByText("Remove it to restrict this user", { exact: false }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Allowed locations", exact: true })
+      .click();
+    const picker = page.getByRole("dialog", {
+      name: "Allowed locations options",
+      exact: true,
+    });
+    await picker
+      .getByRole("option", { name: "All organization scopes", exact: true })
+      .click();
+    for (const name of ["Client One", "Client Two", "South"])
+      await picker.getByRole("option", { name: new RegExp(name) }).click();
+    await picker.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.locator(".scope-grant-editor")).toHaveCount(1);
+    expect(state.writes).toHaveLength(0);
+    await page
+      .getByRole("button", { name: "Allowed locations", exact: true })
+      .click();
+    await picker
+      .getByRole("option", { name: "All organization scopes", exact: true })
+      .click();
+    for (const name of ["Client One", "Client Two", "South"])
+      await picker.getByRole("option", { name: new RegExp(name) }).click();
+    await picker.getByRole("button", { name: "Apply", exact: true }).click();
+    await expect(page.locator(".scope-grant-editor")).toHaveCount(3);
+    await expect(
+      page.getByText("Remove it to restrict this user", { exact: false }),
+    ).toHaveCount(0);
+    const first = page.locator(".scope-grant-editor").first();
+    await first.getByLabel("Update", { exact: true }).check();
+    await page
+      .getByRole("button", { name: "Field permissions", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Organization scope", exact: true }),
+    ).toContainText("All organization scopes");
+    await page
+      .getByRole("button", { name: "Scope & assignments", exact: true })
+      .click();
+    await expect(first.getByLabel("Update", { exact: true })).toBeChecked();
+    await page
+      .getByLabel("Reason", { exact: true })
+      .fill("Restrict locations to the selected clients and branch");
+    const footer = page.locator(".permission-save-bar"),
+      before = await footer.boundingBox();
+    await page.locator(".permission-body").evaluate(el => { el.scrollTop = 0; });
+    await page.screenshot({path: `.test-db/reports/release/scope-selection-top-${width}x${height}.png`});
+    await first.locator("summary").focus();
+    await expect(first.locator("summary")).toBeFocused();
+    expect((await first.locator("summary").boundingBox())!.height).toBeGreaterThanOrEqual(width <= 700 ? 44 : 32);
+    await page.locator(".permission-body").evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+    expect(await footer.boundingBox()).toEqual(before);
+    await page.screenshot({
+      path: `.test-db/reports/release/scope-selection-${width}x${height}.png`,
+    });
+    await footer.getByRole("button", { name: "Save", exact: true }).click();
+    const confirmation = page.getByRole("dialog", {
+      name: "Save access changes",
+      exact: true,
+    });
+    await expect(confirmation).toContainText(
+      "Grants to add: 3. Grants to remove: 1.",
+    );
+    await expect(confirmation).toContainText("Client One");
+    await expect(confirmation).toContainText(
+      "Removing: All organization scopes",
+    );
+    await expect(confirmation).toBeInViewport();
+    await page.screenshot({path: `.test-db/reports/release/scope-confirmation-${width}x${height}.png`});
+    await confirmation
+      .getByRole("button", { name: "Cancel", exact: true })
+      .click();
+    expect(state.writes).toHaveLength(0);
+    await expect(page.locator(".scope-grant-editor")).toHaveCount(3);
+    await footer.getByRole("button", { name: "Save", exact: true }).click();
+    await confirmation
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    await expect.poll(() => state.writes.length).toBe(1);
+    const p = state.writes[0].p;
+    expect(p.scope_snapshot_ids).toEqual(["saved-broad-grant"]);
+    expect(p.revoke_scopes).toEqual(["saved-broad-grant"]);
+    expect(p.scope_grants.map((g: any) => g.scope_id)).toEqual([
+      "client-one",
+      "client-two",
+      "branch-two",
+    ]);
+    expect(p.scope_grants[0].actions).toEqual(["R", "U"]);
+    expect(p.scope_grants.every((g: any) => !("id" in g))).toBe(true);
+    expect(p.fields).toEqual([]);
+  });
+
 test("matrix shows applicable actions and saves multiple groups atomically after Continue", async ({
   page,
 }) => {
@@ -313,7 +471,9 @@ test("matrix shows applicable actions and saves multiple groups atomically after
   await page
     .getByLabel("Employees View", { exact: true })
     .selectOption("allow");
-  await page.getByLabel("Employees Import", { exact: true }).selectOption("allow");
+  await page
+    .getByLabel("Employees Import", { exact: true })
+    .selectOption("allow");
   await page
     .getByRole("button", { name: "Field permissions", exact: true })
     .click();
@@ -356,7 +516,11 @@ test("matrix shows applicable actions and saves multiple groups atomically after
     action: "export",
     effect: "deny",
   });
-  expect(state.writes[0].p.modules).toContainEqual({module:"employees",action:"import",effect:"allow"});
+  expect(state.writes[0].p.modules).toContainEqual({
+    module: "employees",
+    action: "import",
+    effect: "allow",
+  });
 });
 
 test("failed matrix review sends no mutation and keeps the draft", async ({

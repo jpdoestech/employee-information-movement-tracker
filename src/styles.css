@@ -4544,6 +4544,20 @@ dialog.employee-edit-dialog[open] {
 .permission-workspace .access-section-tabs { flex: none; }
 .permission-body { flex: 1; min-height: 0; padding: 8px 12px; overflow: auto; }
 .permission-body > p { margin: 6px 0 12px; }
+.organization-scope-editor { margin-top: 12px; }
+.scope-grant-editor { border-top: 1px solid var(--line); padding: 10px 0; }
+.scope-grant-heading, .scope-grant-actions { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; }
+.scope-grant-heading > strong { overflow-wrap: anywhere; }
+.scope-grant-heading > button { margin-left: auto; }
+.scope-grant-actions { margin: 8px 0; }
+.scope-grant-actions > label { display: flex; align-items: center; gap: 6px; margin: 0; min-height: 32px; }
+.scope-grant-dates { align-items: end; }
+.scope-grant-editor summary { cursor: pointer; min-height: 32px; padding: 6px 0; font-size: 11px; overflow-wrap: anywhere; }
+.scope-grant-editor summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.scope-grant-dates > label { margin: 0; }
+@media (pointer: coarse), (max-width: 700px) {
+  .scope-grant-actions > label, .scope-grant-heading > button, .scope-grant-dates > button, .scope-grant-editor summary { min-height: 44px; }
+}
 .permission-table-scroll { max-width: 100%; max-height: 55dvh; overflow: auto; margin-bottom: 12px; position: relative; isolation: isolate; overscroll-behavior: contain; }
 /* The table owns both scroll axes so sticky headers cannot attach to an unbounded wrapper. */
 .permission-body:has(> .permission-table-scroll) { display: flex; flex-direction: column; overflow: hidden; }

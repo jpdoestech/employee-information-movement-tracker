@@ -1,15 +1,14 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { accessToken, google } from "../_shared/google.ts";
-import {
-  replacementRequests,
-  sharingApproved,
-  snapshotTabs,
-} from "../_shared/sync.ts";
+import { appsScriptIdentity } from "../_shared/appsScript.ts";
+import { sharingApproved } from "../_shared/sync.ts";
+import { syncWorkbook } from "../_shared/syncWorkbook.ts";
 const admin = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   { auth: { persistSession: false } },
 );
+class SyncBudgetReached extends Error {}
 async function rpc(operation: string, p: unknown = {}) {
   const { data, error } = await admin.rpc("worker_command", { operation, p });
   if (error) throw error;
@@ -22,21 +21,70 @@ Deno.serve(async (req) => {
     req.headers.get("x-worker-secret") !== Deno.env.get("WORKER_SECRET")
   )
     return new Response("Unauthorized", { status: 401 });
+  let scriptToken: string | undefined;
+  if (Deno.env.get("GOOGLE_SYNC_MODE") === "apps_script") {
+    try {
+      const body = await req.json();
+      if (!["connect", "sync"].includes(body.action))
+        throw new Error("Unknown Apps Script action");
+      if (
+        body.action === "sync" &&
+        typeof body.access_token === "string" &&
+        body.access_token &&
+        (await rpc("sync_due")) === false
+      )
+        return Response.json({ idle: true });
+      const connection = await rpc("connection");
+      const identity = await appsScriptIdentity(body.access_token, connection);
+      if (body.action === "connect") {
+        await rpc("bind_apps_script", identity);
+        return Response.json({ connected: true });
+      }
+      if (connection?.auth_mode !== "apps_script")
+        throw new Error("Connect Apps Script before synchronizing");
+      scriptToken = body.access_token;
+    } catch {
+      return Response.json(
+        {
+          error:
+            "Apps Script authorization failed. Check setup and original account ownership.",
+        },
+        { status: 400 },
+      );
+    }
+  }
   const job = await rpc("claim");
   if (!job) return Response.json({ idle: true });
-  const deadline = Date.now() + 110000;
+  const deadline = Date.now() + 100000;
   let current: string | undefined;
   let suspended = false;
   let failed = false;
+  let pending = false;
+  let sheetReads = 0,
+    sheetWrites = 0;
+  async function request(url: string, token: string, init: RequestInit = {}) {
+    if (url.startsWith("https://sheets.googleapis.com/")) {
+      const read =
+        !init.method ||
+        init.method === "GET" ||
+        url.includes("/values:batchGet");
+      if (read ? sheetReads >= 40 : sheetWrites >= 40)
+        throw new SyncBudgetReached();
+      if (read) sheetReads++;
+      else sheetWrites++;
+    }
+    return google(url, token, init);
+  }
   async function fence() {
-    if (Date.now() > deadline) throw new Error("Bounded worker time elapsed");
+    if (Date.now() > deadline) throw new SyncBudgetReached();
     if (!(await rpc("heartbeat", { token: job.token })).valid)
       throw new Error("Lease expired");
   }
   try {
     const connection = await rpc("connection");
     if (!connection) throw new Error("Google account is not connected");
-    const token = await accessToken(connection.encrypted_refresh_token);
+    const token =
+      scriptToken || (await accessToken(connection.encrypted_refresh_token));
     let folder = connection.folder_id;
     if (!folder) {
       const found = await google(
@@ -70,16 +118,20 @@ Deno.serve(async (req) => {
           : !job.head_office_route
       )
         continue;
+      if (
+        job.batch_key &&
+        book.completed_batch === job.batch_key &&
+        Number(book.synced_policy_version) === Number(book.row_version)
+      )
+        continue;
+      if (Date.now() > deadline - 25000) {
+        pending = true;
+        break;
+      }
       current = book.id;
       suspended = false;
       try {
         await fence();
-        if (
-          book.approved &&
-          book.spreadsheet_id &&
-          book.last_synced_revision >= job.revision
-        )
-          continue;
         if (!book.approved) {
           await rpc("book_status", { id: book.id, status: "Suspended" });
           continue;
@@ -116,19 +168,68 @@ Deno.serve(async (req) => {
             folder_id: folder,
           });
         }
-        const permissions = await google(
-          `https://www.googleapis.com/drive/v3/files/${sheet}/permissions?fields=permissions(type,role,emailAddress)`,
-          token,
-        );
-        if (
-          !sharingApproved(permissions.permissions || [], book.sharing_emails)
-        ) {
-          suspended = true;
-          await rpc("book_status", { id: book.id, status: "Suspended" });
-          throw new Error("Workbook sharing exceeds approval");
+        async function checkAccess() {
+          const file = await google(
+            `https://www.googleapis.com/drive/v3/files/${sheet}?fields=mimeType,trashed,owners(permissionId,emailAddress),appProperties`,
+            token,
+          );
+          if (
+            file.trashed ||
+            file.mimeType !== "application/vnd.google-apps.spreadsheet" ||
+            !file.owners?.some((owner: any) =>
+              connection.owner_permission_id
+                ? owner.permissionId === connection.owner_permission_id
+                : owner.emailAddress === connection.owner_email,
+            )
+          ) {
+            suspended = true;
+            await rpc("book_status", {
+              id: book.id,
+              status: "Suspended",
+              error_code: "ownership_mismatch",
+            });
+            throw new Error(
+              "The connected Google account must own this spreadsheet",
+            );
+          }
+          let pageToken: string | undefined;
+          let approvedSharing = true;
+          let sharingError = "unsafe_sharing";
+          do {
+            await fence();
+            const permissions = await google(
+              `https://www.googleapis.com/drive/v3/files/${sheet}/permissions?fields=permissions(type,role,emailAddress),nextPageToken&pageSize=100${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""}`,
+              token,
+            );
+            approvedSharing = sharingApproved(
+              permissions.permissions || [],
+              book.sharing_emails,
+            );
+            if (!approvedSharing) {
+              const unapproved = permissions.permissions.find(
+                (permission: any) =>
+                  !sharingApproved([permission], book.sharing_emails),
+              );
+              sharingError =
+                unapproved?.type === "user"
+                  ? "unapproved_user"
+                  : "unsafe_sharing";
+            }
+            pageToken = permissions.nextPageToken;
+          } while (approvedSharing && pageToken);
+          if (!approvedSharing) {
+            suspended = true;
+            await rpc("book_status", {
+              id: book.id,
+              status: "Suspended",
+              error_code: sharingError,
+            });
+            throw new Error("Workbook sharing exceeds approval");
+          }
+          return file;
         }
-        const snapshot = await rpc("snapshot", { id: book.id });
-        let meta = await google(
+        const file = await checkAccess();
+        let meta = await request(
           `https://sheets.googleapis.com/v4/spreadsheets/${sheet}?fields=sheets(properties)`,
           token,
         );
@@ -142,7 +243,7 @@ Deno.serve(async (req) => {
             !meta.sheets.some((s: any) => s.properties.title === title),
         );
         if (missing.length) {
-          await google(
+          await request(
             `https://sheets.googleapis.com/v4/spreadsheets/${sheet}:batchUpdate`,
             token,
             {
@@ -156,47 +257,53 @@ Deno.serve(async (req) => {
               }),
             },
           );
-          meta = await google(
+          meta = await request(
             `https://sheets.googleapis.com/v4/spreadsheets/${sheet}?fields=sheets(properties)`,
             token,
           );
         }
-        await fence();
-        // Recheck current approval after external reads, immediately before projection write.
-        const latest = (await rpc("workbooks")).find(
-          (b: any) => b.id === book.id,
-        );
-        if (!latest?.approved || latest.row_version !== book.row_version)
-          throw new Error("Workbook policy changed during sync");
-        await rpc("publish_guard", {
-          id: book.id,
-          schema_signature: snapshot.schema_signature,
-          row_version: book.row_version,
-        });
-        await google(
-          `https://sheets.googleapis.com/v4/spreadsheets/${sheet}:batchUpdate`,
+        const result = await syncWorkbook(
+          book,
+          job,
+          sheet,
           token,
-          {
-            method: "POST",
-            body: JSON.stringify({
-              requests: replacementRequests(
-                snapshotTabs(snapshot),
-                meta.sheets,
-              ),
-            }),
+          meta,
+          rpc,
+          fence,
+          deadline,
+          request,
+          async () => {
+            await fence();
+            await checkAccess();
+            await fence();
           },
         );
-        await google(
-          `https://www.googleapis.com/drive/v3/files/${sheet}`,
-          token,
-          { method: "PATCH", body: JSON.stringify({ name: book.name }) },
-        );
+        if (result.pending) {
+          pending = true;
+          await rpc("book_status", { id: book.id, status: "Syncing" });
+          continue;
+        }
+        if (file.appProperties?.eimt_scope === book.id)
+          await google(
+            `https://www.googleapis.com/drive/v3/files/${sheet}`,
+            token,
+            { method: "PATCH", body: JSON.stringify({ name: book.name }) },
+          );
         await rpc("book_status", {
           id: book.id,
           status: "Synced",
-          revision: snapshot.revision,
+          revision: Math.max(
+            Number(book.last_synced_revision || 0),
+            Number(job.revision),
+          ),
         });
-      } catch {
+        await rpc("sync_done", { ...result.guard, batch_key: job.batch_key });
+      } catch (error) {
+        if (error instanceof SyncBudgetReached) {
+          pending = true;
+          await rpc("book_status", { id: book.id, status: "Syncing" });
+          break;
+        }
         failed = true;
         if (!suspended)
           await rpc("book_status", { id: book.id, status: "Failed" }).catch(
@@ -209,8 +316,8 @@ Deno.serve(async (req) => {
       await rpc("retry", { token: job.token });
       return Response.json({ retryScheduled: true }, { status: 503 });
     }
-    await rpc("complete", { token: job.token });
-    return Response.json({ synced: true });
+    await rpc(pending ? "defer" : "complete", { token: job.token });
+    return Response.json({ synced: true, pending });
   } catch {
     if (current && !suspended)
       await rpc("book_status", { id: current, status: "Failed" }).catch(

@@ -21,3 +21,4 @@ supabase/.branches/
 .test-db/cache/
 .vite/
 .vercel/
+.gs/

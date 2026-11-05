@@ -14,7 +14,7 @@ const compiled = ts.transpileModule(
     },
   },
 ).outputText;
-async function callback(owner: string) {
+async function callback(owner: string, mode = "oauth") {
   const stored: any[] = [];
   let serve!: (request: Request) => Promise<Response>;
   runInNewContext(compiled, {
@@ -27,7 +27,10 @@ async function callback(owner: string) {
     crypto,
     AbortSignal,
     Deno: {
-      env: { get: () => "synthetic" },
+      env: {
+        get: (name: string) =>
+          name === "GOOGLE_SYNC_MODE" ? mode : "synthetic",
+      },
       serve: (fn: typeof serve) => (serve = fn),
     },
     createClient: () => ({
@@ -82,4 +85,9 @@ it("another legacy folder owner cannot replace the saved connection", async () =
   expect(response.status).toBe(400);
   expect(stored).toHaveLength(0);
   expect(await response.text()).not.toContain("synthetic-refresh");
+});
+it("disables the legacy OAuth callback in Apps Script mode", async () => {
+  const { response, stored } = await callback("original-owner", "apps_script");
+  expect(response.status).toBe(400);
+  expect(stored).toHaveLength(0);
 });

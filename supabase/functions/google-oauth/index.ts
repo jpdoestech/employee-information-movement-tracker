@@ -23,6 +23,13 @@ async function hash(value: string) {
 }
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("", { headers });
+  if (Deno.env.get("GOOGLE_SYNC_MODE") === "apps_script")
+    return new Response(
+      JSON.stringify({
+        error: "Connect through the owner-run Apps Script setup.",
+      }),
+      { status: 400, headers },
+    );
   try {
     const callback = new URL(req.url);
     if (req.method === "GET") {

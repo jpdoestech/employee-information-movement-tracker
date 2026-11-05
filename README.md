@@ -66,7 +66,7 @@ The default Address group provides Home Address, Current Address and emergency c
 
 ## Delivery and evidence
 
-Read [architecture](docs/architecture.md), [reference review](docs/design-reference.md), [deployment](docs/deployment.md), [Google synchronization](docs/google-sync.md), [security](docs/security.md), and [acceptance evidence](docs/acceptance.md).
+Read [architecture](docs/architecture.md), [reference review](docs/design-reference.md), [deployment](docs/deployment.md), [Apps Script setup](docs/apps-script-sync.md), [Google synchronization](docs/google-sync.md), [security](docs/security.md), and [acceptance evidence](docs/acceptance.md).
 
 The [Overview analytics and client staffing / PRF notes](docs/overview-analytics.md)
 define the metrics, access boundaries and additive migrations to apply before
@@ -76,7 +76,7 @@ The current [v1.8 review and remaining work](docs/requirements-status.md) distin
 
 The native workload defaults to 20 simultaneous users. For 50 on PowerShell, run `$env:TEST_CONCURRENCY_USERS='50'; npm run test:db`; remove that variable afterward with `Remove-Item Env:TEST_CONCURRENCY_USERS`. Bash equivalent: `TEST_CONCURRENCY_USERS=50 npm run test:db`. Values outside 20–50 are rejected. The generated database report includes transaction latencies, expected revision conflicts, unexpected errors, outbox backlog and worker claims. It makes no live Google requests and is not a production capacity guarantee.
 
-Local implementation is verified separately from deployment. A new Supabase project, Google OAuth consent/account, approved workbook policies and staging/production targets remain necessary for live verification. Reference databases are never connected. Obtain explicit approval before production SQL or deployment.
+Local implementation is verified separately from deployment. The tracker Supabase project, owner-authorized Apps Script, approved workbook policies and staging/production targets remain necessary for live verification. Reference databases are never connected. Obtain explicit approval before production SQL or deployment.
 
 All test source, runners, configurations and generated evidence are under `.test-db/`: `unit/`, `e2e/`, `scripts/`, `runs/`, `results/`, `reports/` and `cache/`. Source/configuration are tracked; generated database files, reports, traces and caches are ignored. Existing archived test databases in `.test-db/` are preserved.
 

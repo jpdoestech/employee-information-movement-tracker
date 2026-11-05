@@ -136,6 +136,15 @@ describe("secondary Google projections", () => {
     expect(JSON.stringify(a)).toContain("'=bad");
     expect(JSON.stringify(a)).not.toContain("formulaValue");
     expect(tabs[0].rows[0]).toContain("Renamed [name]");
+    const properties = a
+      .filter((request: any) => request.updateSheetProperties)
+      .map((request: any) => request.updateSheetProperties.properties);
+    expect(properties.map((sheet: any) => sheet.hidden)).toEqual([
+      false,
+      false,
+      false,
+      true,
+    ]);
     expect(tabs.find((tab) => tab.title === "Sync_Metadata")!.rows[1][0]).toBe(
       "Employee tracker",
     );

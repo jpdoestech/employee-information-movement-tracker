@@ -11,23 +11,29 @@ export async function testInputNormalization({
   id,
 }) {
   await test("case-selection migration handles Windows SQL editor line endings without changing function access", async () => {
+    // The original normalized dispatcher now lives behind the workbook-mapping wrapper.
+    const dispatcher =
+      "app_private.tracker_mutate_before_sheet_mapping(text,jsonb,uuid)";
     const acl = async () =>
       (
         await owner.query(
-          "select oid,proacl,prosecdef,proconfig from pg_proc where oid in ('public.tracker_mutate(text,jsonb,uuid)'::regprocedure,'app_private.combined_name(jsonb)'::regprocedure) order by oid",
+          "select oid,proacl,prosecdef,proconfig from pg_proc where oid in ('public.tracker_mutate(text,jsonb,uuid)'::regprocedure,$1::regprocedure,'app_private.combined_name(jsonb)'::regprocedure) order by oid",
+          [dispatcher],
         )
       ).rows;
     const before = await acl();
     await owner.query("begin");
     try {
       await owner.query(
-        await readFile(
-          new URL(
-            "../../supabase/migrations/20261023151031_employee_names_uppercase.sql",
-            import.meta.url,
-          ),
-          "utf8",
-        ),
+        (
+          await readFile(
+            new URL(
+              "../../supabase/migrations/20261023151031_employee_names_uppercase.sql",
+              import.meta.url,
+            ),
+            "utf8",
+          )
+        ).replaceAll("public.tracker_mutate(text,jsonb,uuid)", dispatcher),
       );
       const migration = await readFile(
         new URL(
@@ -36,7 +42,11 @@ export async function testInputNormalization({
         ),
         "utf8",
       );
-      await owner.query(migration.replace(/\r?\n/g, "\r\n"));
+      await owner.query(
+        migration
+          .replaceAll("public.tracker_mutate(text,jsonb,uuid)", dispatcher)
+          .replace(/\r?\n/g, "\r\n"),
+      );
       assert.equal(
         (
           await owner.query(

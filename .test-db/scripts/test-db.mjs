@@ -13,6 +13,9 @@ import { testEmergencyAddress } from "./test-emergency-address.mjs";
 import { testEmploymentRules } from "./test-employment-rules.mjs";
 import { testAuditFixes } from "./test-audit-fixes.mjs";
 import { testFunctionFixes } from "./test-function-fixes.mjs";
+import { testAppsScript } from "./test-apps-script.mjs";
+import { testIncrementalSync } from "./test-incremental-sync.mjs";
+import { testScopeEditor } from "./test-scope-editor.mjs";
 import { testEmployeePurge } from "./test-employee-purge.mjs";
 import { testEmployeeCategory } from "./test-employee-category.mjs";
 import { testInputNormalization } from "./test-input-normalization.mjs";
@@ -267,6 +270,12 @@ try {
     await testEmployeePurge({ owner, test, m, as, id });
   } else if (process.env.TEST_QUICK_FILTERS_ONLY === "true") {
     await testQuickFilters({ owner, test, as, q, m, id });
+  } else if (process.env.TEST_SCOPE_EDITOR_ONLY === "true") {
+    await testScopeEditor({ owner, test, m, q, as, id, today });
+  } else if (process.env.TEST_INCREMENTAL_SYNC_ONLY === "true") {
+    await testIncrementalSync({ owner, test, worker, as, id, today });
+  } else if (process.env.TEST_APPS_SCRIPT_ONLY === "true") {
+    await testAppsScript({ owner, test, worker, m, id });
   } else if (process.env.TEST_COLUMN_ONLY === "true") {
     await testColumnPreview({ owner, test, as, q, id });
   } else if (process.env.TEST_DERIVED_ONLY === "true") {
@@ -3398,6 +3407,7 @@ try {
   await testRegisterViews({ owner, test, as, q, id });
   await testAuditFixes({ owner, test, q, m, worker, revision, id });
   await testFunctionFixes({ owner, test, m, worker, id });
+  await testAppsScript({ owner, test, worker, m, id });
   await testEmployeeCategory({ owner, test, m, q, revision, id });
   await testParentInheritance({owner,test,m,q,as,id,revision});
   await testEmployeeImport({owner,test,m,q,as,id});
@@ -3412,6 +3422,8 @@ try {
   await testQuickFilters({ owner, test, as, q, m, id });
   await testColumnPreview({ owner, test, as, q, id });
   await testPermissionMatrix({ owner, test, m, q, as, id, revision });
+  await testIncrementalSync({ owner, test, worker, as, id, today });
+  await testScopeEditor({ owner, test, m, q, as, id, today });
   await testEmployeePurge({ owner, test, m, as, id });
   }
   await mkdir(".test-db/reports/verification", { recursive: true });

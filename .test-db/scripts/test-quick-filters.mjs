@@ -89,6 +89,9 @@ export async function testQuickFilters({ owner, test, as, m, id }) {
     );
   });
   await test("field choices use current authorized values, branch boundaries and source-field permissions", async () => {
+    const requiredDestination = (await owner.query(
+      "select 1 from public.field_definitions where key='destination_required' and active and required",
+    )).rowCount > 0;
     const first = await m(id.sa, "employee_create", {
       target_level: "branch",
       branch_id: id.b1,
@@ -105,6 +108,7 @@ export async function testQuickFilters({ owner, test, as, m, id }) {
         first_name: "OUTSIDE",
         last_name: "FILTER",
         department: "OTHER DEPT",
+        ...(requiredDestination ? { destination_required: "Synthetic destination" } : {}),
       },
     });
     const choices = await rpc(id.sa, "filter_values", {
