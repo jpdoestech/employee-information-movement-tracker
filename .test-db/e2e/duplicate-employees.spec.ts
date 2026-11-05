@@ -60,7 +60,7 @@ for (const [width, height] of [
     });
     await expect(review).toBeVisible();
     await expect(
-      review.getByText("Duplicate, Alexandria", { exact: true }),
+      review.getByText("DUPLICATE, ALEXANDRIA", { exact: true }),
     ).toBeVisible();
     for (const label of [
       "Branch",
@@ -89,7 +89,7 @@ for (const [width, height] of [
     await review.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(
       second.getByLabel("First Name *", { exact: true }),
-    ).toHaveValue("Alexandrie");
+    ).toHaveValue("ALEXANDRIE");
     await expect(
       page.getByRole("dialog", { name: "Create employee", exact: true }),
     ).toHaveCount(0);
@@ -201,7 +201,7 @@ test("bulk identity edits show duplicate review and cancellation preserves the w
     exact: true,
   });
   await expect(
-    review.getByText("BulkDuplicate, Sample", { exact: true }),
+    review.getByText("BULKDUPLICATE, SAMPLE", { exact: true }),
   ).toHaveCount(2);
   await review.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(
@@ -252,7 +252,7 @@ test("editing name parts reviews the new full name and retains the draft on canc
     .fill("DifferentSurname, Alexandria");
   await page
     .getByLabel("Scrollable employee table")
-    .getByRole("cell", { name: "DifferentSurname, Alexandria", exact: true })
+    .getByRole("cell", { name: "DIFFERENTSURNAME, ALEXANDRIA", exact: true })
     .click();
   const editor = page.getByRole("region", {
     name: "Employee profile",
@@ -270,11 +270,11 @@ test("editing name parts reviews the new full name and retains the draft on canc
     exact: true,
   });
   await expect(
-    review.getByText("Duplicate, Alexandria", { exact: true }),
+    review.getByText("DUPLICATE, ALEXANDRIA", { exact: true }),
   ).toBeVisible();
   await review.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(editor.getByLabel("Last Name", { exact: true })).toHaveValue(
-    "Duplicate",
+    "DUPLICATE",
   );
   await editor
     .getByRole("button", { name: "Save", exact: true })

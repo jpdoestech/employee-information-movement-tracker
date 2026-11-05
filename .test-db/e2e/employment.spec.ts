@@ -36,6 +36,7 @@ for (const width of [375, 1366]) {
       "client",
       "employee_category",
       "manpower_classification",
+      "prf_number",
       "department",
       "position",
       "date_hired",

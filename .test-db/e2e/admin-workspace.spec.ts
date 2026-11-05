@@ -123,7 +123,7 @@ for (const [width, height] of [
       path: `.test-db/reports/screenshots/definition-editor-${width}.png`,
     });
     await editor
-      .getByRole("button", { name: "Back to Employees", exact: true })
+      .getByRole("button", { name: "Close dialog", exact: true })
       .click();
     await page.goto("/#permissions");
     await page.getByRole("button", { name: "Add user", exact: true }).click();

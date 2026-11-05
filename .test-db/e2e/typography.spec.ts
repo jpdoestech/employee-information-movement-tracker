@@ -127,7 +127,7 @@ for (const [width, height] of [
     ]) {
       await page.goto(`/#${route}`);
       await page.getByRole("button", { name: button, exact: true }).click();
-      const modal = page.getByRole("dialog", { name: title, exact: true });
+      const modal = page.getByRole(title === "New employee" ? "region" : "dialog", { name: title, exact: true });
       await size(modal.locator("header h2"), "14px");
       await bounded(modal, width, height);
       if (title === "Customize Columns")
@@ -157,7 +157,7 @@ for (const [width, height] of [
         path: `.test-db/reports/verification/typography-${route}-${width}x${height}.png`,
       });
       await modal
-        .getByRole("button", { name: "Close dialog", exact: true })
+        .getByRole("button", { name: title === "New employee" ? "Back to Employees" : "Close dialog", exact: true })
         .click();
     }
   });

@@ -320,5 +320,7 @@ test("forms and full-screen dialog fit narrow viewport and reduced motion", asyn
     true,
   );
   await page.keyboard.press("Escape");
+  await expect(d).toBeVisible();
+  await d.getByRole("button", { name: "Back to Employees", exact: true }).click();
   await expect(d).toHaveCount(0);
 });

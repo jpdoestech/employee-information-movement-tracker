@@ -154,7 +154,7 @@ test("invalid columns block validation; closing preserves a file draft until dis
     dialog.getByRole("button", { name: "Validate import", exact: true }),
   ).toBeDisabled();
   await dialog
-    .getByRole("button", { name: "Back to Employees", exact: true })
+    .getByRole("button", { name: "Close dialog", exact: true })
     .click();
   const discard = page.getByRole("dialog", {
     name: "Discard unsaved changes?",
@@ -165,7 +165,7 @@ test("invalid columns block validation; closing preserves a file draft until dis
     .click();
   await expect(dialog).toContainText("bad.csv");
   await dialog
-    .getByRole("button", { name: "Back to Employees", exact: true })
+    .getByRole("button", { name: "Close dialog", exact: true })
     .click();
   await discard
     .getByRole("button", { name: "Discard changes", exact: true })

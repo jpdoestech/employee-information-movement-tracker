@@ -90,7 +90,7 @@ for (const theme of ["light", "dark"])
         .getByRole("button", { name: "Edit details", exact: true })
         .click();
       await editor
-        .getByLabel("Last Name", { exact: false })
+        .getByRole("textbox", { name: "Last Name", exact: true })
         .fill("Draft preserved");
       const chrome = await editor.locator(":scope > footer").boundingBox();
       await editor
@@ -100,7 +100,8 @@ for (const theme of ["light", "dark"])
         chrome!.y,
       );
       const bounds = await editor.boundingBox();
-      expect(bounds!.width).toBeLessThanOrEqual(Math.min(width, 880));
+      expect(bounds!.width).toBeLessThanOrEqual(width);
+      expect((await editor.getByRole("tabpanel").boundingBox())!.width).toBeLessThanOrEqual(1200);
       expect(bounds!.x).toBeGreaterThanOrEqual(0);
       expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height);
       await page.screenshot({
@@ -115,7 +116,7 @@ for (const theme of ["light", "dark"])
         .click();
       await expect(
         editor.getByRole("textbox", { name: "Last Name", exact: true }),
-      ).toHaveValue("Draft preserved");
+      ).toHaveValue("DRAFT PRESERVED");
     });
   }
 test("appearance and rail persist without resetting data or drafts", async ({

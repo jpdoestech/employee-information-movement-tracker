@@ -165,7 +165,7 @@ test("a configured sub-group follows its parent name in creation and editing", a
     }),
   ).toBeVisible();
   await expect(form.getByLabel("Daily rate", { exact: true })).toBeVisible();
-  await form.getByRole("button", { name: "Close dialog", exact: true }).click();
+  await form.getByRole("button", { name: "Back to Employees", exact: true }).click();
   await page.getByRole("button", { name: "EMP-0000002", exact: true }).click();
   const profile = page.getByRole("region", {
     name: "Employee profile",
@@ -301,7 +301,7 @@ test("assigning a parent group controls creation and overview placement", async 
       exact: true,
     }),
   ).toBeVisible();
-  await form.getByRole("button", { name: "Close dialog", exact: true }).click();
+  await form.getByRole("button", { name: "Back to Employees", exact: true }).click();
   await page.getByRole("button", { name: "EMP-0000002", exact: true }).click();
   const profile = page.getByRole("region", {
     name: "Employee profile",

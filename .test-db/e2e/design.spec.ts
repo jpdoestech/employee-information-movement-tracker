@@ -377,6 +377,7 @@ for (const width of [375, 1440]) {
       .getByRole("button", { name: "Save", exact: true })
       .click();
     const error = editor.locator(".floating-notification.error");
+    const editorBounds = await editor.boundingBox();
     await expect(error).toContainText("09");
     expect(await error.evaluate((el) => getComputedStyle(el).position)).toBe(
       "fixed",
@@ -384,7 +385,8 @@ for (const width of [375, 1440]) {
     const errorBounds = (await error.boundingBox())!;
     expect(errorBounds.x).toBeGreaterThanOrEqual(0);
     expect(errorBounds.x + errorBounds.width).toBeLessThanOrEqual(width);
-    expect(await table.boundingBox()).toEqual(before);
+    await expect(table).toBeHidden();
+    expect(await editor.boundingBox()).toEqual(editorBounds);
     await error.getByRole("button", { name: "Dismiss error" }).click();
     await editor.getByRole("button", { name: "Back to Employees" }).click();
     await page
@@ -437,7 +439,7 @@ for (const width of [375, 1440]) {
     await confirmation
       .getByRole("button", { name: "Cancel", exact: true })
       .click();
-    await expect(name).toHaveValue("employee");
+    await expect(name).toHaveValue("EMPLOYEE");
     await expect(
       page
         .getByLabel("Scrollable employee table")
@@ -453,7 +455,7 @@ for (const width of [375, 1440]) {
     await discard
       .getByRole("button", { name: "Continue editing", exact: true })
       .click();
-    await expect(name).toHaveValue("employee");
+    await expect(name).toHaveValue("EMPLOYEE");
     await editor
       .getByRole("button", { name: "Save", exact: true })
       .click();
@@ -464,7 +466,7 @@ for (const width of [375, 1440]) {
     await expect(
       page
         .getByLabel("Scrollable employee table")
-        .getByText("Reviewed, employee", { exact: true }),
+        .getByText("REVIEWED, EMPLOYEE", { exact: true }),
     ).toBeVisible();
     await page
       .getByRole("button", { name: "EMP-0000001", exact: true })
@@ -481,7 +483,7 @@ for (const width of [375, 1440]) {
     await expect(
       page
         .getByLabel("Scrollable employee table")
-        .getByText("Reviewed, employee", { exact: true }),
+        .getByText("REVIEWED, EMPLOYEE", { exact: true }),
     ).toBeVisible();
   });
 }

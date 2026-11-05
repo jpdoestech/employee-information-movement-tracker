@@ -3,10 +3,12 @@ test("signing out clears the previous email and password before switching accoun
   page,
 }) => {
   await page.goto("/");
-  const context = await page.evaluate(async () => {
+  const fixture = await page.evaluate(async () => {
     const path = "/src/demo.ts";
-    return (await import(path)).demoQuery("context");
+    const { demoQuery } = await import(path);
+    return { context: await demoQuery("context"), dashboard: await demoQuery("dashboard") };
   });
+  const { context } = fixture;
   const user = {
     id: "11111111-1111-4111-8111-111111111111",
     aud: "authenticated",
@@ -48,7 +50,7 @@ test("signing out clears the previous email and password before switching accoun
           : body.operation === "employees"
             ? { items: [], total: 0 }
             : body.operation === "dashboard"
-              ? { total: 0, statuses: {}, placements: {} }
+              ? fixture.dashboard
               : [],
     });
   });

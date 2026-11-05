@@ -2,10 +2,12 @@ import { test, expect, type Page } from "@playwright/test";
 
 async function connected(page: Page) {
   await page.goto("/");
-  const context = await page.evaluate(async () => {
+  const fixture = await page.evaluate(async () => {
     const path = "/src/demo.ts";
-    return (await import(path)).demoQuery("context");
+    const { demoQuery } = await import(path);
+    return { context: await demoQuery("context"), dashboard: await demoQuery("dashboard") };
   });
+  const { context } = fixture;
   const user = {
     id: "11111111-1111-4111-8111-111111111111",
     aud: "authenticated",
@@ -156,6 +158,9 @@ async function connected(page: Page) {
                 }
               : body.operation === "dashboard"
                 ? {
+                    ...fixture.dashboard,
+                    headcount: state.count,
+                    status_coverage: state.count,
                     total: state.count,
                     statuses: { Active: state.count },
                     placements: { "Head Office": state.count },
@@ -195,7 +200,7 @@ async function connected(page: Page) {
   await page.reload();
   await expect(page.getByText("Workspace", { exact: true })).toBeAttached();
   await page.goto("/#dashboard");
-  await expect(page.locator(".stats .stat strong").first()).toHaveText("1");
+  await expect(page.locator(".analytics-stats .stat strong").first()).toHaveText("1");
   return state;
 }
 
@@ -230,7 +235,7 @@ for (const editing of [false, true])
         exact: true,
       })
       .click();
-    const dialog = page.getByRole("dialog", {
+    const dialog = page.getByRole("region", {
       name: editing ? "Employee profile" : "New employee",
       exact: true,
     });
@@ -548,7 +553,7 @@ test("business-date refresh reloads employees, dashboard and movements without a
   state.day = "2026-10-24";
   state.count = 2;
   await page.clock.fastForward(31000);
-  await expect(page.locator(".stats .stat strong").first()).toHaveText("2");
+  await expect(page.locator(".analytics-stats .stat strong").first()).toHaveText("2");
   await page.goto("/#movements");
   await expect.poll(() => state.recordReads).toBeGreaterThan(0);
   const reads = state.recordReads;

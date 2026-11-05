@@ -90,8 +90,8 @@ for (const [width, height] of [
       .getByRole("option", { name: /Example Client/ })
       .first()
       .click();
-    await editor.getByLabel("Last Name", { exact: false }).fill("Manual");
-    await editor.getByLabel("First Name", { exact: false }).fill("Identity");
+    await editor.getByRole("textbox", { name: "Last Name *", exact: true }).fill("Manual");
+    await editor.getByRole("textbox", { name: "First Name *", exact: true }).fill("Identity");
     await editor
       .getByRole("tab", { name: "Employment Details", exact: true })
       .click();

@@ -21,7 +21,7 @@ for (const viewport of [
       expect(bounds).not.toBeNull();
       expect(bounds!.height).toBeGreaterThan(0);
       expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height);
-      await region.hover();
+      await region.hover({ position: { x: 4, y: 4 } });
       await page.mouse.wheel(0, 10000);
       await expect
         .poll(() =>
