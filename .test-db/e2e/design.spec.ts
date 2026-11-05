@@ -363,7 +363,7 @@ for (const width of [375, 1440]) {
       exact: true,
     });
     await trigger.click();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });
@@ -386,7 +386,7 @@ for (const width of [375, 1440]) {
     expect(errorBounds.x + errorBounds.width).toBeLessThanOrEqual(width);
     expect(await table.boundingBox()).toEqual(before);
     await error.getByRole("button", { name: "Dismiss error" }).click();
-    await editor.getByRole("button", { name: "Close dialog" }).click();
+    await editor.getByRole("button", { name: "Back to Employees" }).click();
     await page
       .getByRole("dialog", { name: "Discard unsaved changes?" })
       .getByRole("button", { name: "Discard changes", exact: true })
@@ -407,7 +407,7 @@ for (const width of [375, 1440]) {
     await page
       .getByRole("button", { name: "EMP-0000001", exact: true })
       .click();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });

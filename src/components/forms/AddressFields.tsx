@@ -316,7 +316,8 @@ function LocationSearch({
               ))
             )}
           </div>,
-          input.current?.closest("dialog") ?? document.body,
+          input.current?.closest("dialog, .employee-workspace") ??
+            document.body,
         )}
     </div>
   );

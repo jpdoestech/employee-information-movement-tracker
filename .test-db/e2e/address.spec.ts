@@ -8,7 +8,7 @@ async function editor(page: Page) {
   await page
     .getByRole("tab", { name: "Personal Information", exact: true })
     .click();
-  return page.getByRole("dialog", { name: "New employee", exact: true });
+  return page.getByRole("region", { name: "New employee", exact: true });
 }
 async function agdao(page: Page) {
   const home = page.getByRole("group", { name: "Home Address", exact: true });
@@ -91,8 +91,12 @@ test("unconfirmed typed text blocks saving and Escape closes only suggestions", 
   await dialog
     .getByRole("tab", { name: "Personal Information", exact: true })
     .click();
-  await dialog.getByLabel("First Name", { exact: false }).fill("Address Test");
-  await dialog.getByLabel("Last Name", { exact: false }).fill("Test");
+  await dialog
+    .getByRole("textbox", { name: /^First Name(?: \*)?$/ })
+    .fill("Address Test");
+  await dialog
+    .getByRole("textbox", { name: /^Last Name(?: \*)?$/ })
+    .fill("Test");
   await fillGovernmentIds(dialog);
   await dialog
     .getByRole("tab", { name: "Personal Information", exact: true })
@@ -151,9 +155,11 @@ test("addresses and emergency contact save through confirmation and edit existin
     .getByRole("tab", { name: "Personal Information", exact: true })
     .click();
   await dialog
-    .getByLabel("First Name", { exact: false })
+    .getByRole("textbox", { name: /^First Name(?: \*)?$/ })
     .fill("Address Saved Test");
-  await dialog.getByLabel("Last Name", { exact: false }).fill("Test");
+  await dialog
+    .getByRole("textbox", { name: /^Last Name(?: \*)?$/ })
+    .fill("Test");
   await fillGovernmentIds(dialog);
   await dialog
     .getByRole("tab", { name: "Personal Information", exact: true })
@@ -190,11 +196,11 @@ test("addresses and emergency contact save through confirmation and edit existin
     .fill("Address Saved Test");
   await page
     .getByRole("row")
-    .filter({ hasText: "Address Saved Test" })
+    .filter({ hasText: "ADDRESS SAVED TEST" })
     .getByRole("button")
     .first()
     .click();
-  const profile = page.getByRole("dialog", {
+  const profile = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });
@@ -232,10 +238,10 @@ for (const editing of [false, true])
       let dialog = await editor(page);
       if (editing) {
         await dialog
-          .getByRole("button", { name: "Close dialog", exact: true })
+          .getByRole("button", { name: "Back to Employees", exact: true })
           .click();
         await page.getByRole("button", { name: /^EMP-/ }).first().click();
-        dialog = page.getByRole("dialog", {
+        dialog = page.getByRole("region", {
           name: "Employee profile",
           exact: true,
         });
@@ -253,11 +259,13 @@ for (const editing of [false, true])
         exact: true,
       });
       await expect(list.getByRole("option")).toHaveCount(3);
+      let side: "above" | "below" | undefined;
       async function attached() {
         const anchor = (await input.boundingBox())!;
         const bounds = (await list.boundingBox())!;
+        side ??= bounds.y >= anchor.y + anchor.height ? "below" : "above";
         const gap =
-          width === 768
+          side === "below"
             ? bounds.y - anchor.y - anchor.height
             : anchor.y - bounds.y - bounds.height;
         expect(Math.abs(gap - 4)).toBeLessThanOrEqual(1);

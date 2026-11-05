@@ -12,7 +12,7 @@ for (const width of [375, 1366]) {
     await page
       .getByRole("button", { name: "Add employee", exact: true })
       .click();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "New employee",
       exact: true,
     });
@@ -121,7 +121,7 @@ test("typo correction keeps the draft on cancellation and creates no movement", 
   await page.getByRole("button", { name: "Explore synthetic demo" }).click();
   await page.goto("/#employees");
   await page.getByRole("button", { name: "EMP-0000002", exact: true }).click();
-  const editor = page.getByRole("dialog", {
+  const editor = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });

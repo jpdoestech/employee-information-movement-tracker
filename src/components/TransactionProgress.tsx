@@ -18,7 +18,10 @@ export function TransactionProgress() {
       "dialog[open]:not(.transaction-confirmation)",
     ),
   );
-  const host = dialogs.at(-1) || document.body;
+  const host =
+    dialogs.at(-1) ||
+    document.querySelector(".employee-workspace") ||
+    document.body;
   return createPortal(
     <FloatingNotification kind="loading">
       <strong>

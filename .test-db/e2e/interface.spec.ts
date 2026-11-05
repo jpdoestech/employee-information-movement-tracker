@@ -73,7 +73,7 @@ for (const height of [520, 768])
     await page
       .getByRole("button", { name: "Add employee", exact: true })
       .click();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "New employee",
       exact: true,
     });
@@ -114,7 +114,7 @@ test("single picker mixes clients with branches and applies IDs", async ({
 }) => {
   await enter(page);
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  const editor = page.getByRole("dialog", {
+  const editor = page.getByRole("region", {
     name: "New employee",
     exact: true,
   });
@@ -313,7 +313,7 @@ test("forms and full-screen dialog fit narrow viewport and reduced motion", asyn
       .getByRole("button", { name: "Close More filters", exact: true })
       .click();
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  const d = page.getByRole("dialog", { name: "New employee" });
+  const d = page.getByRole("region", { name: "New employee" });
   const box = await d.boundingBox();
   expect(box!.width).toBeLessThanOrEqual(320);
   expect(await d.evaluate((e) => e.scrollWidth <= e.clientWidth + 1)).toBe(

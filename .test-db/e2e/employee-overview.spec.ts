@@ -16,7 +16,7 @@ for (const [width, height] of [
     const open = () =>
       page.getByRole("button", { name: "EMP-0000002", exact: true }).click();
     await open();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });
@@ -83,7 +83,7 @@ for (const [width, height] of [
       path: `.test-db/reports/verification/overview-${width}x${height}.png`,
     });
     await editor
-      .getByRole("button", { name: "Close dialog", exact: true })
+      .getByRole("button", { name: "Back to Employees", exact: true })
       .click();
     const discard = page.getByRole("dialog", {
       name: "Discard unsaved changes?",
@@ -99,7 +99,7 @@ for (const [width, height] of [
       "overview@example.invalid",
     );
     await editor
-      .getByRole("button", { name: "Close dialog", exact: true })
+      .getByRole("button", { name: "Back to Employees", exact: true })
       .click();
     await discard
       .getByRole("button", { name: "Discard changes", exact: true })

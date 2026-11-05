@@ -17,7 +17,7 @@ for (const [width, height] of [
     await page
       .getByRole("button", { name: "Add employee", exact: true })
       .click();
-    const dialog = page.getByRole("dialog", {
+    const dialog = page.getByRole("region", {
       name: "New employee",
       exact: true,
     });
@@ -90,7 +90,7 @@ for (const [width, height] of [
       .filter({ hasText: "McDonald, Maria De La Peña Ph.D." });
     await expect(row).toBeVisible();
     await row.getByRole("button").first().click();
-    const profile = page.getByRole("dialog", {
+    const profile = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });

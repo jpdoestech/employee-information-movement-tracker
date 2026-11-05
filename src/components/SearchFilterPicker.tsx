@@ -411,7 +411,9 @@ export function SearchFilterPicker({
               </button>
             )}
           </div>,
-          surface?.target || anchor.current?.closest("dialog") || document.body,
+          surface?.target ||
+            anchor.current?.closest("dialog, .employee-workspace") ||
+            document.body,
         )}
     </div>
   );

@@ -82,7 +82,7 @@ for (const [width, height] of [
       await page
         .getByRole("button", { name: "Add employee", exact: true })
         .click();
-      const employee = page.getByRole("dialog", {
+      const employee = page.getByRole("region", {
         name: "New employee",
         exact: true,
       });

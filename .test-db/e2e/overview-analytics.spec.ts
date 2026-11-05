@@ -187,7 +187,7 @@ for (const [width, height] of [
     expect(clientBounds.y + clientBounds.height).toBeLessThanOrEqual(height);
     await page.keyboard.press("Escape");
     const close = editor.getByRole("button", {
-      name: "Close dialog",
+      name: "Back to Employees",
       exact: true,
     });
     await close.focus();
@@ -265,7 +265,7 @@ test("PRF confirmation cancellation keeps draft, saves once, updates fill rate a
   editor = page.getByRole("dialog", { name: "Edit staffing PRF", exact: true });
   await editor.getByLabel("Required headcount").fill("25");
   await editor
-    .getByRole("button", { name: "Close dialog", exact: true })
+    .getByRole("button", { name: "Back to Employees", exact: true })
     .click();
   const discard = page.getByRole("dialog", {
     name: "Discard unsaved changes?",

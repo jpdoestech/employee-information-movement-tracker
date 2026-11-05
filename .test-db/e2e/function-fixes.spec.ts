@@ -274,7 +274,7 @@ for (const editing of [false, true])
       dialog.getByRole("button", { name: "Clear Mobile", exact: true }),
     ).toBeDisabled();
     await expect(
-      dialog.getByRole("button", { name: "Close dialog", exact: true }),
+      dialog.getByRole("button", { name: "Back to Employees", exact: true }),
     ).toBeDisabled();
     await expect(
       dialog.getByRole("button", { name: "Cancel", exact: true }),
@@ -335,7 +335,7 @@ test("new employee waits for current organization permissions without flashing g
   });
   await page.goto("/#employees");
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  const dialog = page.getByRole("dialog", {
+  const dialog = page.getByRole("region", {
     name: "New employee",
     exact: true,
   });
@@ -404,7 +404,7 @@ test("a late organization response cannot replace the current selection's fields
   });
   await page.goto("/#employees");
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  const dialog = page.getByRole("dialog", {
+  const dialog = page.getByRole("region", {
     name: "New employee",
     exact: true,
   });
@@ -433,7 +433,7 @@ test("employee overview does not wait for history and history is reused only ins
   const state = await connected(page);
   await page.goto("/#employees");
   await page.getByRole("button", { name: "EMP-00001", exact: true }).click();
-  const dialog = page.getByRole("dialog", {
+  const dialog = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });
@@ -488,7 +488,7 @@ test("employee history invalidates on permission revision and retries reads with
   const state = await connected(page);
   await page.goto("/#employees");
   await page.getByRole("button", { name: "EMP-00001", exact: true }).click();
-  const dialog = page.getByRole("dialog", {
+  const dialog = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });

@@ -15,7 +15,7 @@ for (const [width, height] of [
     await page
       .getByRole("button", { name: "EMP-0000002", exact: true })
       .click();
-    const profile = page.getByRole("dialog", {
+    const profile = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });

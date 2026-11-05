@@ -6,7 +6,7 @@ test("new employees can save without Government IDs", async ({ page }) => {
   await page.getByRole("button", { name: "Explore synthetic demo" }).click();
   await page.goto("/#employees");
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  const editor = page.getByRole("dialog", {
+  const editor = page.getByRole("region", {
     name: "New employee",
     exact: true,
   });
@@ -21,9 +21,7 @@ test("new employees can save without Government IDs", async ({ page }) => {
   await expect(sss).toHaveAttribute("aria-invalid", "true");
   await sss.fill("");
   await expect(sss).not.toHaveAttribute("aria-invalid", "true");
-  await editor
-    .getByRole("button", { name: "Save", exact: true })
-    .click();
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
   await page
     .getByRole("dialog", { name: "Create employee", exact: true })
     .getByRole("button", { name: "Continue", exact: true })
@@ -36,10 +34,10 @@ test("new employees can save without Government IDs", async ({ page }) => {
     .getByLabel("Scrollable employee table")
     .locator("tbody tr")
     .first();
-  await expect(row).toContainText("Optional, Identifiers");
+  await expect(row).toContainText("OPTIONAL, IDENTIFIERS");
   for (const value of ["0912345678", ""]) {
     await row.locator("td.employee-name").click();
-    const profile = page.getByRole("dialog", {
+    const profile = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });
@@ -52,9 +50,7 @@ test("new employees can save without Government IDs", async ({ page }) => {
     });
     await expect(storedSss).toHaveValue(value ? "" : "09-1234567-8");
     await storedSss.fill(value);
-    await profile
-      .getByRole("button", { name: "Save", exact: true })
-      .click();
+    await profile.getByRole("button", { name: "Save", exact: true }).click();
     await page
       .getByRole("dialog", { name: "Save employee changes", exact: true })
       .getByRole("button", { name: "Continue", exact: true })
@@ -62,7 +58,7 @@ test("new employees can save without Government IDs", async ({ page }) => {
     await expect(profile).toHaveCount(0);
   }
   await row.locator("td.employee-name").click();
-  const profile = page.getByRole("dialog", {
+  const profile = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });
@@ -90,7 +86,7 @@ for (const [width, height] of [
     await page
       .getByRole("button", { name: "Add employee", exact: true })
       .click();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "New employee",
       exact: true,
     });
@@ -151,9 +147,7 @@ for (const [width, height] of [
     await editor
       .getByLabel("Remarks", { exact: true })
       .fill("Synthetic verification profile");
-    await editor
-      .getByRole("button", { name: "Save", exact: true })
-      .click();
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
     await page
       .getByRole("dialog", { name: "Create employee", exact: true })
       .getByRole("button", { name: "Cancel", exact: true })
@@ -165,18 +159,14 @@ for (const [width, height] of [
     const tin = editor.getByRole("textbox", { name: "BIR TIN", exact: true });
     await tin.fill("1234A");
     await expect(tin).toHaveAttribute("aria-invalid", "true");
-    await editor
-      .getByRole("button", { name: "Save", exact: true })
-      .click();
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
     await expect(
       page.getByRole("dialog", { name: "Create employee", exact: true }),
     ).toHaveCount(0);
     await tin.fill("012-345-678");
     await expect(tin).toHaveValue("012-345-678");
     await expect(tin).not.toHaveAttribute("aria-invalid", "true");
-    await editor
-      .getByRole("button", { name: "Save", exact: true })
-      .click();
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
     const confirm = page.getByRole("dialog", {
       name: "Create employee",
       exact: true,
@@ -189,9 +179,7 @@ for (const [width, height] of [
     await page.screenshot({
       path: `.test-db/reports/verification/profile-entries-${width}x${height}.png`,
     });
-    await editor
-      .getByRole("button", { name: "Save", exact: true })
-      .click();
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
     await confirm
       .getByRole("button", { name: "Continue", exact: true })
       .click();
@@ -203,9 +191,9 @@ for (const [width, height] of [
       .getByLabel("Scrollable employee table")
       .locator("tbody tr")
       .first();
-    await expect(savedRow).toContainText("Profile, Sample");
+    await expect(savedRow).toContainText("PROFILE, SAMPLE");
     await savedRow.locator("td.employee-name").click();
-    const profile = page.getByRole("dialog", {
+    const profile = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });

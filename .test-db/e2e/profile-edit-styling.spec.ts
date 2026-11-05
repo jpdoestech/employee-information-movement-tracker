@@ -25,7 +25,7 @@ for (const [width, height, font] of [
       .locator("tbody tr")
       .nth(1);
     await row.locator("td.employee-name").click();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });

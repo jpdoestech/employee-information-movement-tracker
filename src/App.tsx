@@ -60,6 +60,7 @@ import { SearchFilterPicker } from "./components/SearchFilterPicker";
 import { ColumnDesigner } from "./components/ColumnDesigner";
 import { ManagedColumnViewEditor } from "./components/ManagedRegisterViews";
 import { EmployeeEditor } from "./screens/EmployeeEditor";
+import type { EmployeeLeaveGuard } from "./components/EmployeeWorkspace";
 import { EmployeeImport } from "./screens/EmployeeImport";
 import { canImport } from "./employeeImport";
 import { applyRegisterView, managedRegisterView } from "./registerViews";
@@ -130,6 +131,42 @@ export default function App() {
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false);
   const loadedUser = useRef<string | null>(null);
+  const employeeLeaveGuard = useRef<EmployeeLeaveGuard["current"]>(null);
+  const acceptedHash = useRef(location.hash || "#dashboard");
+  const changingPage = useRef(false);
+  const register = useRef<HTMLElement>(null);
+  const registerScroll = useRef({ top: 0, left: 0 });
+  const employeeOpener = useRef<HTMLElement | null>(null);
+  function openEmployee(row: Employee | null) {
+    const table = register.current?.querySelector(".table-region");
+    registerScroll.current = {
+      top: table?.scrollTop || 0,
+      left: table?.scrollLeft || 0,
+    };
+    const active = document.activeElement as HTMLElement | null;
+    employeeOpener.current =
+      active && register.current?.contains(active)
+        ? active
+        : [
+            ...(register.current?.querySelectorAll<HTMLButtonElement>(
+              "button",
+            ) || []),
+          ].find(
+            (button) =>
+              row && button.textContent?.trim() === row.values.employee_number,
+          ) || null;
+    setEditing(row);
+    setDialog("employee");
+  }
+  function closeEmployee() {
+    setDialog(null);
+    requestAnimationFrame(() => {
+      const table = register.current?.querySelector(".table-region");
+      table?.scrollTo(registerScroll.current.left, registerScroll.current.top);
+      if (employeeOpener.current?.isConnected)
+        employeeOpener.current.focus({ preventScroll: true });
+    });
+  }
   const [editingColumnRule, setEditingColumnRule] =
     useState<RegisterView | null>(null);
   function clearRecovery() {
@@ -219,8 +256,28 @@ export default function App() {
   useEffect(() => {
     if (recoveryPending)
       sessionStorage.setItem("eimt-password-recovery", "true");
-    const change = () => {
-      setPage(location.hash.slice(1) || "dashboard");
+    const change = async () => {
+      const destination = location.hash || "#dashboard";
+      if (destination === acceptedHash.current) return;
+      if (employeeLeaveGuard.current) {
+        history.replaceState(history.state, "", acceptedHash.current);
+        if (changingPage.current) return;
+        changingPage.current = true;
+        try {
+          if (!(await employeeLeaveGuard.current())) {
+            history.replaceState(history.state, "", destination);
+            history.pushState(history.state, "", acceptedHash.current);
+            return;
+          }
+          employeeLeaveGuard.current = null;
+          setDialog(null);
+          history.replaceState(history.state, "", destination);
+        } finally {
+          changingPage.current = false;
+        }
+      }
+      acceptedHash.current = destination;
+      setPage(destination.slice(1));
       setMenu(false);
     };
     window.addEventListener("hashchange", change);
@@ -540,7 +597,39 @@ export default function App() {
       </div>
     );
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      onClickCapture={async (event) => {
+        const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>(
+          'a[href^="#"]',
+        );
+        const destination = anchor?.getAttribute("href");
+        if (
+          !employeeLeaveGuard.current ||
+          !destination ||
+          destination === "#main" ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey
+        )
+          return;
+        event.preventDefault();
+        if (changingPage.current) return;
+        setMenu(false);
+        changingPage.current = true;
+        try {
+          if (!(await employeeLeaveGuard.current())) return;
+          employeeLeaveGuard.current = null;
+          closeEmployee();
+          if (destination !== (location.hash || "#dashboard"))
+            location.hash = destination;
+          setMenu(false);
+        } finally {
+          changingPage.current = false;
+        }
+      }}
+    >
       <a className="skip" href="#main">
         Skip to content
       </a>
@@ -657,6 +746,11 @@ export default function App() {
             <button
               aria-label="Sign out"
               onClick={async () => {
+                if (
+                  employeeLeaveGuard.current &&
+                  !(await employeeLeaveGuard.current())
+                )
+                  return;
                 await supabase?.auth.signOut();
                 if (isDemo()) location.reload();
                 else setAuthenticated(false);
@@ -697,7 +791,12 @@ export default function App() {
             />
           )}
           {ctx && page === "employees" && (
-            <section className="panel register">
+            <section
+              ref={register}
+              className="panel register"
+              hidden={dialog === "employee"}
+              inert={dialog === "employee"}
+            >
               <FilterBar
                 actions={
                   <div className="actions">
@@ -751,8 +850,7 @@ export default function App() {
                         className="primary"
                         aria-label="Add employee"
                         onClick={() => {
-                          setEditing(null);
-                          setDialog("employee");
+                          openEmployee(null);
                         }}
                       >
                         <Plus size={16} />
@@ -869,8 +967,7 @@ export default function App() {
                 selected={selected}
                 onSelect={setSelected}
                 onOpen={(r) => {
-                  setEditing(r);
-                  setDialog("employee");
+                  openEmployee(r);
                 }}
                 onSort={(key) =>
                   setFilter({
@@ -1004,6 +1101,16 @@ export default function App() {
               </p>
             </section>
           )}
+          {ctx && page === "employees" && dialog === "employee" && (
+            <EmployeeEditor
+              row={editing}
+              context={ctx}
+              options={options}
+              leaveGuard={employeeLeaveGuard}
+              onClose={closeEmployee}
+              onSaved={refresh}
+            />
+          )}
         </main>
         <footer className="workspace-footer">
           <span className="footer-title">
@@ -1039,15 +1146,6 @@ export default function App() {
             }}
           />
         ))}
-      {ctx && dialog === "employee" && (
-        <EmployeeEditor
-          row={editing}
-          context={ctx}
-          options={options}
-          onClose={() => setDialog(null)}
-          onSaved={refresh}
-        />
-      )}
       {ctx && dialog === "import" && canImport(ctx) && (
         <EmployeeImport
           context={ctx}

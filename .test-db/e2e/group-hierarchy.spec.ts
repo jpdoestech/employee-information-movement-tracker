@@ -15,7 +15,7 @@ for (const [width, height] of [
     await page
       .getByRole("button", { name: "EMP-0000002", exact: true })
       .click();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });
@@ -99,7 +99,7 @@ for (const [width, height] of [
       path: `.test-db/reports/verification/group-hierarchy-${width}x${height}.png`,
     });
     await editor
-      .getByRole("button", { name: "Close dialog", exact: true })
+      .getByRole("button", { name: "Back to Employees", exact: true })
       .click();
     await discard
       .getByRole("button", { name: "Discard changes", exact: true })
@@ -154,7 +154,7 @@ test("a configured sub-group follows its parent name in creation and editing", a
     .click();
   await page.goto("/#employees");
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  const form = page.getByRole("dialog", { name: "New employee", exact: true });
+  const form = page.getByRole("region", { name: "New employee", exact: true });
   await form
     .getByRole("tab", { name: "Employment Details", exact: true })
     .click();
@@ -167,7 +167,7 @@ test("a configured sub-group follows its parent name in creation and editing", a
   await expect(form.getByLabel("Daily rate", { exact: true })).toBeVisible();
   await form.getByRole("button", { name: "Close dialog", exact: true }).click();
   await page.getByRole("button", { name: "EMP-0000002", exact: true }).click();
-  const profile = page.getByRole("dialog", {
+  const profile = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });
@@ -186,7 +186,7 @@ test("unresolved address drafts survive Overview and expansion to all details wi
   await page.getByRole("button", { name: "Explore synthetic demo" }).click();
   await page.goto("/#employees");
   await page.getByRole("button", { name: "EMP-0000002", exact: true }).click();
-  const editor = page.getByRole("dialog", {
+  const editor = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });
@@ -198,7 +198,7 @@ test("unresolved address drafts survive Overview and expansion to all details wi
     .getByLabel("City / municipality", { exact: true })
     .fill("Unconfirmed place");
   await editor
-    .getByRole("button", { name: "Close dialog", exact: true })
+    .getByRole("button", { name: "Back to Employees", exact: true })
     .click();
   const discard = page.getByRole("dialog", {
     name: "Discard unsaved changes?",
@@ -287,7 +287,7 @@ test("assigning a parent group controls creation and overview placement", async 
     .click();
   await page.goto("/#employees");
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  const form = page.getByRole("dialog", { name: "New employee", exact: true });
+  const form = page.getByRole("region", { name: "New employee", exact: true });
   await expect(form.getByRole("tab")).toHaveText([
     "Personal Information",
     "Employment Details",
@@ -303,7 +303,7 @@ test("assigning a parent group controls creation and overview placement", async 
   ).toBeVisible();
   await form.getByRole("button", { name: "Close dialog", exact: true }).click();
   await page.getByRole("button", { name: "EMP-0000002", exact: true }).click();
-  const profile = page.getByRole("dialog", {
+  const profile = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });

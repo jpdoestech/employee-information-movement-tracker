@@ -11,7 +11,7 @@ for (const width of [375, 1366])
     await page
       .getByRole("button", { name: "Add employee", exact: true })
       .click();
-    const dialog = page.getByRole("dialog", {
+    const dialog = page.getByRole("region", {
       name: "New employee",
       exact: true,
     });
@@ -85,7 +85,7 @@ for (const width of [375, 1366])
       .filter({ hasText: "DE LA CRUZ, ANA MARIA" });
     await expect(row).toContainText("Admin");
     await row.getByRole("button").first().click();
-    const profile = page.getByRole("dialog", {
+    const profile = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });

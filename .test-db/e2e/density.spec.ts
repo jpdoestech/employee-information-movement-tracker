@@ -131,7 +131,7 @@ test("slow transaction feedback disappears after three seconds without cancellin
 }) => {
   await enter(page);
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  const editor = page.getByRole("dialog", {
+  const editor = page.getByRole("region", {
     name: "New employee",
     exact: true,
   });

@@ -5,7 +5,7 @@ async function start(page: Page) {
   await page.getByRole("button", { name: "Explore synthetic demo" }).click();
   await page.goto("/#employees");
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  return page.getByRole("dialog", { name: "New employee", exact: true });
+  return page.getByRole("region", { name: "New employee", exact: true });
 }
 test("separate name fields require first and last, preserve tab drafts, and save a combined identity", async ({
   page,
@@ -59,7 +59,7 @@ test("separate name fields require first and last, preserve tab drafts, and save
   const row = page.getByRole("row").filter({ hasText: "CRUZ, ANA MARIA JR." });
   await expect(row).toHaveCount(1);
   await row.getByRole("button").first().click();
-  const profile = page.getByRole("dialog", {
+  const profile = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });
@@ -144,7 +144,7 @@ test("Superadmin configures standalone tabs while child tabs follow their parent
   await confirm.getByRole("button", { name: "Continue", exact: true }).click();
   await page.goto("/#employees");
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  const editor = page.getByRole("dialog", {
+  const editor = page.getByRole("region", {
     name: "New employee",
     exact: true,
   });
@@ -210,7 +210,7 @@ for (const [width, height] of [
       path: `.test-db/reports/verification/employee-form-${width}x${height}.png`,
     });
     await editor
-      .getByRole("button", { name: "Close dialog", exact: true })
+      .getByRole("button", { name: "Back to Employees", exact: true })
       .click();
     await page
       .getByRole("button", { name: "Continue editing", exact: true })

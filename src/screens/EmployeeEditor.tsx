@@ -62,6 +62,10 @@ import type { NameCase } from "../inputNormalization";
 import { displayFieldValue } from "../fieldValues";
 import { governmentIdError, requiredForEdit } from "../governmentIds";
 import { Dialog } from "../components/Dialog";
+import {
+  EmployeeWorkspace,
+  type EmployeeLeaveGuard,
+} from "../components/EmployeeWorkspace";
 import { ValueEditor } from "../components/ValueEditor";
 import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import { query, mutate } from "../api";
@@ -72,12 +76,14 @@ export function EmployeeEditor({
   options,
   onClose,
   onSaved,
+  leaveGuard,
 }: {
   row: Employee | null;
   context: Context;
   options: Option[];
   onClose: () => void;
   onSaved: () => void;
+  leaveGuard?: EmployeeLeaveGuard;
 }) {
   const tabId = useId();
   const body = useRef<HTMLDivElement>(null);
@@ -681,18 +687,19 @@ export function EmployeeEditor({
   }
   return (
     <>
-      <Dialog
-        title={row ? "Employee profile" : "New employee"}
-        onClose={onClose}
-        wide
-        closeDisabled={busy}
-        isDirty={
+      <EmployeeWorkspace
+        label={row ? "Employee profile" : "New employee"}
+        title={
           row
-            ? Object.keys(changed).length > 0 ||
-              Object.values(addressValid).includes(false)
-            : undefined
+            ? editingOverview
+              ? "Edit employee"
+              : "Employee profile"
+            : "New employee"
         }
-        className="employee-dialog employee-edit-dialog"
+        onClose={onClose}
+        busy={busy}
+        dirty={dirtyDraft.current || !!manualId || (!row && !!target)}
+        leaveGuard={leaveGuard}
       >
         <div className="employee-editor-summary">
           {row && (
@@ -723,7 +730,7 @@ export function EmployeeEditor({
                 revise it.
               </p>
             )}
-          {row && detail && editable.length > 0 && (
+          {row && detail && editable.length > 0 && !editingOverview && (
             <div className="employee-profile-controls">
               <button type="button" onClick={() => startEdit()}>
                 <Pencil size={14} aria-hidden="true" />
@@ -742,7 +749,7 @@ export function EmployeeEditor({
             />
           )}
           {!row && !targetSettled && (
-            <p className="muted" role="status">
+            <p className="sr-only" role="status">
               Checking fields for the selected organization…
             </p>
           )}
@@ -1330,6 +1337,7 @@ export function EmployeeEditor({
           {row && context.capabilities.includes("employee_delete") && (
             <button
               className="danger"
+              aria-label="Archive employee"
               disabled={busy}
               onClick={async () => {
                 try {
@@ -1360,7 +1368,7 @@ export function EmployeeEditor({
                 }
               }}
             >
-              Archive employee
+              Archive
             </button>
           )}
           <button disabled={busy} onClick={onClose}>
@@ -1380,7 +1388,7 @@ export function EmployeeEditor({
             {busy ? "Saving…" : "Save"}
           </button>
         </footer>
-      </Dialog>
+      </EmployeeWorkspace>
       {changeChoice && (
         <Dialog
           title="Classify employment changes"

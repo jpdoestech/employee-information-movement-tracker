@@ -55,7 +55,7 @@ for (const [width, height] of [
     await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(editor).toContainText("3 of 5 selected");
     await editor
-      .getByRole("button", { name: "Close dialog", exact: true })
+      .getByRole("button", { name: "Back to Employees", exact: true })
       .click();
     const discard = page.getByRole("dialog", {
       name: "Discard unsaved changes?",

@@ -127,7 +127,7 @@ for (const [width, height] of [
       dialog.getByLabel("New password", { exact: true }),
     ).toHaveAttribute("type", "text");
     await dialog
-      .getByRole("button", { name: "Close dialog", exact: true })
+      .getByRole("button", { name: "Back to Employees", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Discard unsaved changes?", exact: true })

@@ -11,7 +11,7 @@ test("background refresh preserves the draft revision until explicit conflict re
 }) => {
   await enter(page);
   await page.getByRole("button", { name: "EMP-0000002", exact: true }).click();
-  const editor = page.getByRole("dialog", {
+  const editor = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });

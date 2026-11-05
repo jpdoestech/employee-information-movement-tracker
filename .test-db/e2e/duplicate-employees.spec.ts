@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { fillGovernmentIds } from "./profile-fixtures";
 async function entry(page: Page, first: string) {
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  const editor = page.getByRole("dialog", {
+  const editor = page.getByRole("region", {
     name: "New employee",
     exact: true,
   });
@@ -254,7 +254,7 @@ test("editing name parts reviews the new full name and retains the draft on canc
     .getByLabel("Scrollable employee table")
     .getByRole("cell", { name: "DifferentSurname, Alexandria", exact: true })
     .click();
-  const editor = page.getByRole("dialog", {
+  const editor = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });

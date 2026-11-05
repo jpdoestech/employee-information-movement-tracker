@@ -46,7 +46,7 @@ for (const width of [375, 1366]) {
     await page
       .getByRole("button", { name: "Add employee", exact: true })
       .click();
-    const form = page.getByRole("dialog", {
+    const form = page.getByRole("region", {
       name: "New employee",
       exact: true,
     });
@@ -104,7 +104,7 @@ for (const width of [375, 1366]) {
       .first();
     await expect(row).toContainText("NUMERIC, SAMPLE");
     await row.locator("td.employee-name").click();
-    const profile = page.getByRole("dialog", {
+    const profile = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });
@@ -120,7 +120,7 @@ for (const width of [375, 1366]) {
       .click();
     await expect(existing).toHaveValue("");
     await profile
-      .getByRole("button", { name: "Close dialog", exact: true })
+      .getByRole("button", { name: "Back to Employees", exact: true })
       .click();
     await page
       .getByRole("dialog", { name: "Discard unsaved changes?", exact: true })

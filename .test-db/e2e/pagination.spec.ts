@@ -19,7 +19,7 @@ test("archiving the last page returns to the last valid page with correct ordina
   }
   for (let remaining = 34; remaining > 30; remaining--) {
     await table.locator("tbody tr").first().getByRole("button").click();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });

@@ -82,7 +82,7 @@ for (const theme of ["light", "dark"])
       await page
         .getByRole("button", { name: "EMP-0000002", exact: true })
         .click();
-      const editor = page.getByRole("dialog", {
+      const editor = page.getByRole("region", {
         name: "Employee profile",
         exact: true,
       });
@@ -106,7 +106,7 @@ for (const theme of ["light", "dark"])
       await page.screenshot({
         path: `.test-db/reports/verification/ams-${theme}-${width}.png`,
       });
-      await editor.getByRole("button", { name: "Close dialog" }).click();
+      await editor.getByRole("button", { name: "Back to Employees" }).click();
       const discard = page.getByRole("dialog", {
         name: "Discard unsaved changes?",
       });

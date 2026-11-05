@@ -22,7 +22,7 @@ test("renaming a standalone group updates its form tab and section", async ({
   await expect(group).toHaveCount(0);
   await page.goto("/#employees");
   await page.getByRole("button", { name: "Add employee", exact: true }).click();
-  const employee = page.getByRole("dialog", {
+  const employee = page.getByRole("region", {
     name: "New employee",
     exact: true,
   });

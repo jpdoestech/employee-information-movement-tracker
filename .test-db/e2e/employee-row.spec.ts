@@ -13,7 +13,7 @@ for (const width of [375, 1366]) {
       .locator("tbody tr")
       .first();
     await expect(row).toBeVisible();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });
@@ -34,7 +34,7 @@ for (const width of [375, 1366]) {
         editor.locator(".employee-identity-strip strong"),
       ).toHaveText("Synthetic Employee 01");
       await editor
-        .getByRole("button", { name: "Close dialog", exact: true })
+        .getByRole("button", { name: "Back to Employees", exact: true })
         .click();
       await expect(editor).toHaveCount(0);
     }

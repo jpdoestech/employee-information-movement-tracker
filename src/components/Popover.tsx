@@ -188,7 +188,8 @@ export function Popover({
               </PickerSurface.Provider>
             </div>
           </>,
-          anchor.current?.closest("dialog") || document.body,
+          anchor.current?.closest("dialog, .employee-workspace") ||
+            document.body,
         )}
     </>
   );

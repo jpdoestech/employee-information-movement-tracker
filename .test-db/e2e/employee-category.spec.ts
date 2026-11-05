@@ -7,7 +7,7 @@ test("category edits do not require filling unrelated legacy inactive employment
   await page.getByRole("button", { name: "Explore synthetic demo" }).click();
   await page.goto("/#employees");
   await page.getByRole("button", { name: "EMP-0000001", exact: true }).click();
-  const editor = page.getByRole("dialog", {
+  const editor = page.getByRole("region", {
     name: "Employee profile",
     exact: true,
   });
@@ -21,9 +21,7 @@ test("category edits do not require filling unrelated legacy inactive employment
     .getByRole("dialog", { name: "Employee Category options", exact: true })
     .getByRole("option", { name: "Admin", exact: true })
     .click();
-  await editor
-    .getByRole("button", { name: "Save", exact: true })
-    .click();
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
   await page
     .getByRole("dialog", { name: "Save employee changes", exact: true })
     .getByRole("button", { name: "Continue", exact: true })
@@ -43,7 +41,7 @@ for (const [width, height, organization, category] of [
   [1366, 768, "Head Office", "Admin"],
   [812, 375, "Example Client", "Agency"],
 ] as const) {
-  test(`editable ${category} category at ${organization} fits ${width}x${height}`, async ({
+  test(`automatic ${category} category at ${organization} fits ${width}x${height}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height });
@@ -54,7 +52,7 @@ for (const [width, height, organization, category] of [
     await page
       .getByRole("button", { name: "Add employee", exact: true })
       .click();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "New employee",
       exact: true,
     });
@@ -79,37 +77,24 @@ for (const [width, height, organization, category] of [
     await editor
       .getByRole("tab", { name: "Employment Details", exact: true })
       .click();
-    await editor
-      .getByRole("button", { name: "Employee Category", exact: true })
-      .click();
-    const picker = page.getByRole("dialog", {
-      name: "Employee Category options",
-      exact: true,
-    });
+    const automaticCategory = editor.locator(
+      '[data-field="employee_category"] output',
+    );
+    await expect(automaticCategory).toHaveText(category);
     await expect(
-      picker.getByRole("option", { name: "Admin", exact: true }),
-    ).toBeVisible();
-    await expect(
-      picker.getByRole("option", { name: "Agency", exact: true }),
-    ).toBeVisible();
+      editor.getByRole("button", { name: "Employee Category", exact: true }),
+    ).toHaveCount(0);
     await page.screenshot({
       path: `.test-db/reports/release/employee-category-picker-${width}x${height}.png`,
     });
-    await picker.getByRole("option", { name: category, exact: true }).click();
-    await editor
-      .getByRole("button", { name: "Save", exact: true })
-      .click();
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
     const confirm = page.getByRole("dialog", {
       name: "Create employee",
       exact: true,
     });
     await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
-    await expect(
-      editor.getByRole("button", { name: "Employee Category", exact: true }),
-    ).toContainText(category);
-    await editor
-      .getByRole("button", { name: "Save", exact: true })
-      .click();
+    await expect(automaticCategory).toHaveText(category);
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
     await confirm
       .getByRole("button", { name: "Continue", exact: true })
       .click();

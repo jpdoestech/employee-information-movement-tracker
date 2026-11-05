@@ -16,7 +16,7 @@ for (const viewport of [
     await page.goto("/#employees");
     const table = page.getByLabel("Scrollable employee table");
     await table.locator("tbody tr").first().getByRole("button").click();
-    const editor = page.getByRole("dialog", {
+    const editor = page.getByRole("region", {
       name: "Employee profile",
       exact: true,
     });
