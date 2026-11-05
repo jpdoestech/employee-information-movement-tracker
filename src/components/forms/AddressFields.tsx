@@ -35,6 +35,7 @@ const cityOptions = cities.map((c) => ({
     regions.find((r) => r.code === c.regionCode)?.name,
 }));
 function LocationSearch({
+  className = "",
   label,
   value,
   options,
@@ -51,6 +52,7 @@ function LocationSearch({
   onClear,
   validity,
 }: {
+  className?: string;
   label: string;
   value: string;
   options: Option[];
@@ -154,7 +156,7 @@ function LocationSearch({
   }
   const help = `Choose a ${label.toLowerCase()} from the official list.`;
   return (
-    <div className="address-control">
+    <div className={`address-control ${className}`}>
       <label htmlFor={id}>
         {label}
         {required ? " *" : ""}
@@ -477,6 +479,7 @@ export function AddressFields({
       )}
       {(rights.province.visible || rights.city_municipality.visible) && (
         <LocationSearch
+          className="address-region"
           label="Region"
           value={region?.name ?? ""}
           reset={resets.region ?? 0}

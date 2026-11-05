@@ -3784,7 +3784,16 @@ dialog.employee-dialog[open] {
   max-width: 24ch;
 }
 .address-postal > input {
-  max-width: 20ch;
+  max-width: 14ch;
+}
+@media (min-width: 1000px) {
+  .address-grid {
+    grid-template-columns: repeat(20, minmax(0, 1fr));
+  }
+  .address-grid > * { grid-column: span 6; }
+  .address-grid > .address-street,
+  .address-grid > .address-region { grid-column: span 10; }
+  .address-grid > .address-postal { grid-column: span 2; }
 }
 .dialog-body .form-grid > div:has(textarea) {
   grid-column: 1 / -1;
