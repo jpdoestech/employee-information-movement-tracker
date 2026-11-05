@@ -53,7 +53,10 @@ Generated screenshots: `unified-dashboard-desktop.png`, `unified-dashboard-mobil
 | UI-04 | [#7](https://github.com/jpdoestech/employee-information-movement-tracker/pull/7) |
 | UI-05 | [#8](https://github.com/jpdoestech/employee-information-movement-tracker/pull/8) |
 | UI-06 | [#9](https://github.com/jpdoestech/employee-information-movement-tracker/pull/9) |
+| UI-07 | [#10](https://github.com/jpdoestech/employee-information-movement-tracker/pull/10) |
 
 Physical devices/screen readers and complete WCAG certification are not claimed. Database migrations, RPC/RLS rules, API/data shapes and dependencies remain unchanged throughout modernization. The only shared runtime extraction is the existing timestamp formatter, with invalid-date handling and timezone tests.
 
 Release verification uses the production build, 177 unit tests, 172 disposable PostgreSQL checks, and the full browser suite with a targeted rerun of the calculated-column cases. The browser suite passed 354 of 355 on its first run. The remaining case assumed the prior sort had reset. The updated assertion checks both the displayed direction and the corresponding row order. Local REST testing requires a disposable Supabase stack and is covered by the separate GitHub Actions job.
+
+Production release on 2026-11-06 in Manila uses commit `46f96e2`. Vercel reported Ready and assigned the production domain. The live sign-in screen rendered and the production assets included the new mobile navigation and expected backend project. Signed-in workflows were verified in the automated suite. [Live tracker](https://strellas-employees.vercel.app/) · [Deployment](https://vercel.com/strellasdrive-5187/strellas-employees/9kg1AYnb2txNxiv9EDreNKchqFFW)
