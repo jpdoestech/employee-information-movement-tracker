@@ -1,5 +1,7 @@
 # UI-00 — audit and representative dashboard
 
+Historical audit: the user approved this direction and requested completion of the remaining phases. See [implementation log](08_IMPLEMENTATION_LOG.md) for current code, review links and verification. The original prototype/tests are preserved in PR #2; current verification uses the integrated application and `unified-interface.spec.ts`, not the old proposal configuration described below.
+
 Status: ready for design review; UI-01 has not started. Baseline: `f5ea0b5e70853d15e9198e6bb77b6fd9305ee51b`, branch `codex/standalone-tracker`, verified against origin on 2026-11-05 (Asia/Manila). No newer remote commits were present.
 
 The master prompt limits this phase to audit/documentation. The additional visual-fidelity requirement also requests representative desktop/mobile dashboards before the wider redesign. An isolated review harness satisfies both: it imports the current `App`, analytics, pickers, PRF dialog and demo dataset, with a separate proposal stylesheet. No `src/`, public assets, dependencies, database code, migrations or production configuration are changed. No production deployment is part of UI-00.

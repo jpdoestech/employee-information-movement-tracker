@@ -43,7 +43,7 @@ for (const width of [375, 1440]) {
       .click();
     await expect(table.locator("tbody tr")).toHaveCount(25);
     if (width > 760) {
-      expect((await page.locator(".sidebar").boundingBox())!.width).toBe(60);
+      expect((await page.locator(".sidebar").boundingBox())!.width).toBe(208);
       await expect(
         page.getByRole("navigation", { name: "Breadcrumb" }),
       ).toBeVisible();

@@ -40,3 +40,20 @@ Apply the same reviewed tokens and shared primitives to Employees, Movements, PR
 Commands: `npm run build`, `npm test`, and `npx playwright test --config .test-db/playwright.config.ts design-system.spec.ts appearance.spec.ts typography.spec.ts toolbar-ux.spec.ts`. The five new checks were rerun independently with `design-system.spec.ts`; no runtime edit was required after the existing 29 checks passed. Coverage includes reduced motion, local fonts, light/dark text and editable-border contrast, stable filled search focus, visible keyboard focus, picker bounds, draft cancellation, stationary footers, scroll bounds and a coarse-pointer tablet. Existing unit/browser tests remain unchanged.
 
 This phase does not certify all screen contrast or production RBAC. Native/REST database suites and physical-device/screen-reader checks were not rerun for CSS-only changes. Existing build notices about chunk size and mixed static/dynamic API imports remain outside UI-01.
+
+## UI-02 through UI-07 acceptance
+
+- [x] Desktop starts with labelled navigation and honors saved collapsed preferences.
+- [x] Bottom navigation and drawer share the existing authorized destination catalog, route handling and draft guard.
+- [x] Mobile controls remain at least 44px; bottom safe areas do not obscure forms or pagination. Short landscape uses a compact bar and omits the informational footer.
+- [x] Register sorting, pagination, frozen columns, column settings and managed/personal view behavior remain implemented by the original secured components.
+- [x] Employee view/add/edit/history preserve dynamic fields, addresses, name casing, masking, applicability, scope and confirmations.
+- [x] Administration retains all matrix actions and permission sources; the new state legend stays inside existing help disclosures.
+- [x] All six dashboard metrics and five breakdowns remain; desktop/mobile compositions follow the approved visual target.
+- [x] Movements, PRF assignments, sync and audit workflows keep existing API and mutation boundaries.
+- [x] UI-00 prototype CSS/DOM navigation scaffolding is removed; the isolated preview renders the actual application.
+- [x] Final dashboard and module screenshots rendered at desktop/phone sizes, with dashboard bounds checked at nine viewport sizes.
+- [x] Full browser suite and targeted sort rerun cover all 355 cases. All 177 unit tests and 172 disposable PostgreSQL checks passed.
+- [ ] Final phase/release PR and deployment evidence recorded.
+
+Physical iOS/Android devices, screen-reader operation, 200% browser zoom and complete WCAG certification are not claimed by the automated viewport checks. These remain explicitly reported limitations, not missing application modules.

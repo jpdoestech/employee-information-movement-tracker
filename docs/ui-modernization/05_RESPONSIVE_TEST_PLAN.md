@@ -1,5 +1,7 @@
 # UI-00 — responsive and accessibility verification
 
+UI-07 update: run `npm run test:e2e` for the complete browser suite or `npx playwright test --config .test-db/playwright.config.ts unified-interface.spec.ts unified-navigation.spec.ts design-system.spec.ts` for the integrated design checks. The original UI-00 proposal configuration and duplicated navigation bridge were removed after implementation; the historical checks below describe the approved audit baseline. Final screenshots use the `unified-` prefix in the same report directory.
+
 Focused command: `npx playwright test --config .test-db/ui-modernization/playwright.config.ts`.
 
 | Viewport | Purpose |

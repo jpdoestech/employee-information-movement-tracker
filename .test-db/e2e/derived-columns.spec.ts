@@ -69,9 +69,12 @@ for (const [width, height] of [
         await expect(
           table.getByRole("columnheader", { name, exact: true }),
         ).toHaveCount(1);
+      const heading = table.getByRole("columnheader", { name: "Age", exact: true });
+      const descending = (await heading.getAttribute("aria-sort")) === "ascending";
       await table.getByRole("button", { name: "Age", exact: true }).click();
+      await expect(heading).toHaveAttribute("aria-sort", descending ? "descending" : "ascending");
       await expect(table.locator("tbody tr").first()).toContainText(
-        "Synthetic Employee 34",
+        descending ? "Synthetic Employee 01" : "Synthetic Employee 34",
       );
     }
   });
