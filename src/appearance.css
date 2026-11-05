@@ -174,6 +174,15 @@ dialog.app-dialog.column-designer-dialog {
 .field-entry-grid {
   row-gap: 16px;
 }
+/* Keep dynamic form sections and record summaries within the existing workspace. */
+.employee-workspace > .employee-workspace-heading,
+.employee-workspace > footer { background: var(--surface); }
+.employee-workspace > .employee-editor-summary { background: var(--section-surface); }
+.employee-workspace .employee-form-tabs [aria-selected="true"] { background: var(--tint); border-color: var(--line); box-shadow: none; }
+.employee-workspace .overview-section-heading { padding: 6px 8px; background: var(--section-surface); border-radius: var(--radius) var(--radius) 0 0; }
+.employee-workspace .overview-details dt { font-size: var(--text-label); font-weight: var(--weight-medium); }
+.employee-workspace .overview-details dd { font-size: var(--text-body); }
+.employee-workspace .employee-tab-body fieldset > legend { color: var(--ink); }
 @media (min-width: 761px) {
   .rail-toggle {
     display: inline-flex;
