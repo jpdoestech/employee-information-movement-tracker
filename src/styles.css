@@ -4728,10 +4728,10 @@ dialog.app-dialog.column-designer-dialog { width: min(1120px, calc(100vw - 24px)
 .purge-preview > label { display: grid; gap: 4px; margin-top: 12px; }
 @media (max-width: 600px) { .purge-counts { grid-template-columns: minmax(0, 1fr); } }
 /* Employee records occupy the register workspace; confirmations remain dialogs. */
-.workspace main:has(> .employee-workspace) { display: flex; overflow: hidden; max-width: none; padding: 12px 16px; }
+.workspace main:has(> .employee-workspace) { display: flex; overflow: hidden; }
 .register.panel[hidden] { display: none; }
 .workspace main > .employee-workspace { flex: 1 1 0; min-height: 0; }
-.employee-workspace { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto minmax(0, 1fr); width: 100%; max-width: 1200px; margin-inline: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; position: relative; }
+.employee-workspace { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto minmax(0, 1fr); width: 100%; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; position: relative; }
 .employee-workspace > .employee-workspace-heading { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 12px; padding: 8px 12px; min-width: 0; border-bottom: 1px solid var(--line); }
 .employee-workspace-heading h2 { margin: 0; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .employee-workspace-heading > button { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
@@ -4740,7 +4740,7 @@ dialog.app-dialog.column-designer-dialog { width: min(1120px, calc(100vw - 24px)
 .employee-workspace .employee-identity-strip strong { font-size: 14px; }
 .employee-workspace > .employee-form-tabs { grid-column: 1 / -1; grid-row: 3; min-width: 0; }
 .employee-workspace > .employee-tab-body { grid-column: 1 / -1; grid-row: 4; min-height: 0; overflow: auto; max-height: none; overscroll-behavior: contain; padding: 16px; }
-.employee-workspace .employee-tab-body > [role="tabpanel"] { min-width: 0; }
+.employee-workspace .employee-tab-body > [role="tabpanel"] { min-width: 0; width: 100%; max-width: 1200px; margin-inline: auto; }
 .employee-workspace .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .employee-workspace .employee-tab-body .floating-notification { position: fixed; z-index: 40; }
 @media (max-width: 1000px) { .employee-workspace .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -4748,7 +4748,6 @@ dialog.app-dialog.column-designer-dialog { width: min(1120px, calc(100vw - 24px)
  .employee-workspace button, .employee-workspace .employee-form-tabs [role="tab"] { min-height: 44px; }
 }
 @media (max-width: 760px) {
- .workspace main:has(> .employee-workspace) { padding: 6px; }
  .employee-workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr) auto; }
  .employee-workspace > .employee-workspace-heading { grid-column: 1; padding: 4px 8px; gap: 8px; }
  .employee-workspace .employee-back-long { display: none; }
@@ -4764,7 +4763,6 @@ dialog.app-dialog.column-designer-dialog { width: min(1120px, calc(100vw - 24px)
  .employee-workspace .field-entry-grid > .field-slot { flex-basis: 100%; width: 100%; }
 }
 @media (max-height: 500px) {
- .workspace:has(.employee-workspace) > .workspace-footer { display: none; }
  .employee-workspace > .employee-editor-summary { padding-block: 4px; }
  .employee-workspace .employee-identity-avatar, .employee-workspace .employee-editor-summary > p { display: none; }
  .employee-workspace .employee-editor-summary .employee-identity-strip { margin: 0; }

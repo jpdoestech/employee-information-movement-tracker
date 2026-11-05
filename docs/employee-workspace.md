@@ -13,11 +13,13 @@ An edited draft requires Discard changes/Continue editing before Back, Cancel,
 sidebar navigation, browser history or sign-out. Reload/tab close uses the browser's
 unsaved-work warning. Busy transactions block leaving; there is no automatic retry.
 
-Desktop forms are capped at 1,200px with stationary actions in the heading row.
+The workspace uses the same outer bounds and spacing as the register, including
+when the sidebar expands or collapses. Inner form content is capped at 1,200px to
+avoid stretched inputs, with stationary actions in the heading row.
 At phone widths actions move to a stationary bottom row, fields stack, section tabs
 scroll horizontally and controls retain 44px touch targets. The form body owns
-vertical scrolling. Short landscape reduces identity-strip detail and removes the
-global footer to preserve usable form space. Field Builder width configuration and
+vertical scrolling. Short landscape reduces identity-strip detail to preserve
+usable form space. Field Builder width configuration and
 authorized fields remain intact. No backend migration is required.
 
 Responsive and navigation tests live in `.test-db/e2e/employee-workspace.spec.ts`.

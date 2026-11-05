@@ -1,5 +1,35 @@
 import { test, expect } from "@playwright/test";
 
+test("sidebar toggles keep the employee workspace aligned with the register", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Explore synthetic demo" }).click();
+  await page.goto("/#employees");
+  const register = page.locator(".register.panel");
+  const before = await register.boundingBox();
+  await page.getByRole("button", { name: "EMP-0000002", exact: true }).click();
+  const editor = page.getByRole("region", { name: "Employee profile", exact: true });
+  await expect(editor).toBeVisible();
+  expect(await editor.boundingBox()).toEqual(before);
+  await editor.getByRole("button", { name: "Edit details", exact: true }).click();
+  const contentWidth = (await editor.getByRole("tabpanel").boundingBox())!.width;
+  const draft = editor.getByRole("textbox", { name: "First Name", exact: true });
+  await draft.fill("SIDEBAR DRAFT");
+  for (let index = 0; index < 2; index++) {
+    await page.getByRole("button", { name: /^(Expand|Collapse) sidebar$/ }).click();
+    await expect(draft).toHaveValue("SIDEBAR DRAFT");
+    expect((await editor.getByRole("tabpanel").boundingBox())!.width).toBe(contentWidth);
+    const editorBounds = await editor.boundingBox();
+    await editor.getByRole("button", { name: "Back to Employees", exact: true }).click();
+    await page.getByRole("button", { name: "Discard changes", exact: true }).click();
+    await expect(register).toBeVisible();
+    expect(await register.boundingBox()).toEqual(editorBounds);
+    await page.getByRole("button", { name: "EMP-0000002", exact: true }).click();
+    await editor.getByRole("button", { name: "Edit details", exact: true }).click();
+    await draft.fill("SIDEBAR DRAFT");
+  }
+});
+
 test("phone navigation cancellation returns to the draft without a drawer overlay", async ({
   page,
 }) => {
@@ -52,6 +82,7 @@ for (const size of [
     await page.goto("/");
     await page.getByRole("button", { name: "Explore synthetic demo" }).click();
     await page.goto("/#employees");
+    const registerBounds = await page.locator(".register.panel").boundingBox();
     await page
       .getByRole("button", { name: "EMP-0000002", exact: true })
       .click();
@@ -76,7 +107,8 @@ for (const size of [
     expect(await header.boundingBox()).toEqual(before.header);
     expect(await footer.boundingBox()).toEqual(before.footer);
     const bounds = await editor.boundingBox();
-    expect(bounds!.width).toBeLessThanOrEqual(1200);
+    expect(bounds).toEqual(registerBounds);
+    expect((await editor.getByRole("tabpanel").boundingBox())!.width).toBeLessThanOrEqual(1200);
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.y).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(size.width + 1);
