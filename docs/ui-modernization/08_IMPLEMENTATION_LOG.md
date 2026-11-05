@@ -25,3 +25,11 @@ Acceptance: existing employee form/overview, all address layouts, archive confir
 Use shared selected-tab treatments and neutral grouped Field Builder headings. Add a compact text-based permission state legend (Allow, Deny, Inherit, Unavailable) inside the existing rule-help disclosures above the module/field matrices, so it does not crowd short-screen tables. Preserve all catalog-defined actions, full parent/form paths, source links, restricted-field rules, scopes, role templates, native superadmin behavior, impact preview and effective-access inspection. The legend explains existing behavior and does not evaluate or alter policy. Accounts, Register settings and destructive data tools retain their separate sections and confirmations.
 
 Acceptance: module/field matrix editing and inheritance, scope editors, stationary permission headers and below-fold controls, Field Builder configuration, account password and deletion protections. No authorization, defaults or migration change is introduced.
+
+## UI-06 — remaining modules and dashboard
+
+Promote the approved dashboard composition onto the existing analytics: six unchanged metrics in three desktop columns, a wider main distribution, stacked phone cards, quiet white surfaces and blue bar accents. Preserve all five distribution panels, date filters, scope explanations, unavailable values and the existing PRF action. Do not invent payroll or trend data. Movements, Audit, Organization, PRF requirement lines and Sheets cards use the same shared surfaces.
+
+Extract the existing record timestamp formatter for reuse by Sheets status; show Asia/Manila dates and retain exact timestamps in semantic time elements. No sync scheduling, export policy, transaction, approval or job-link behavior changes. The old prototype navigation bridge is removed once the current implementation is captured in UI-07.
+
+Acceptance: analytics, PRF assignment, movement previews, record explorers and workbook sync suites; pure timezone-boundary and malformed-date tests. Compare the actual integrated dashboard with both approved references.
