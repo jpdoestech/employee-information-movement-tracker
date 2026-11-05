@@ -1,6 +1,6 @@
 # UI-00 — proposed design system and reference fidelity
 
-Proposal only. The reusable production token/component system is established in UI-01 after review; the current experiment is isolated in `.test-db/ui-modernization/proposal.css`. Existing runtime styles remain unchanged.
+The UI-00 proposal was approved on 2026-11-05. Its dashboard experiment remains isolated in `.test-db/ui-modernization/proposal.css`. UI-01 establishes production tokens and shared control/surface primitives; shell and dashboard layout remain later phases.
 
 ## Reference comparison
 
@@ -33,6 +33,16 @@ Mobile uses four labelled primary controls (Overview, Employees, Movements, More
 | Controls | 32–36px desktop; at least 44px touch | Hit area independent of font size |
 | Typography | 14px sections/body/forms, 13px navigation, 12px compact/data, 11px labels, 10px headers, 30px KPIs | Segoe UI Variable / Aptos local stack; 400/500/600/700 only |
 | Tables | Existing 36px desktop / 50px touch rows | Measured authorized content and bounded long columns |
+
+## UI-01 production token ownership
+
+`src/styles.css` owns the light/dark semantic palette, typography, control sizes, surface radii and shadows. `src/appearance.css` consumes those tokens for the workspace without redefining the theme. Existing component and route ownership is unchanged. The remaining shell-specific `--header-*` variables are local presentation values, not a second application palette.
+
+Shared buttons use `--control-height-compact` (32px); form inputs and toolbar controls use `--control-height` (36px). Both resolve to `--touch-target` (44px) on phone widths or coarse pointers. Existing specialized controls keep their own interaction bounds. Typography stays fixed at the repository scale. `--radius` remains 6px for controls/registers; `--radius-card` is 8px for cards and picker/popover surfaces. This phase introduces no component library or unused token layer.
+
+Intentional accessibility difference from the approved experiment: production light `--control-line` is `#7f8b9c`, stronger than the proposal's `#b8c0cc`, so editable boundaries meet 3:1 contrast against both white and the filled focus background. Text and primary-action contrast are checked separately in light/dark themes. Focus preserves the original border and geometry; composite search inputs keep their single outer boundary. Dark theme colors are preserved from the working application.
+
+UI-01 does not apply the prototype's dashboard grids or mobile navigation bridge. UI-02 owns navigation; UI-06 owns dashboard layout integration. The original UI-00 screenshots remain the approved visual target, not a claim that the full target is deployed by UI-01.
 
 ## Component ownership after approval
 
