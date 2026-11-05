@@ -19,36 +19,78 @@
   --leading-compact: 1.4;
   font-family: var(--font-sans);
   font-optical-sizing: auto;
-  color: #18263b;
-  background: #f3f6f8;
+  color: var(--ink);
+  background: var(--paper);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --primary: #234a7d;
-  --primary-hover: #18375f;
-  --ink: #18263b;
-  --muted: #56647a;
-  --paper: #f6f7f9;
-  --line: #e1e6eb;
-  --control-line: #ccd4dd;
-  --tint: #eaf0f8;
+  --primary: #2458d3;
+  --primary-hover: #1946b5;
+  --on-primary: #fff;
+  --ink: #212529;
+  --muted: #59616d;
+  --paper: #f5f6f8;
+  --line: #e1e5eb;
+  /* Stronger than dividers so editable boundaries retain 3:1 contrast. */
+  --control-line: #7f8b9c;
+  --tint: #eaf2ff;
   --navy: #1c2432;
   --navy-raised: #223a5b;
   --nav-text: #c4cfdf;
-  --focus: #447bc1;
+  --focus: #2458d3;
   --success-bg: #eaf4ef;
   --success-ink: #246044;
   --danger-bg: #fff2f0;
   --surface: #fff;
   --danger: #a7372e;
   --radius: 6px;
-  --shadow: 0 1px 3px #14243d08;
+  --radius-card: 8px;
+  --control-height-compact: 32px;
+  --control-height: 36px;
+  --touch-target: 44px;
+  --shadow: 0 1px 2px #17233405;
   --sidebar-text: #56647a;
-  --row-selected: #e8effa;
-  --section-surface: #f8fafc;
-  --dialog-wide-width: 1060px;
+  --row-selected: #d9e8ff;
+  --section-surface: #f8f9fb;
+  --nav-surface: #fff;
+  --input-focus-bg: var(--tint);
+  --warning: #765016;
+  --overlay: #17202c80;
+  --dialog-shadow: 0 16px 60px #17233426;
+  --dialog-wide-width: 960px;
   --dialog-editor-height: 720px;
+}
+:root[data-theme="dark"] {
+  --paper: #1b1c1e;
+  --surface: #252629;
+  --ink: #e1e1e1;
+  --muted: #adb3bd;
+  --line: #454951;
+  --control-line: #858b95;
+  --section-surface: #2d2f33;
+  --primary: #80adff;
+  --primary-hover: #a0c2ff;
+  --on-primary: #172337;
+  --tint: #263750;
+  --row-selected: #2c4569;
+  --focus: #80adff;
+  --nav-surface: #202124;
+  --input-focus-bg: #303b4d;
+  --success-bg: #213e31;
+  --success-ink: #9ce0b7;
+  --danger: #ffb4bb;
+  --danger-bg: #46292e;
+  --warning: #efc878;
+  --overlay: #101114bb;
+  --dialog-shadow: 0 16px 60px #0008;
+  --sidebar-text: #adb3bd;
+}
+@media (max-width: 760px), (pointer: coarse) {
+  :root {
+    --control-height-compact: var(--touch-target);
+    --control-height: var(--touch-target);
+  }
 }
 /* Shared ui-styling primitives: forms, editors, administration and record pages. */
 .panel,
@@ -111,7 +153,7 @@
 }
 .picker-panel,
 .popover-panel {
-  border-radius: 8px;
+  border-radius: var(--radius-card);
 }
 .security-workspace .panel {
   border-radius: var(--radius);
@@ -144,7 +186,7 @@ button {
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--ink);
-  min-height: 32px;
+  min-height: var(--control-height-compact);
   padding: 5px 10px;
   font-size: 13px;
   font-weight: 600;
@@ -180,7 +222,7 @@ input:not([type="checkbox"]),
 textarea {
   width: 100%;
   min-width: 0;
-  min-height: 36px;
+  min-height: var(--control-height);
   padding: 7px 10px;
   border: 1px solid var(--control-line);
   border-radius: var(--radius);
@@ -685,7 +727,7 @@ main:has(> .data-panel) > :not(.data-panel) {
 .panel {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   padding: 16px;
   box-shadow: var(--shadow);
   min-width: 0;
@@ -702,7 +744,7 @@ main:has(> .data-panel) > :not(.data-panel) {
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   padding: 16px 18px;
   box-shadow: var(--shadow);
   color: var(--ink);
@@ -941,7 +983,7 @@ a.stat:hover {
   border: 1px solid var(--control-line);
   border-radius: var(--radius);
   padding: 0 10px;
-  min-height: 36px;
+  min-height: var(--control-height);
   margin: 0;
 }
 .search-control input {
@@ -1965,11 +2007,11 @@ dialog.app-dialog.column-designer-dialog { width: min(760px, calc(100vw - 24px))
     white-space: nowrap;
   }
   button {
-    min-height: 44px;
+    min-height: var(--touch-target);
   }
   input:not([type="checkbox"]),
   textarea {
-    min-height: 44px;
+    min-height: var(--touch-target);
     font-size: 16px;
   }
   .sidebar nav a {
@@ -2675,7 +2717,6 @@ dialog > footer {
   --header-ink: #f6f8fc;
   --header-muted: #d0d8e4;
   --header-control: #303c50;
-  --input-focus-bg: #edf2f7;
 }
 input:not([type="checkbox"]):focus,
 textarea:focus {
@@ -4394,8 +4435,8 @@ code, td.text-id, td.text-id .cell-value, td.text-id .text-link,
   gap: 8px;
 }
 .filterbar > .search-control {
-  height: 36px;
-  min-height: 36px;
+  height: var(--control-height);
+  min-height: var(--control-height);
   flex-direction: row;
   padding-block: 0;
 }
@@ -4411,7 +4452,7 @@ code, td.text-id, td.text-id .cell-value, td.text-id .text-link,
 .filterbar .search-control > svg { flex-shrink: 0; }
 .filterbar .picker-trigger,
 .filterbar > .popover > button,
-.filterbar > .filter-reset { min-height: 36px; }
+.filterbar > .filter-reset { min-height: var(--control-height); }
 .record-column-label { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
 .record-column-label svg { flex-shrink: 0; color: var(--muted); }
 .record-explorer .data-scroll-region:focus-visible {

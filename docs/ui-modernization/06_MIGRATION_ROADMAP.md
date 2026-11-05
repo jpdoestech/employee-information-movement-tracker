@@ -4,8 +4,8 @@ There is no database migration in this modernization. Preserve React 19, TypeScr
 
 | Phase | Smallest reviewable scope | Required proof / exit |
 |---|---|---|
-| UI-00 (current) | Audit, parity/risk inventories and isolated desktop/mobile dashboard | Inspect references and rendered screenshots; verify focused prototype checks; user reviews visual direction |
-| UI-01 | Refine semantic tokens and one shared control/surface family at a time | Approved direction, computed-style and light/dark/keyboard/touch tests; no business source rewrite |
+| UI-00 (approved 2026-11-05) | Audit, parity/risk inventories and isolated desktop/mobile dashboard | 16 focused checks passed; user approved both designs |
+| UI-01 (current) | Refine semantic tokens and one shared control/surface family at a time | Approved direction, computed-style and light/dark/keyboard/touch tests; no business source rewrite |
 | UI-02 | Shell-owned shared navigation, sidebar/header and mobile bottom navigation | Same visible destinations/permissions, draft guards, auth redirects, history, focus/inertness and safe-area tests |
 | UI-03 | Register toolbar, table boundaries and Customize Columns organization | Sorting/filtering/paging, frozen columns, ordinals, selections, saved/managed settings, previews, import/export parity |
 | UI-04 | Employee summary hierarchy and long-form visual consistency | Section/full edits, field applicability, masking, address search, history, PRF/replacement, confirmations/conflicts |

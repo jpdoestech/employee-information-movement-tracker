@@ -11,7 +11,7 @@
 - [x] Prototype source/config/tests and generated verification output are contained under `.test-db`.
 - [x] Production runtime source, dependencies, API contracts, database migrations, RLS and business workflows unchanged.
 - [x] Final focused test results and visual screenshot review attached to the handoff: 16 browser checks across nine viewport sizes, plus isolated frontend/Vite configuration type checking. Baseline inventory captures were refreshed after data settled.
-- [ ] User approves representative desktop and mobile direction.
+- [x] User approves representative desktop and mobile direction (2026-11-05: "approved").
 
 The final two items are separate: automated/visual review by the implementer does not substitute for user approval. No production-wide redesign is authorized by checking the other boxes.
 
@@ -23,4 +23,20 @@ Stationary list headers/toolbars/pagination and scroll owners remain consistent.
 
 Apply the same reviewed tokens and shared primitives to Employees, Movements, PRFs, RBAC and Administration in their own phases. Test active/inactive/scheduled permissions, stale data, concurrent edits, slow requests, cancellation and mixed-role navigation at the responsible phase.
 
-**Review gate:** approve or revise the two representative dashboard screenshots before UI-01. Stop here; do not deploy this harness or start production token/shell/module changes as part of UI-00.
+**UI-00 review gate passed:** the user approved both representative designs on 2026-11-05. The harness stays isolated. UI-01 may refine shared tokens and primitives; shell/module redesigns follow their own phases.
+
+## UI-01 acceptance
+
+- [x] Light/dark semantic colors have one production owner in `src/styles.css`; `appearance.css` consumes them.
+- [x] Approved neutral canvas, white surfaces/navigation, blue actions and restrained shadows are applied through shared tokens.
+- [x] Existing fixed typography, 6px controls and 8px card/picker surfaces are retained; compact/normal/touch control sizes are named tokens.
+- [x] Touch-sized layouts and coarse pointers resolve shared controls to at least 44px without enlarging text.
+- [x] Editable input boundaries use a stronger neutral than the prototype to reach 3:1 contrast in resting and filled-focus states; focus does not move controls or add nested search borders.
+- [x] Production build and all 175 unit checks pass. The 29 existing appearance/typography/toolbar browser checks passed; all five new design-system checks passed after correcting the test's keyboard modality and required-field label lookup.
+- [x] Rendered light/dark desktop/mobile screenshots inspected. Evidence: `.test-db/reports/ui-modernization/ui01-register-{theme}-{width}.png` and `ui01-editor-{theme}-{width}.png` for light/dark at 390px and 1440px.
+- [x] No business logic, API, permission, schema, synchronization or dependency changes.
+- [x] Separate [UI-01 draft PR #4](https://github.com/jpdoestech/employee-information-movement-tracker/pull/4) includes validation and intentional differences; based on the UI-00 review branch to keep the phase diff separate.
+
+Commands: `npm run build`, `npm test`, and `npx playwright test --config .test-db/playwright.config.ts design-system.spec.ts appearance.spec.ts typography.spec.ts toolbar-ux.spec.ts`. The five new checks were rerun independently with `design-system.spec.ts`; no runtime edit was required after the existing 29 checks passed. Coverage includes reduced motion, local fonts, light/dark text and editable-border contrast, stable filled search focus, visible keyboard focus, picker bounds, draft cancellation, stationary footers, scroll bounds and a coarse-pointer tablet. Existing unit/browser tests remain unchanged.
+
+This phase does not certify all screen contrast or production RBAC. Native/REST database suites and physical-device/screen-reader checks were not rerun for CSS-only changes. Existing build notices about chunk size and mixed static/dynamic API imports remain outside UI-01.

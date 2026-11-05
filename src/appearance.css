@@ -1,52 +1,4 @@
-/* AMS presentation mapped to tracker tokens; business components retain ownership. */
-:root {
-  --paper: #f3f5f8;
-  --surface: #fff;
-  --ink: #212529;
-  --muted: #59616d;
-  --line: #d5dbe3;
-  --control-line: #a5aeb9;
-  --section-surface: #edf0f4;
-  --primary: #1d5dc0;
-  --primary-hover: #174b9c;
-  --on-primary: #fff;
-  --tint: #e8f0fc;
-  --row-selected: #d9e8ff;
-  --focus: #1d5dc0;
-  --nav-surface: #f8f9fb;
-  --input-focus-bg: #e8f0fc;
-  --warning: #765016;
-  --overlay: #17202c80;
-  --dialog-shadow: 0 16px 60px #17233426;
-  --dialog-wide-width: 960px;
-  color: var(--ink);
-  background: var(--paper);
-}
-:root[data-theme="dark"] {
-  --paper: #1b1c1e;
-  --surface: #252629;
-  --ink: #e1e1e1;
-  --muted: #adb3bd;
-  --line: #454951;
-  --control-line: #858b95;
-  --section-surface: #2d2f33;
-  --primary: #80adff;
-  --primary-hover: #a0c2ff;
-  --on-primary: #172337;
-  --tint: #263750;
-  --row-selected: #2c4569;
-  --focus: #80adff;
-  --nav-surface: #202124;
-  --input-focus-bg: #303b4d;
-  --success-bg: #213e31;
-  --success-ink: #9ce0b7;
-  --danger: #ffb4bb;
-  --danger-bg: #46292e;
-  --warning: #efc878;
-  --overlay: #101114bb;
-  --dialog-shadow: 0 16px 60px #0008;
-  --sidebar-text: #adb3bd;
-}
+/* Workspace presentation consumes the shared theme tokens in styles.css. */
 body {
   background: var(--paper);
   color: var(--ink);
@@ -359,15 +311,15 @@ dialog.app-dialog.column-designer-dialog {
   .workspace-toolbar .filter-reset { min-width: 36px; padding-inline: 8px; }
 }
 @media (min-width: 761px) and (pointer: fine) {
-  .workspace-toolbar button { min-height: 36px; }
+  .workspace-toolbar button { min-height: var(--control-height); }
 }
 @media (max-width: 1200px) {
   .workspace-toolbar .actions button:not(.primary) .action-label { display: none; }
 }
 @media (max-width: 760px), (pointer: coarse) {
   .filterbar.workspace-toolbar { min-height: 64px; }
-  .workspace-toolbar button { min-height: 44px; }
-  .workspace-toolbar .actions button { min-width: 44px; }
-  .workspace-toolbar .filter-reset { min-width: 44px; }
-  .filterbar.workspace-toolbar > .search-control { height: 44px; min-height: 44px; }
+  .workspace-toolbar button { min-height: var(--touch-target); }
+  .workspace-toolbar .actions button { min-width: var(--touch-target); }
+  .workspace-toolbar .filter-reset { min-width: var(--touch-target); }
+  .filterbar.workspace-toolbar > .search-control { height: var(--touch-target); min-height: var(--touch-target); }
 }
