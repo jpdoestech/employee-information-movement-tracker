@@ -1,4 +1,10 @@
 import { test, expect } from "@playwright/test";
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("eimt-sidebar"))
+      localStorage.setItem("eimt-sidebar", "collapsed");
+  });
+});
 const sizes = [
   [1366, 768],
   [1920, 1080],
@@ -101,7 +107,9 @@ for (const theme of ["light", "dark"])
       );
       const bounds = await editor.boundingBox();
       expect(bounds!.width).toBeLessThanOrEqual(width);
-      expect((await editor.getByRole("tabpanel").boundingBox())!.width).toBeLessThanOrEqual(1200);
+      expect(
+        (await editor.getByRole("tabpanel").boundingBox())!.width,
+      ).toBeLessThanOrEqual(1200);
       expect(bounds!.x).toBeGreaterThanOrEqual(0);
       expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height);
       await page.screenshot({

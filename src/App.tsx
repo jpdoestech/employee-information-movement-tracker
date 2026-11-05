@@ -1118,6 +1118,42 @@ export default function App() {
           </span>
           <span>Asia/Manila · Employee records</span>
         </footer>
+        {mobileNavigation && ctx && (
+          <nav
+            className="mobile-primary-navigation"
+            aria-label="Primary mobile navigation"
+          >
+            {visibleNav
+              .filter((item) =>
+                ["dashboard", "employees", "movements"].includes(item.id),
+              )
+              .map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  aria-current={page === item.id ? "page" : undefined}
+                >
+                  <item.icon size={20} aria-hidden />
+                  <span>{item.label}</span>
+                </a>
+              ))}
+            <button
+              type="button"
+              aria-label="More navigation"
+              aria-expanded={menu}
+              aria-controls="workspace-navigation"
+              aria-current={
+                !["dashboard", "employees", "movements"].includes(page)
+                  ? "page"
+                  : undefined
+              }
+              onClick={() => setMenu(true)}
+            >
+              <Menu size={20} aria-hidden />
+              <span>More</span>
+            </button>
+          </nav>
+        )}
       </div>
       {ctx &&
         dialog === "columns" &&
