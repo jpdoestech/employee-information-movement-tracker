@@ -64,8 +64,9 @@ it("follows OS changes only in System mode", () => {
 });
 it("persists rail state and reacts to cross-tab preference removal", () => {
   const s = boot();
+  expect(s.api.collapsed()).toBe(false);
   s.api.toggleSidebar();
-  expect(s.saved["eimt-sidebar"]).toBe("expanded");
+  expect(s.saved["eimt-sidebar"]).toBe("collapsed");
   s.saved["eimt-theme"] = "dark";
   s.listeners.storage({ key: "eimt-theme" });
   expect(s.root.dataset.theme).toBe("dark");
@@ -73,12 +74,12 @@ it("persists rail state and reacts to cross-tab preference removal", () => {
   delete s.saved["eimt-sidebar"];
   s.listeners.storage({ key: null });
   expect(s.api.theme()).toBe("system");
-  expect(s.api.collapsed()).toBe(true);
+  expect(s.api.collapsed()).toBe(false);
 });
 it("keeps working when local storage is unavailable", () => {
   const s = boot({}, true, true);
   s.api.setTheme("light");
   s.api.toggleSidebar();
   expect(s.root.dataset.theme).toBe("light");
-  expect(s.api.collapsed()).toBe(false);
+  expect(s.api.collapsed()).toBe(true);
 });

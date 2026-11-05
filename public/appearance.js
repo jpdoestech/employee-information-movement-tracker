@@ -19,7 +19,7 @@
   let theme = themes.includes(read("eimt-theme"))
     ? read("eimt-theme")
     : "system";
-  let collapsed = read("eimt-sidebar") !== "expanded";
+  let collapsed = read("eimt-sidebar") === "collapsed";
   function apply() {
     const root = document.documentElement;
     root.dataset.themePreference = theme;
@@ -31,7 +31,7 @@
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute(
         "content",
-        root.dataset.theme === "dark" ? "#1b1c1e" : "#f3f5f8",
+        root.dataset.theme === "dark" ? "#1b1c1e" : "#f5f6f8",
       );
     window.dispatchEvent(new Event("eimt:appearance"));
   }
@@ -61,7 +61,7 @@
       theme = themes.includes(read("eimt-theme"))
         ? read("eimt-theme")
         : "system";
-      collapsed = read("eimt-sidebar") !== "expanded";
+      collapsed = read("eimt-sidebar") === "collapsed";
       apply();
     }
   });

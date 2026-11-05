@@ -19,6 +19,17 @@ button.primary:hover {
 .sidebar {
   background: var(--nav-surface);
 }
+.sidebar .brand { border-bottom: 1px solid var(--line); padding-bottom: 18px; margin-bottom: 10px; }
+.sidebar nav a { border-radius: var(--radius); }
+.sidebar nav a.active { box-shadow: none; }
+.brandmark { border-radius: var(--radius); }
+.mobile-primary-navigation { display: none; }
+@media (max-width: 760px) and (max-height: 500px) {
+  .workspace-footer { display: none; }
+  .app-shell .workspace { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
+  .workspace .mobile-primary-navigation { min-height: calc(56px + env(safe-area-inset-bottom)); padding-block: 4px calc(4px + env(safe-area-inset-bottom)); }
+  .workspace .mobile-primary-navigation a, .workspace .mobile-primary-navigation button { min-height: 44px; gap: 2px; }
+}
 .mobile-navigation-close {
   align-self: flex-end;
   min-width: 44px;
@@ -31,8 +42,8 @@ button.primary:hover {
   background: var(--surface);
   color: var(--ink);
   border-color: var(--line);
-  min-height: 48px;
-  padding: 6px 16px;
+  min-height: 56px;
+  padding: 6px 20px;
   gap: 12px;
 }
 .topbar button {
@@ -219,6 +230,21 @@ dialog.app-dialog.column-designer-dialog {
   }
 }
 @media (max-width: 760px) {
+  .workspace { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+  .mobile-primary-navigation {
+    position: fixed; inset: auto 0 0; display: flex; justify-content: space-around;
+    padding: 5px 4px calc(5px + env(safe-area-inset-bottom));
+    min-height: calc(68px + env(safe-area-inset-bottom)); z-index: 20;
+    background: #101f36; color: #c7d1df; border-top: 1px solid #263b59;
+  }
+  .mobile-primary-navigation a, .mobile-primary-navigation button {
+    display: flex; flex: 1; flex-direction: column; gap: 4px;
+    align-items: center; justify-content: center; min-width: 44px; min-height: 52px;
+    color: inherit; background: transparent; border: 0; border-radius: var(--radius);
+    text-decoration: none; font-size: var(--text-label);
+  }
+  .mobile-primary-navigation [aria-current="page"] { color: #9fc7ff; background: #213954; }
+  .mobile-primary-navigation :focus-visible { outline: 2px solid #9fc7ff; outline-offset: -2px; }
   main {
     padding: 4px 8px;
   }
@@ -232,9 +258,9 @@ dialog.app-dialog.column-designer-dialog {
     display: none;
   }
   .topbar {
-    min-height: 56px;
-    padding: 6px 12px;
-    gap: 8px;
+    min-height: 52px;
+    padding: 4px 10px;
+    gap: 6px;
   }
   .topbar button,
   .topbar .more-filter-trigger {

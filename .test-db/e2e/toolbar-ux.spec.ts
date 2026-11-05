@@ -11,7 +11,8 @@ for (const [width, height] of [
   }) => {
     await page.setViewportSize({ width, height });
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.addInitScript(() =>
+    await page.addInitScript(() => {
+      localStorage.setItem("eimt-sidebar", "collapsed");
       localStorage.setItem(
         "eimt-synthetic-managed-views",
         JSON.stringify([
@@ -28,8 +29,8 @@ for (const [width, height] of [
             },
           },
         ]),
-      ),
-    );
+      );
+    });
     await page.goto("/");
     await page.getByRole("button", { name: "Explore synthetic demo" }).click();
     await page.goto("/#employees");
