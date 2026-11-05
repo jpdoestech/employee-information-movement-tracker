@@ -19,3 +19,9 @@ Acceptance: toolbar filters, paging, row height, stationary headers, column prev
 Preserve the table-replacing workspace and bounded 1200px form content. Give the profile summary and section headings quiet neutral surfaces, use blue tint for the selected tab, and apply the fixed label/value typography to overview entries. Add/edit/view/history stay in the same component with stationary actions and an independently scrolling body. Personal/current/emergency addresses, dynamic fields, masked IDs, scoped pencils, name-case choices, category defaults and lazy history retain their existing behavior; no disclosure now hides previously visible fields.
 
 Acceptance: existing employee form/overview, all address layouts, archive confirmation, draft guards and name-case suites; each remains a release gate. The mobile bar never replaces the Save/Cancel footer.
+
+## UI-05 — administration
+
+Use shared selected-tab treatments and neutral grouped Field Builder headings. Add a compact text-based permission state legend (Allow, Deny, Inherit, Unavailable) inside the existing rule-help disclosures above the module/field matrices, so it does not crowd short-screen tables. Preserve all catalog-defined actions, full parent/form paths, source links, restricted-field rules, scopes, role templates, native superadmin behavior, impact preview and effective-access inspection. The legend explains existing behavior and does not evaluate or alter policy. Accounts, Register settings and destructive data tools retain their separate sections and confirmations.
+
+Acceptance: module/field matrix editing and inheritance, scope editors, stationary permission headers and below-fold controls, Field Builder configuration, account password and deletion protections. No authorization, defaults or migration change is introduced.

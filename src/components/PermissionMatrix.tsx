@@ -37,6 +37,26 @@ type Configuration = {
   revision: number;
   today: string;
 };
+const permissionStateLegend = (
+  <dl className="permission-state-legend" aria-label="Permission states">
+    <div>
+      <dt>Allow</dt>
+      <dd>Grant this action within its scope.</dd>
+    </div>
+    <div>
+      <dt>Deny</dt>
+      <dd>Override ordinary matching grants.</dd>
+    </div>
+    <div>
+      <dt>Inherit</dt>
+      <dd>Use matching role, group and user policies.</dd>
+    </div>
+    <div>
+      <dt>Unavailable</dt>
+      <dd>This action does not apply.</dd>
+    </div>
+  </dl>
+);
 const actionOrder = [
   "view",
   "create",
@@ -522,6 +542,7 @@ export function PermissionMatrix({
           <>
             <details className="permission-help">
               <summary>Permission rules</summary>
+              {permissionStateLegend}
               <p className="muted">
                 Inherit uses roles and existing grants. Allow grants only this
                 action. Deny overrides ordinary grants. Record scopes and field
@@ -587,6 +608,7 @@ export function PermissionMatrix({
           <>
             <details className="permission-help">
               <summary>Field permission rules</summary>
+              {permissionStateLegend}
               <p className="muted">
                 Edit any number of groups together. Expand a group for
                 individual fields. Group allows cover normal fields; restricted

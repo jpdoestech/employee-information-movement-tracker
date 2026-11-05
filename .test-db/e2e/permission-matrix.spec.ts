@@ -462,6 +462,12 @@ test("matrix shows applicable actions and saves multiple groups atomically after
   page,
 }) => {
   const { state, fixture } = await setup(page);
+  await page.getByText("Permission rules", { exact: true }).click();
+  const legend = page.locator(".permission-state-legend").first();
+  await expect(legend).toBeVisible();
+  for (const label of ["Allow", "Deny", "Inherit", "Unavailable"])
+    await expect(legend.getByText(label, { exact: true })).toBeVisible();
+  await page.getByText("Permission rules", { exact: true }).click();
   await expect(
     page.getByLabel("Employees Approve", { exact: true }),
   ).toHaveCount(0);
