@@ -16,6 +16,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { query } from "../api";
+import { formatDateTime } from "../dateTime";
 import { staffingVacancies } from "../jobCatalog";
 import { contentWidths, useFontMetrics } from "../tableSizing";
 import { RowsPerPage } from "./RowsPerPage";
@@ -209,14 +210,7 @@ export function RecordExplorer({
       </button>
     </th>
   );
-  const when = (value?: string) =>
-    value
-      ? new Intl.DateTimeFormat("en-PH", {
-          timeZone: "Asia/Manila",
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(new Date(value))
-      : "—";
+  const when = formatDateTime;
   let headers: ReactNode, columns: number;
   if (kind === "movements") {
     headers = (

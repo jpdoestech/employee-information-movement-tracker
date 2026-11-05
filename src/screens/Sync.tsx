@@ -6,6 +6,7 @@ import { SearchFilterPicker } from "../components/SearchFilterPicker";
 import type { Context, Option } from "../domain";
 import { refreshContext } from "../refreshContext";
 import { googleSpreadsheetId } from "../googleSheets";
+import { formatDateTime } from "../dateTime";
 export function Sync({
   context,
   options,
@@ -81,8 +82,8 @@ export function Sync({
         </strong>
         {data && (
           <p>
-            {data.pending || 0} pending events. Changes can still be saved during
-            Google outages.
+            {data.pending || 0} pending events. Changes can still be saved
+            during Google outages.
           </p>
         )}
         <p>
@@ -103,7 +104,16 @@ export function Sync({
                 "Head Office"}
             </h3>
             <span className="badge">{b.status}</span>
-            <p>Last successful sync: {b.last_success || "Never"}</p>
+            <p>
+              Last successful sync:{" "}
+              {b.last_success ? (
+                <time dateTime={b.last_success} title={b.last_success}>
+                  {formatDateTime(b.last_success)} (Asia/Manila)
+                </time>
+              ) : (
+                "Never"
+              )}
+            </p>
             {b.last_error && ["Failed", "Suspended"].includes(b.status) && (
               <p role="status">{b.last_error}</p>
             )}
