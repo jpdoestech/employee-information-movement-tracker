@@ -1,0 +1,63 @@
+/* Proposed dashboard skin. It is loaded only by the UI-00 review harness. */
+.ui-proposal:not([data-theme="dark"]) {
+  --paper: #f5f6f8;
+  --nav-surface: #fff;
+  --primary: #2458d3;
+  --primary-hover: #1946b5;
+  --tint: #eaf2ff;
+  --line: #e1e5eb;
+  --control-line: #b8c0cc;
+  --section-surface: #f8f9fb;
+  --focus: #2458d3;
+}
+.ui-proposal .sidebar { border-right: 1px solid var(--line); }
+.ui-proposal .sidebar .brand { border-bottom: 1px solid var(--line); padding-bottom: 18px; margin-bottom: 10px; }
+.ui-proposal .sidebar .nav-group-label { color: var(--muted); }
+.ui-proposal .sidebar nav a.active { background: var(--tint); color: var(--primary); box-shadow: none; }
+.ui-proposal .sidebar nav a { border-radius: 6px; }
+.ui-proposal .brandmark { border-radius: 6px; }
+.ui-proposal .topbar { min-height: 56px; padding-inline: 20px; border-bottom: 1px solid var(--line); }
+.ui-proposal .environment-badge::after { content: " · Proposal"; }
+.ui-proposal main:has(> .management-analytics) { padding: 18px 20px; }
+.ui-proposal .analytics-toolbar { padding: 0 0 14px; gap: 10px; min-height: 48px; }
+.ui-proposal .analytics-toolbar h2 { margin-right: auto; font-size: 14px; }
+.ui-proposal .analytics-scroll { padding: 0 2px 8px; }
+.ui-proposal .analytics-scroll > .analytics-note { line-height: 1.6; margin: 0 0 14px; }
+.ui-proposal .analytics-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ui-proposal .analytics-stats .stat { padding: 14px 16px; min-height: 108px; gap: 5px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 1px 2px #17233405; }
+.ui-proposal .analytics-stats .stat .stat-label { font-size: 11px; color: var(--muted); font-weight: 500; }
+.ui-proposal .analytics-stats .stat strong { font-size: 30px; font-weight: 600; color: var(--ink); }
+.ui-proposal .analytics-stats + .analytics-note { margin: 12px 0 16px; }
+.ui-proposal .analytics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.ui-proposal .analytics-grid .analytics-panel { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 1px 2px #17233405; }
+.ui-proposal .analytics-grid .analytics-panel:first-child,
+.ui-proposal .analytics-grid .analytics-demographics { grid-column: span 2; }
+.ui-proposal .analytics-grid .analytics-panel:last-child { grid-column: 1 / -1; }
+.ui-proposal .analytics-panel .section-heading { padding: 0; margin-bottom: 12px; background: transparent; }
+.ui-proposal .analytics-distribution-row { gap: 12px; padding-block: 9px; }
+.ui-proposal .analytics-distribution-row .bar { background: var(--tint); height: 7px; border-radius: 3px; }
+.ui-proposal .analytics-distribution-row .bar span { background: var(--primary); border-radius: 3px; }
+.proposal-bottom-nav { display: none; }
+@media (min-width: 761px) and (max-width: 1100px) {
+  .ui-proposal .analytics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ui-proposal .analytics-grid .analytics-panel:first-child { grid-column: auto; }
+}
+@media (max-width: 760px) {
+  .ui-proposal .workspace { height: calc(100dvh - 68px - env(safe-area-inset-bottom)); }
+  .ui-proposal .topbar { min-height: 52px; padding: 4px 10px; gap: 6px; }
+  .ui-proposal .topbar .account { gap: 4px; }
+  .ui-proposal main:has(> .management-analytics) { padding: 10px; }
+  .ui-proposal .analytics-toolbar { gap: 8px; padding-bottom: 10px; overflow-x: auto; min-height: 52px; }
+  .ui-proposal .analytics-toolbar h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .ui-proposal .analytics-range { display: none; }
+  .ui-proposal .analytics-scroll > .analytics-note { margin-bottom: 10px; }
+  .ui-proposal .analytics-stats { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .ui-proposal .analytics-stats .stat { min-height: 100px; padding: 12px 14px; }
+  .ui-proposal .analytics-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .ui-proposal .analytics-grid .analytics-panel { grid-column: 1; padding: 14px; }
+  .ui-proposal .analytics-distribution-row { gap: 6px; grid-template-columns: minmax(84px, 1.2fr) minmax(24px, 1fr) auto 42px; }
+  .ui-proposal .proposal-bottom-nav { position: fixed; inset: auto 0 0; display: flex; justify-content: space-around; padding: 5px 4px calc(5px + env(safe-area-inset-bottom)); min-height: calc(68px + env(safe-area-inset-bottom)); z-index: 20; background: #101f36; color: #c7d1df; border-top: 1px solid #263b59; }
+  .proposal-bottom-nav a, .proposal-bottom-nav button { display: flex; flex: 1; flex-direction: column; gap: 4px; align-items: center; justify-content: center; min-width: 44px; min-height: 52px; color: inherit; background: transparent; border: 0; border-radius: 6px; text-decoration: none; font-size: 11px; }
+  .proposal-bottom-nav [aria-current="page"] { color: #9fc7ff; background: #213954; }
+  .proposal-bottom-nav :focus-visible { outline: 2px solid #9fc7ff; outline-offset: -2px; }
+}
