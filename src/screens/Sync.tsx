@@ -71,14 +71,20 @@ export function Sync({
       </div>
       <div className="notice">
         <strong>
-          {data?.connected
-            ? "Google connection configured"
-            : "Google account not connected"}
+          {!data
+            ? error
+              ? "Sync status unavailable"
+              : "Loading sync status…"
+            : data.connected
+              ? "Google connection configured"
+              : "Google account not connected"}
         </strong>
-        <p>
-          {data?.pending || 0} pending events. Changes can still be saved during
-          Google outages.
-        </p>
+        {data && (
+          <p>
+            {data.pending || 0} pending events. Changes can still be saved during
+            Google outages.
+          </p>
+        )}
         <p>
           For Apps Script setup, the workbook owner runs setupTrackerSync once
           in the Google Apps Script editor. Its five-minute trigger processes
@@ -121,7 +127,7 @@ export function Sync({
           </article>
         ))}
       </div>
-      {!data?.workbooks?.length && (
+      {data && !data.workbooks?.length && (
         <div className="empty">
           Workbooks are provisioned by the backend after branches are configured
           and export policies approved.

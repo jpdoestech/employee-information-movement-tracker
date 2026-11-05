@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-async function connectedWorkbook(page: Page) {
+async function connectedWorkbook(page: Page, syncGate?: Promise<void>) {
   await page.goto("/");
   const context = await page.evaluate(async () => {
     const path = "/src/demo.ts";
@@ -41,6 +41,7 @@ async function connectedWorkbook(page: Page) {
       writes.push(body);
       return route.fulfill({ json: { id: book.id } });
     }
+    if (body.operation === "sync") await syncGate;
     return route.fulfill({
       json: route.request().url().includes("/register_settings")
         ? context.register_settings
@@ -75,6 +76,19 @@ async function connectedWorkbook(page: Page) {
     }),
   };
 }
+
+test("loading status never reports a configured Google connection as disconnected", async ({ page }) => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const ready = connectedWorkbook(page, gate);
+  await expect(page.getByText("Loading sync status…", { exact: true })).toBeVisible();
+  await expect(page.getByText("Google account not connected", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/Workbooks are provisioned/)).toHaveCount(0);
+  release();
+  const { writes } = await ready;
+  await expect(page.getByText("Google connection configured", { exact: true })).toBeVisible();
+  expect(writes).toHaveLength(0);
+});
 
 for (const [width, height] of [
   [1440, 900],
