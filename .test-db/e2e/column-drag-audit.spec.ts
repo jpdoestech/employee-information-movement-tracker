@@ -32,29 +32,33 @@ for (const width of [375, 1366]) {
       })
       .check();
     const list = dialog.locator(".column-list");
-    await list.evaluate((el) => {
-      el.scrollTop = 104;
-    });
+    const targetRow = list.locator(
+      '[data-column-key="client_employee_number"]',
+    );
     const handle = dialog.getByRole("button", {
       name: "Drag employee_category",
       exact: true,
     });
-    await handle.scrollIntoViewIfNeeded();
+    // Keep the drop point away from the list's auto-scroll edges.
+    await targetRow.evaluate((row) => {
+      const list = row.closest(".column-list")!;
+      const target = row.getBoundingClientRect();
+      const viewport = list.getBoundingClientRect();
+      list.scrollTop +=
+        target.top + target.height / 4 - (viewport.top + viewport.height / 2);
+    });
     const source = (await handle.boundingBox())!;
-    const target = (await dialog
-      .locator('[data-column-key="client_employee_number"]')
-      .boundingBox())!;
+    const target = (await targetRow.boundingBox())!;
     await page.mouse.move(
       source.x + source.width / 2,
       source.y + source.height / 2,
     );
     await page.mouse.down();
-    await page.mouse.move(target.x + target.width / 2, target.y + 5, {
-      steps: 10,
-    });
-    await expect(
-      dialog.locator('[data-column-key="client_employee_number"]'),
-    ).toHaveClass(/column-drop-before/);
+    await page.mouse.move(
+      target.x + target.width / 2,
+      target.y + target.height / 4,
+    );
+    await expect(targetRow).toHaveClass(/column-drop-before/);
     await page.mouse.up();
     await expect(list.locator("li").nth(2)).toHaveAttribute(
       "data-column-key",

@@ -64,7 +64,13 @@ for (const [width, height] of [
         .click();
       await expect(trigger).toContainText(selected);
       const text = trigger.locator(".picker-label");
-      expect((await text.boundingBox())!.height).toBeLessThanOrEqual(22);
+      const fit = await text.evaluate((label) => ({
+        wrapsWithinTwoLines:
+          label.getBoundingClientRect().height <=
+          2 * parseFloat(getComputedStyle(label).lineHeight) + 1,
+        fitsWidth: label.scrollWidth <= label.clientWidth + 1,
+      }));
+      expect(fit).toEqual({ wrapsWithinTwoLines: true, fitsWidth: true });
       const box = (await trigger.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(width);

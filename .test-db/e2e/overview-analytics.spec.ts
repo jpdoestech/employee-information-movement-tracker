@@ -191,6 +191,9 @@ for (const [width, height] of [
       exact: true,
     });
     await close.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(close).toBeFocused();
     expect(
       await close.evaluate((e) => getComputedStyle(e).outlineStyle),
     ).not.toBe("none");
