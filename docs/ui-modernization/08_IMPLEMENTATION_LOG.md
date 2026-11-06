@@ -33,3 +33,30 @@ Promote the approved dashboard composition onto the existing analytics: six unch
 Extract the existing record timestamp formatter for reuse by Sheets status; show Asia/Manila dates and retain exact timestamps in semantic time elements. No sync scheduling, export policy, transaction, approval or job-link behavior changes. The old prototype navigation bridge is removed once the current implementation is captured in UI-07.
 
 Acceptance: analytics, PRF assignment, movement previews, record explorers and workbook sync suites; pure timezone-boundary and malformed-date tests. Compare the actual integrated dashboard with both approved references.
+
+## UI-07 — integrated release verification
+
+Replace the isolated prototype-only test configuration, duplicate CSS and DOM navigation bridge with tests against the actual production entry. Keep a small synthetic preview entry for local review. No generated reports/screenshots, private data or credentials are committed.
+
+The desktop/sidebar width assertion is updated for the approved labelled default; saved collapsed behavior has independent coverage. The calculated-column sort test now checks the next direction and row order against the retained sort state rather than assuming every navigation starts unsorted. These changes preserve stronger interaction assertions without modifying application sort logic.
+
+Final visual inspection covers the actual desktop/mobile dashboard, mobile permission matrix and desktop employee editor. The white sidebar, compact neutral header, light gray canvas, blue actions, restrained radii, local type and navy bottom navigation follow the references. Intentional differences: existing EIMT branding/actions; six current metrics rather than dropping three; real distribution bars instead of fabricated payroll/trend charts; four primary mobile destinations with all remaining modules in More; essential coverage/scope explanations; stronger input boundaries for contrast; compact short-landscape navigation. No unrelated modules or reference identities are copied.
+
+Generated screenshots: `unified-dashboard-desktop.png`, `unified-dashboard-mobile.png`, `unified-dashboard-mobile-details.png`, `unified-dashboard-dark.png`, and `unified-{module}-{390|1440}.png` under `.test-db/reports/ui-modernization/`. The two supplied references remain unchanged.
+
+| Phase | Review PR |
+|---|---|
+| UI-00 | [#2](https://github.com/jpdoestech/employee-information-movement-tracker/pull/2) |
+| UI-01 | [#4](https://github.com/jpdoestech/employee-information-movement-tracker/pull/4) |
+| UI-02 | [#5](https://github.com/jpdoestech/employee-information-movement-tracker/pull/5) |
+| UI-03 | [#6](https://github.com/jpdoestech/employee-information-movement-tracker/pull/6) |
+| UI-04 | [#7](https://github.com/jpdoestech/employee-information-movement-tracker/pull/7) |
+| UI-05 | [#8](https://github.com/jpdoestech/employee-information-movement-tracker/pull/8) |
+| UI-06 | [#9](https://github.com/jpdoestech/employee-information-movement-tracker/pull/9) |
+| UI-07 | [#10](https://github.com/jpdoestech/employee-information-movement-tracker/pull/10) |
+
+Physical devices/screen readers and complete WCAG certification are not claimed. Database migrations, RPC/RLS rules, API/data shapes and dependencies remain unchanged throughout modernization. The only shared runtime extraction is the existing timestamp formatter, with invalid-date handling and timezone tests.
+
+Release verification uses the production build, 177 unit tests, 172 disposable PostgreSQL checks, and the full browser suite with a targeted rerun of the calculated-column cases. The browser suite passed 354 of 355 on its first run. The remaining case assumed the prior sort had reset. The updated assertion checks both the displayed direction and the corresponding row order. Local REST testing requires a disposable Supabase stack and is covered by the separate GitHub Actions job.
+
+Production release on 2026-11-06 in Manila uses commit `46f96e2`. Vercel reported Ready and assigned the production domain. The live sign-in screen rendered and the production assets included the new mobile navigation and expected backend project. Signed-in workflows were verified in the automated suite. [Live tracker](https://strellas-employees.vercel.app/) · [Deployment](https://vercel.com/strellasdrive-5187/strellas-employees/9kg1AYnb2txNxiv9EDreNKchqFFW)

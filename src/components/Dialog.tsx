@@ -55,6 +55,37 @@ export function Dialog({
         .filter(Boolean)
         .join(" ")}
       aria-label={title}
+      onKeyDown={(e) => {
+        const dialog = e.currentTarget;
+        if (
+          e.key !== "Tab" ||
+          e.defaultPrevented ||
+          !dialog.contains(e.target as Node)
+        )
+          return;
+        const stops = Array.from(
+          dialog.querySelectorAll<HTMLElement>(
+            "a[href], button, input, select, textarea, summary, [tabindex]",
+          ),
+        ).filter(
+          (item) =>
+            item.tabIndex >= 0 &&
+            !item.matches(":disabled") &&
+            !item.closest("[inert]") &&
+            item.checkVisibility({ visibilityProperty: true }),
+        );
+        const first = stops[0],
+          last = stops.at(-1);
+        const active = document.activeElement;
+        if (
+          !first ||
+          active === dialog ||
+          (e.shiftKey ? active === first : active === last)
+        ) {
+          e.preventDefault();
+          (e.shiftKey ? last : first)?.focus();
+        }
+      }}
       onChangeCapture={() => {
         dirty.current = true;
       }}

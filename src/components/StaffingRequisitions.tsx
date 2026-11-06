@@ -122,6 +122,7 @@ export function StaffingRequisitions({
         <Dialog
           title={draft.row_version ? "Edit staffing PRF" : "Add staffing PRF"}
           wide
+          className="staffing-editor-dialog"
           closeDisabled={busy}
           onClose={() => setDraft(undefined)}
           isDirty={JSON.stringify(draft) !== initial}

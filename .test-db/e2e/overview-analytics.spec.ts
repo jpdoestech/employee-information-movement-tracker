@@ -173,6 +173,17 @@ for (const [width, height] of [
       name: "Add staffing PRF",
       exact: true,
     });
+    const close = editor.getByRole("button", {
+      name: "Close dialog",
+      exact: true,
+    });
+    await expect(close).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(
+      editor.getByRole("button", { name: "Save PRF" }),
+    ).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(close).toBeFocused();
     const footer = (await editor.locator("footer").boundingBox())!;
     expect(footer.y + footer.height).toBeLessThanOrEqual(height);
     await editor
@@ -186,11 +197,10 @@ for (const [width, height] of [
     expect(clientBounds.x).toBeGreaterThanOrEqual(0);
     expect(clientBounds.y + clientBounds.height).toBeLessThanOrEqual(height);
     await page.keyboard.press("Escape");
-    const close = editor.getByRole("button", {
-      name: "Close dialog",
-      exact: true,
-    });
     await close.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(close).toBeFocused();
     expect(
       await close.evaluate((e) => getComputedStyle(e).outlineStyle),
     ).not.toBe("none");
