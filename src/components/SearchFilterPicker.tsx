@@ -73,7 +73,12 @@ export function SearchFilterPicker({
   function close() {
     setOpen(false);
     surface?.deactivate();
-    requestAnimationFrame(() => anchor.current?.focus());
+    if (surface) {
+      // The toolbar hides the trigger until its selection panel closes.
+      requestAnimationFrame(() => anchor.current?.focus());
+    } else {
+      anchor.current?.focus({ preventScroll: true });
+    }
   }
   function start() {
     setDraft(value);
