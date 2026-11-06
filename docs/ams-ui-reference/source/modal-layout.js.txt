@@ -1,0 +1,12 @@
+/* Read-only excerpt from assets/ui-workflows.js; adapt to the tracker Dialog component. */
+ function layoutModal(dialog){
+  const close=dialog.querySelector('.dialog-close'),content=dialog.querySelector(':scope > #dm')||dialog;
+  const title=content.querySelector(':scope > .employee-form-header,:scope > h3'),last=content.lastElementChild;
+  const actions=last&&last!==title&&last!==close&&last.querySelector(':scope > button')&&!last.querySelector('input,select,textarea')?last:null;
+  const header=document.createElement('header');header.className='modal-header';if(title)header.append(title);if(close)header.append(close);
+  const footer=document.createElement('footer');footer.className='modal-footer';if(actions)footer.append(actions);
+  let body;
+  if(content!==dialog){body=content;body.classList.add('modal-body')}
+  else{body=document.createElement('div');body.className='modal-body';while(dialog.firstChild)body.append(dialog.firstChild)}
+  dialog.replaceChildren(header,body,footer);
+ }

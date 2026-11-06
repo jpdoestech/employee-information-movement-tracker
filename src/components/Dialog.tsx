@@ -1,0 +1,132 @@
+import { useEffect, useRef, type ReactNode } from "react";
+import { X } from "lucide-react";
+import { confirmTransaction } from "./TransactionConfirmation";
+export function Dialog({
+  title,
+  onClose,
+  children,
+  wide = false,
+  className = "",
+  isDirty,
+  closeDisabled = false,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  wide?: boolean;
+  className?: string;
+  isDirty?: boolean;
+  closeDisabled?: boolean;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const dirty = useRef(false),
+    closing = useRef(false);
+  async function close() {
+    if (closing.current || closeDisabled) return;
+    closing.current = true;
+    if (
+      !(isDirty ?? dirty.current) ||
+      (await confirmTransaction(
+        "Discard unsaved changes?",
+        "Your changes have not been saved. Discard them to leave, or continue editing.",
+        "Discard changes",
+        "Continue editing",
+      ))
+    )
+      onClose();
+    closing.current = false;
+  }
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement;
+    const dialog = ref.current!;
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      // Nested confirmations finish their cleanup before restoring the opener.
+      queueMicrotask(() => {
+        if (!dialog.open && before?.isConnected) before.focus();
+      });
+    };
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className={["app-dialog", wide ? "wide" : "", className]
+        .filter(Boolean)
+        .join(" ")}
+      aria-label={title}
+      onKeyDown={(e) => {
+        const dialog = e.currentTarget;
+        if (
+          e.key !== "Tab" ||
+          e.defaultPrevented ||
+          !dialog.contains(e.target as Node)
+        )
+          return;
+        const stops = Array.from(
+          dialog.querySelectorAll<HTMLElement>(
+            "a[href], button, input, select, textarea, summary, [tabindex]",
+          ),
+        ).filter(
+          (item) =>
+            item.tabIndex >= 0 &&
+            !item.matches(":disabled") &&
+            !item.closest("[inert]") &&
+            item.checkVisibility({ visibilityProperty: true }),
+        );
+        const first = stops[0],
+          last = stops.at(-1);
+        const active = document.activeElement;
+        if (
+          !first ||
+          active === dialog ||
+          (e.shiftKey ? active === first : active === last)
+        ) {
+          e.preventDefault();
+          (e.shiftKey ? last : first)?.focus();
+        }
+      }}
+      onChangeCapture={() => {
+        dirty.current = true;
+      }}
+      onClickCapture={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('[role="option"]')) dirty.current = true;
+        const button = target.closest("button");
+        if (
+          button &&
+          (/^(Move |Pin |Clear )/.test(
+            button.getAttribute("aria-label") || "",
+          ) ||
+            button.textContent?.trim() === "Reset")
+        )
+          dirty.current = true;
+        if (
+          button?.textContent?.trim() === "Cancel" &&
+          !target.closest(".picker-panel")
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+          void close();
+        }
+      }}
+      onCancel={(e) => {
+        e.preventDefault();
+        void close();
+      }}
+    >
+      <header>
+        <h2>{title}</h2>
+        <button
+          type="button"
+          aria-label="Close dialog"
+          disabled={closeDisabled}
+          onClick={() => void close()}
+        >
+          <X size={20} />
+        </button>
+      </header>
+      {children}
+    </dialog>
+  );
+}

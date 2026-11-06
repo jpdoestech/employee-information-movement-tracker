@@ -1,0 +1,100 @@
+import { beforeEach, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ invoke: vi.fn(), confirm: vi.fn() }));
+vi.mock("../../src/demo", () => ({
+  demoQuery: vi.fn(),
+  demoMutate: vi.fn(),
+  demoIdentityPreview: vi.fn(),
+}));
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: () => ({ functions: { invoke: mocks.invoke } }),
+}));
+vi.mock("../../src/components/TransactionConfirmation", () => ({
+  requireConfirmation: mocks.confirm,
+}));
+vi.mock("../../src/transactions", () => ({
+  trackTransaction: (_label: string, fn: () => unknown) => fn(),
+}));
+const input = {
+  email: "colleague@example.test",
+  display_name: "New colleague",
+  password: "Synthetic-password-123!",
+  role: "viewer",
+  reason: "Synthetic onboarding",
+};
+beforeEach(() => {
+  vi.resetModules();
+  vi.stubEnv("VITE_SUPABASE_URL", "https://synthetic.supabase.co");
+  vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_synthetic");
+  vi.stubEnv("VITE_DEMO_MODE", "false");
+  mocks.confirm.mockReset().mockResolvedValue(undefined);
+  mocks.invoke.mockReset();
+});
+it("sends no write when shared confirmation is cancelled", async () => {
+  mocks.confirm.mockRejectedValue(new Error(""));
+  const { createAccount } = await import("../../src/api");
+  await expect(createAccount(input)).rejects.toThrow();
+  expect(mocks.invoke).not.toHaveBeenCalled();
+});
+it("cleans account text while keeping the password exact", async () => {
+  mocks.invoke.mockResolvedValue({ data: { id: "created" }, error: null });
+  const { createAccount } = await import("../../src/api");
+  await createAccount({
+    ...input,
+    display_name: "  New   colleague  ",
+    email: " colleague@example.test ",
+    reason: "  New   user ",
+    password: "  exact  password  ",
+  });
+  expect(mocks.invoke.mock.calls[0][1].body).toMatchObject({
+    ...input,
+    display_name: "New colleague",
+    reason: "New user",
+    password: "  exact  password  ",
+  });
+});
+it("preserves the request ID on explicit retry, returns backend errors, and never retries automatically", async () => {
+  mocks.invoke.mockResolvedValueOnce({
+    error: {
+      context: new Response(JSON.stringify({ error: "Enrollment pending" })),
+    },
+  });
+  mocks.invoke.mockResolvedValueOnce({ data: { id: "created" }, error: null });
+  const { createAccount } = await import("../../src/api");
+  await expect(createAccount(input)).rejects.toThrow("Enrollment pending");
+  expect(mocks.invoke).toHaveBeenCalledTimes(1);
+  const first = mocks.invoke.mock.calls[0][1].body;
+  expect(first).toMatchObject(input);
+  expect(first.request_id).toMatch(/^[0-9a-f-]{36}$/);
+  expect(await createAccount(input)).toEqual({ id: "created" });
+  expect(mocks.invoke.mock.calls[1][1].body).toEqual(first);
+  expect(mocks.confirm).toHaveBeenCalledTimes(2);
+});
+
+it("password changes require confirmation and reuse one request only on explicit retry", async () => {
+  const { setAccountPassword } = await import("../../src/api");
+  const p = {
+    user_id: "20000000-0000-4000-8000-000000000002",
+    password: input.password,
+    reason: input.reason,
+  };
+  mocks.confirm.mockRejectedValueOnce(new Error(""));
+  await expect(setAccountPassword(p, "Colleague")).rejects.toThrow();
+  expect(mocks.invoke).not.toHaveBeenCalled();
+  mocks.invoke.mockResolvedValueOnce({
+    error: {
+      context: new Response(
+        JSON.stringify({ error: "Keep the draft and retry" }),
+      ),
+    },
+  });
+  await expect(setAccountPassword(p, "Colleague")).rejects.toThrow(
+    "Keep the draft",
+  );
+  expect(mocks.invoke).toHaveBeenCalledTimes(1);
+  const first = mocks.invoke.mock.calls[0][1].body;
+  expect(first).toMatchObject({ ...p, action: "set_password" });
+  expect(JSON.stringify(mocks.confirm.mock.calls)).not.toContain(p.password);
+  mocks.invoke.mockResolvedValueOnce({ data: { id: p.user_id }, error: null });
+  await setAccountPassword(p, "Colleague");
+  expect(mocks.invoke.mock.calls[1][1].body.request_id).toBe(first.request_id);
+});
