@@ -3690,7 +3690,8 @@ dialog.app-dialog[open] {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-dialog.transaction-editor[open] {
+dialog.transaction-editor[open],
+dialog.staffing-editor-dialog[open] {
   height: min(var(--dialog-editor-height), calc(100dvh - 32px));
 }
 .transaction-editor > .dialog-body {

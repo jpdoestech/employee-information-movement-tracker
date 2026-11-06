@@ -3,6 +3,7 @@ import { test, expect } from "@playwright/test";
 for (const [width, height] of [
   [1440, 900],
   [390, 844],
+  [375, 640],
   [768, 1024],
   [844, 390],
   [320, 740],
@@ -27,7 +28,10 @@ for (const [width, height] of [
       name: "Add staffing PRF",
       exact: true,
     });
-    await prf.getByLabel("PRF No.", { exact: true }).fill("PRF-MULTI-UI");
+    const reference = prf.getByLabel("PRF No.", { exact: true });
+    await expect(reference).toBeInViewport({ ratio: 1 });
+    await expect(prf.getByRole("button", { name: "Save PRF" })).toBeInViewport();
+    await reference.fill("PRF-MULTI-UI");
     await prf.getByRole("button", { name: "PRF client", exact: true }).click();
     await page
       .getByRole("dialog", { name: "PRF client options", exact: true })
