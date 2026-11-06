@@ -39,6 +39,8 @@ for (const width of [375, 1366]) {
       name: "Drag employee_category",
       exact: true,
     });
+    await handle.hover();
+    await page.mouse.down();
     // Keep the drop point away from the list's auto-scroll edges.
     await targetRow.evaluate((row) => {
       const list = row.closest(".column-list")!;
@@ -47,13 +49,7 @@ for (const width of [375, 1366]) {
       list.scrollTop +=
         target.top + target.height / 4 - (viewport.top + viewport.height / 2);
     });
-    const source = (await handle.boundingBox())!;
     const target = (await targetRow.boundingBox())!;
-    await page.mouse.move(
-      source.x + source.width / 2,
-      source.y + source.height / 2,
-    );
-    await page.mouse.down();
     await page.mouse.move(
       target.x + target.width / 2,
       target.y + target.height / 4,
@@ -79,6 +75,7 @@ for (const width of [375, 1366]) {
       .evaluateAll((items) =>
         items.map((el) => (el as HTMLElement).dataset.columnKey),
       );
+    await handle.scrollIntoViewIfNeeded();
     const current = (await handle.boundingBox())!;
     await page.mouse.move(current.x + 10, current.y + 10);
     await page.mouse.down();
